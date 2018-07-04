@@ -4,8 +4,8 @@ ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "session_id" VARCHAR
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "filename" VARCHAR(254);
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "gpslatitud" NUMERIC(24,15);
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "gpslongitu" NUMERIC(24,15);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "gpsdatetim" VARCHAR(254);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "datetimeor" VARCHAR(254);
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "gpsdatetim" timestamp;
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "datetimeor" timestamp;
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "lightvalue" NUMERIC(24,15);
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "imagesize" VARCHAR(254);
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "model" VARCHAR(254);

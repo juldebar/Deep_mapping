@@ -137,7 +137,7 @@ return_dataframe_csv_exif_metadata_files <- function(wd){
   for (i in sub_directories){
     if (substr(i, nchar(i)-3, nchar(i))=="exif"){
       setwd(i)
-      name_session <-gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
+      name_session <-gsub(paste(dirname(dirname(dirname(i))),"/",sep=""),"",dirname(dirname(i)))
       files <- list.files(pattern = "*.csv")
       csv_files <- files
       cat(dirname(i))
@@ -165,7 +165,7 @@ setwd(current_wd)
 
 ###########################################################################################################################
 library(RPostgreSQL)
-# library(data.table)
+library(data.table)
 library(dplyr)
 source("/home/julien/Bureau/CODES/Deep_mapping/R/credentials_postgres.R")
 con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
@@ -213,7 +213,7 @@ dataframe_csv_files <- return_dataframe_csv_exif_metadata_files(directory)
 setwd(current_wd)
 
 number_row<-nrow(dataframe_csv_files)
-for (All_Exif_metadata.csv in 1:dataframe_csv_files){
+for (csv in 1:number_row){
   row <- dataframe_csv_files[csv,]
   session <- dataframe_csv_files$session[csv]
   path <- dataframe_csv_files$path[csv]
@@ -224,6 +224,7 @@ for (All_Exif_metadata.csv in 1:dataframe_csv_files){
     CSV_total <- NULL
     csv_data_frame <- NULL
     CSV_total <- read.csv(file=file)
+    # CSV_total <- read.csv(file="/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_31_kite_Le_Morne/DCIM/exif/All_Exif_metadata.csv", stringsAsFactors = FALSE)
     metadata_pictures <- select(CSV_total,
                                 FileName,
                                 GPSLatitude,
@@ -233,13 +234,25 @@ for (All_Exif_metadata.csv in 1:dataframe_csv_files){
                                 LightValue,
                                 ImageSize,
                                 Model)
+    sapply(metadata_pictures, class)
     metadata_pictures$session <- session
+    metadata_pictures$session = as.character(unlist(metadata_pictures$session))
+    metadata_pictures$GPSLatitude = as.numeric(unlist(metadata_pictures$GPSLatitude))
+    metadata_pictures$GPSLongitude = as.numeric(unlist(metadata_pictures$GPSLongitude))
+    metadata_pictures$GPSDateTime = as.POSIXct(unlist(metadata_pictures$GPSDateTime),"%Y-%m-%d %H:%M:%S", tz="UTC")
+    metadata_pictures$DateTimeOriginal = as.POSIXct(metadata_pictures$DateTimeOriginal, format="%Y-%m-%dT%H:%M:%S", tz="UTC")
     metadata_pictures$geometry_postgis <- NA
+    metadata_pictures$geometry_postgis = as.numeric(unlist(metadata_pictures$geometry_postgis))
     metadata_pictures$geometry_gps_correlate <- NA
+    metadata_pictures$geometry_gps_correlate = as.numeric(unlist(metadata_pictures$geometry_gps_correlate))
     metadata_pictures$geometry_native <- NA
+    metadata_pictures$geometry_native = as.numeric(unlist(metadata_pictures$geometry_native))
     csv_data_frame = rename(metadata_pictures, session_id=session, filename=FileName, gpslatitud=GPSLatitude, gpslongitu=GPSLongitude, gpsdatetim=GPSDateTime, datetimeor=DateTimeOriginal, lightvalue=LightValue, imagesize=ImageSize, model=Model)
+    csv_data_frame <- csv_data_frame[,c(9,1,2,3,4,5,6,7,8,10,11,12)]
     names(csv_data_frame)
-    dbWriteTable(con_Reef_database, "photos_exif_core_metadata", csv_data_frame, row.names=TRUE, append=TRUE)
+    head(csv_data_frame)
+    sapply(csv_data_frame, class)
+    dbWriteTable(con_Reef_database, "photos_exif_core_metadata", csv_data_frame, row.names=FALSE, append=TRUE)
   }
 
 }
