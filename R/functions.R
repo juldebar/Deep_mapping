@@ -5,6 +5,14 @@ library(dplyr)
 #############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
+wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
+sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
+number_sub_directories <-length(sub_directories)
+
+for (i in 1:number_sub_directories){
+  extract_exif_metadata_in_csv(sub_directories[i])
+}
+
 extract_exif_metadata_in_csv <- function(images_directory){
   setwd(images_directory)
   system("mkdir exif")
@@ -22,7 +30,7 @@ extract_exif_metadata_in_csv <- function(images_directory){
     this_directory <- sub_directories[i]
     # this_directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_03_kite_Pointe_Esny/DCIM/177GOPRO/"
     
-    if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GIS",this_directory)==FALSE){
+    if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GIS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
       setwd(this_directory)
       
       log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
@@ -62,8 +70,8 @@ extract_exif_metadata_in_csv <- function(images_directory){
       cat(message_done)
       
       setwd(metadata_directory)
-      csv_file_name <- paste("all_exif_metadata_in_",this_directory,".csv",sep="")
-      write.csv(dat, csv_file_name,row.names = F)
+      # csv_file_name <- paste("all_exif_metadata_in_",this_directory,".csv",sep="")
+      # write.csv(dat, csv_file_name,row.names = F)
       
       #############################################################################################################    
       #############################################MERGE WITH TAGS##############################################   
@@ -85,10 +93,10 @@ extract_exif_metadata_in_csv <- function(images_directory){
                               LightValue,
                               ImageSize,
                               Model)
+  name_file_csv<-paste("Core_Exif_metadata_",parent_directory,".csv",sep="")
+  write.csv(metadata_pictures, name_file_csv,row.names = F)
   
-  write.csv(metadata_pictures, "Core_Exif_metadata.csv",row.names = F)
-  
-  return(nrow(read.csv("Core_Exif_metadata.csv")))
+  # return(nrow(read.csv("Core_Exif_metadata.csv")))
 }
 
 #############################################################################################################
@@ -167,16 +175,18 @@ setwd(current_wd)
 library(RPostgreSQL)
 library(data.table)
 library(dplyr)
+library(trackeR)
 source("/home/julien/Bureau/CODES/Deep_mapping/R/credentials_postgres.R")
 con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
 ###################################### LOAD GPS TRACKS DATA ############################################################
 
 
-query_create_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_Mapping/SQL/create_tables_GPS_tracks.sql"), collapse=" ")
-query_update_table_spatial_column <- paste(readLines("/home/julien/Bureau/CODES/Deep_Mapping/SQL/add_spatial_column.sql"), collapse=" ")
+query_create_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_tables_GPS_tracks.sql"), collapse=" ")
+query_update_table_spatial_column <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/add_spatial_column.sql"), collapse=" ")
 create_Table <- dbGetQuery(con_Reef_database,query_create_table)
 # dbWriteTable(con_Reef_database, "gps_tracks", GPS_tracks_values, row.names=FALSE, append=TRUE)
-dataframe_list_tcx_files <- return_dataframe_tcx_files(wd)
+wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
+dataframe_tcx_files <- return_dataframe_tcx_files(wd)
 
 number_row<-nrow(dataframe_tcx_files)
 for (t in 1:number_row){
@@ -196,7 +206,7 @@ for (t in 1:number_row){
   # GPS_tracks_values <- GPS_tracks_values[,c(6,1,2,3,4,5)]
   # GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y-%m-%d %H:%M:%OS")
   GPS_tracks_values$the_geom <- NA
-  dbWriteTable(con_Reef_database, "gps_tracks", GPS_tracks_values, row.names=TRUE, append=TRUE)
+  dbWriteTable(con_Reef_database, "gps_tracks", GPS_tracks_values, row.names=FALSE, append=TRUE)
 }
 
 update_Table <- dbGetQuery(con_Reef_database,query_update_table_spatial_column)
@@ -303,5 +313,5 @@ All_Core_Exif_metadata %>% top_n(2)
 
 write.csv(df,"All_Core_Exif_metadatacsv", row.names=FALSE)
 dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:1000,], row.names=FALSE, append=TRUE)
-
+  
 
