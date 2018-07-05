@@ -5,7 +5,10 @@ library(dplyr)
 #############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
-wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
+wd <- "/media/usb0/data_deep_mapping/good_stuff"
+template_df <- read.csv("/media/usb0/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne/exif/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
+# template_df <- template_df[1,]
+
 sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
 number_sub_directories <-length(sub_directories)
 
@@ -24,14 +27,17 @@ extract_exif_metadata_in_csv <- function(images_directory){
   # directories_level1 <- strsplit(directories_level1, "/")
   
   for (i in 1:number_sub_directories){
-    dat <-NULL
+    dat <-template_df
     metadata_pictures <-NULL
     setwd(images_directory)
     this_directory <- sub_directories[i]
-    # this_directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_03_kite_Pointe_Esny/DCIM/177GOPRO/"
     
     if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GIS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
+      # this_directory <- "/media/usb0/data_deep_mapping/good_stuff/session_2017_12_09_kite_Bel_Ombre/DCIM/141GOPRO"
+      # this_directory <- "/media/usb0/data_deep_mapping/good_stuff/session_2017_12_09_kite_Bel_Ombre/DCIM/142GOPRO"
+      
       setwd(this_directory)
+      dat <-NULL
       
       log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
       # cat(log)
@@ -42,12 +48,16 @@ extract_exif_metadata_in_csv <- function(images_directory){
       # this_directory <- gsub("/","_",this_directory)  
       files <- list.files(pattern = "*.JPG")
       dat <- read_exif(files)
+      # head(dat)
       # IF THERE IS NO GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES NA
-      if(is.null(dat$GPSLatitude)){ # TO BE DONE => CHECK THIS CRITERIA / TOO PERMISIVE
+      # if(is.null(dat$GPSLatitude)){ # TO BE DONE => CHECK THIS CRITERIA / TOO PERMISIVE
+      if(exists("dat$GPSLatitude")==FALSE){ # TO BE DONE => CHECK THIS CRITERIA / TOO PERMISIVE
+        dat$GPSVersionID <-NA
         dat$GPSLatitudeRef <-NA
         dat$GPSLongitudeRef <-NA
         dat$GPSAltitudeRef <-NA
         dat$GPSTimeStamp <-NA
+        dat$GPSMapDatum <-NA
         dat$GPSDateStamp <-NA
         dat$GPSAltitude <-NA
         dat$GPSDateTime <-NA
@@ -55,11 +65,23 @@ extract_exif_metadata_in_csv <- function(images_directory){
         dat$GPSLongitude <-NA
         dat$GPSPosition <-NA
       }
+      # sapply(dat,class)
+      # sapply(template_df,class)
+      # head(template_df)
+      # new_dat <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
+      # new_dat <- rbind(template_df, dat)
+      new_dat <- bind_rows(template_df, dat)
+      
+      # new_dat <- full_join(template_df, dat)
+      # m = similar(dat, 0) 
+      # sapply(new_dat,class)
       # Ajouter le path de la photo ou this_directory
       # metadata_pictures <- merge(c(this_directory),metadata_pictures))
       # metadata_pictures$path <- this_directory
       # metadata_pictures$parent_directory <- parent_directory
-      CSV_total <- rbind(CSV_total, dat)
+      cat("\n done ? \n")
+      
+      CSV_total <- rbind(CSV_total, new_dat)
       
       # CSV_total$ThumbnailImage[1]
       # CSV_total$ThumbnailOffset[1]
@@ -196,7 +218,7 @@ for (t in 1:number_row){
   file_name <- dataframe_tcx_files$file_name[t]
   file = paste(path,file_name,sep="/")
   runDF <- NULL
-#   # runDF <- readTCX(file=file, timezone = "GMT")
+  #   # runDF <- readTCX(file=file, timezone = "GMT")
   runDF <- readTCX(file=file)
   runDF$session <- session
   select_columns = subset(runDF, select = c(session,latitude,longitude,altitude,time,heart.rate))
@@ -313,5 +335,6 @@ All_Core_Exif_metadata %>% top_n(2)
 
 write.csv(df,"All_Core_Exif_metadatacsv", row.names=FALSE)
 dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:1000,], row.names=FALSE, append=TRUE)
-  
+
+
 
