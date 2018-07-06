@@ -129,8 +129,8 @@ extract_exif_metadata_in_csv <- function(images_directory){
 ############################ RENAME CSV FILES ###################################################
 #############################################################################################################
 
-wd <- "/media/julien/Julien_2To/data_deep_mapping/done"
-
+# wd <- "/media/julien/Julien_2To/data_deep_mapping/done"
+wd <- "/media/usb0/data_deep_mapping/done"
 sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
 number_sub_directories <-length(sub_directories)
 
@@ -138,14 +138,23 @@ for (i in 1:number_sub_directories){
   rename_exif_csv(sub_directories[i])
 }
 
-# images_directory <- "/media/julien/Julien_2To/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne"
+# images_directory <- "/media/usb0/data_deep_mapping/done/session_2018_06_02_kite_Le_Morne"
 rename_exif_csv <- function(images_directory){
   metadata_directory <- paste(images_directory,"/exif/",sep="")
   setwd(metadata_directory)
-  
   name_session <-gsub(paste(dirname(images_directory),"/",sep=""),"",images_directory)
-  command <- paste("cp Core_Exif_metadata_DCIM.csv Core_Exif_metadata_", name_session,".csv", sep="")
-  system(command)
+  extended_df <- read.csv("Core_Exif_metadata_DCIM.csv")
+  extended_df$session_id <-name_session
+  extended_df$session_photo_number <-c(1:nrow(extended_df))
+  extended_df$relative_path <-"next time"
+  extended_df <- extended_df[,c(9,10,11,1,2,3,4,5,6,7,8)]
+  extended_df = rename(extended_df, filename=FileName, gpslatitud=GPSLatitude,gpslongitu=GPSLongitude, gpsdatetim=GPSDateTime, datetimeor=DateTimeOriginal, lightvalue=LightValue, imagesize=ImageSize,	model=Model)
+  						
+  
+  write.csv(extended_df, paste("Core_Exif_metadata_", name_session,".csv", sep=""),row.names = F)
+  
+  # command <- paste("cp Core_Exif_metadata_DCIM.csv Core_Exif_metadata_", name_session,".csv", sep="")
+  # system(command)
 }
 
 
@@ -227,7 +236,9 @@ library(RPostgreSQL)
 library(data.table)
 library(dplyr)
 library(trackeR)
-source("/home/julien/Bureau/CODES/Deep_mapping/R/credentials_postgres.R")
+# source("/home/julien/Bureau/CODES/Deep_mapping/R/credentials_postgres.R")
+source("/home/julien/Bureau/CODES/credentials_databases.R")
+
 con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
 ###################################### LOAD GPS TRACKS DATA ############################################################
 
@@ -364,7 +375,8 @@ head(All_Core_Exif_metadata)
 
 write.csv(All_Core_Exif_metadata,"All_Core_Exif_metadata.csv", row.names=FALSE)
 # dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:1000,], row.names=FALSE, append=TRUE)
-dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata, row.names=FALSE, append=TRUE)
+# dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
+dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata, row.names=TRUE, append=TRUE)
 
 
 
