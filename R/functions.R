@@ -5,8 +5,9 @@ library(dplyr)
 #############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
-wd <- "/media/usb0/data_deep_mapping/good_stuff"
-template_df <- read.csv("/media/usb0/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne/exif/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
+# wd <- "/media/usb0/data_deep_mapping/good_stuff"
+wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
+template_df <- read.csv("/media/julien/Julien_2To/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne/exif/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
 # template_df <- template_df[1,]
 
 sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
@@ -120,6 +121,34 @@ extract_exif_metadata_in_csv <- function(images_directory){
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
 }
+
+
+
+
+#############################################################################################################
+############################ RENAME CSV FILES ###################################################
+#############################################################################################################
+
+wd <- "/media/julien/Julien_2To/data_deep_mapping/done"
+
+sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
+number_sub_directories <-length(sub_directories)
+
+for (i in 1:number_sub_directories){
+  rename_exif_csv(sub_directories[i])
+}
+
+# images_directory <- "/media/julien/Julien_2To/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne"
+rename_exif_csv <- function(images_directory){
+  metadata_directory <- paste(images_directory,"/exif/",sep="")
+  setwd(metadata_directory)
+  
+  name_session <-gsub(paste(dirname(images_directory),"/",sep=""),"",images_directory)
+  command <- paste("cp Core_Exif_metadata_DCIM.csv Core_Exif_metadata_", name_session,".csv", sep="")
+  system(command)
+}
+
+
 
 #############################################################################################################
 ############################ RETRIEVE TCX FILES ###################################################
@@ -311,7 +340,6 @@ source("/home/julien/Bureau/CODES/Deep_mapping/R/credentials_postgres.R")
 con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
 ###################################### LOAD GPS TRACKS DATA ############################################################
 
-
 query_create_exif_core_metadata_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_exif_core_metadata_table.sql"), collapse=" ")
 create__exif_core_metadata_table <- dbGetQuery(con_Reef_database,query_create_exif_core_metadata_table)
 
@@ -331,10 +359,12 @@ All_Core_Exif_metadata$geometry_gps_correlate <- NA
 All_Core_Exif_metadata$geometry_gps_correlate = as.numeric(unlist(All_Core_Exif_metadata$geometry_gps_correlate))
 All_Core_Exif_metadata$geometry_native <- NA
 All_Core_Exif_metadata$geometry_native = as.numeric(unlist(All_Core_Exif_metadata$geometry_native))
-All_Core_Exif_metadata %>% top_n(2)
+# All_Core_Exif_metadata %>% top_n(2)
+head(All_Core_Exif_metadata)
 
-write.csv(df,"All_Core_Exif_metadatacsv", row.names=FALSE)
-dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:1000,], row.names=FALSE, append=TRUE)
+write.csv(All_Core_Exif_metadata,"All_Core_Exif_metadata.csv", row.names=FALSE)
+# dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:1000,], row.names=FALSE, append=TRUE)
+dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata, row.names=FALSE, append=TRUE)
 
 
 
