@@ -380,3 +380,102 @@ dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metad
 
 
 
+###################################### LOAD SESSION METADATA ############################################################
+
+sessions_metadata_dataframe <- function(Dublin_Core_metadata){
+  all_metadata <- NULL
+  
+  number_row<-nrow(Dublin_Core_metadata)
+  for (i in 1:number_row) {
+    # metadata <- Dublin_Core_metadata[i,]
+    metadata <- NULL
+    
+    metadata$id_session  <- Dublin_Core_metadata$Identifier[i]# if(is.na(metadata$Identifier)){metadata$Identifier="TITLE AND DATASET NAME TO BE FILLED !!"}
+    metadata$persistent_identifier <- Dublin_Core_metadata$Identifier[i]
+    metadata$related_sql_query <- "SELECT TOTO..;"
+    metadata$related_view_name <- paste("view_", Dublin_Core_metadata$Identifier[i], sep="")
+    metadata$identifier <- Dublin_Core_metadata$Identifier[i]
+    metadata$title  <- Dublin_Core_metadata$Title[i]
+    metadata$contacts_and_roles  <- Dublin_Core_metadata$Creator[i]
+    metadata$subject  <- Dublin_Core_metadata$Subject[i]
+    metadata$description <- Dublin_Core_metadata$Description[i]
+    metadata$date  <- Dublin_Core_metadata$Date[i]
+    metadata$dataset_type  <- Dublin_Core_metadata$Type[i]
+    metadata$format  <- Dublin_Core_metadata$Format[i]
+    metadata$language  <- Dublin_Core_metadata$Language[i] #resource_language <- "eng"
+    metadata$relation  <- NA
+    metadata$spatial_coverage  <-  Dublin_Core_metadata$Spatial_Coverage[i]
+    metadata$temporal_coverage  <-  Dublin_Core_metadata$Temporal_Coverage[i]
+    metadata$rights  <- Dublin_Core_metadata$Rights[i] #UseLimitation <- "intellectualPropertyRights"
+    metadata$source  <- "TO BE DONE"
+    metadata$provenance  <- Dublin_Core_metadata$Lineage[i]
+    metadata$supplemental_information  <- "TO BE DONE"
+    metadata$database_table_name  <- "TABLE NAME"
+    metadata$time_offset =1
+    metadata$geometry_session <- NA
+    
+    all_metadata <- bind_rows(all_metadata, metadata)
+    # all_metadata <- rbind(all_metadata, metadata)
+    
+    
+    #complex metadata elements
+#     Creator 
+#     Subject
+#     Relation
+#     Google_doc_folder
+#     Spatial_Coverage
+#     Temporal_Coverage
+#     view_name
+#     GPS_tcx_file  # runDF <- readTCX(file=file, timezone = "GMT")
+#     GPS_gpx_file
+#     Photo_for_GPS_Time_Correlation
+#     Photo_for_calibration
+#     GPS_time
+#     Photo_time
+#     Offset
+#     First_Photo_Correlated
+#     Parameters
+#     
+#     Number_of_photos
+#     Number.of.Pictures
+
+    
+    # select_columns = subset(runDF, select = c(session,latitude,longitude,altitude,time,heart.rate))
+    #   extended_df$session_photo_number <-c(1:nrow(extended_df))
+    #   extended_df$relative_path <-"next time"
+    #   extended_df <- extended_df[,c(9,10,11,1,2,3,4,5,6,7,8)]
+    #   extended_df = rename(extended_df, filename=FileName, gpslatitud=GPSLatitude,gpslongitu=GPSLongitude, gpsdatetim=GPSDateTime, datetimeor=DateTimeOriginal, lightvalue=LightValue, imagesize=ImageSize,	model=Model)
+    # write.csv(extended_df, paste("Core_Exif_metadata_", name_session,".csv", sep=""),row.names = F)
+    # command <- paste("cp Core_Exif_metadata_DCIM.csv Core_Exif_metadata_", name_session,".csv", sep="")
+    # system(command)
+    
+    
+  }
+  
+    return(all_metadata)
+    
+  }
+
+
+library(RPostgreSQL)
+library(data.table)
+library(dplyr)
+# source("/home/julien/Bureau/CODES/Deep_mapping/R/credentials_postgres.R")
+source("/home/julien/Bureau/CODES/credentials_databases.R")
+
+con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
+
+query_create_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_session_metadata_table.sql"), collapse=" ")
+create_Table <- dbGetQuery(con_Reef_database,query_create_table)
+
+Metadata_sessions <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
+sessions <- as.data.frame(gsheet::gsheet2tbl(Metadata_sessions))
+names(sessions)
+
+
+session_metadata <- sessions_metadata_dataframe(sessions)
+names(session_metadata)
+head(session_metadata)
+
+
+dbWriteTable(con_Reef_database, "metadata", session_metadata, row.names=TRUE, append=TRUE)
