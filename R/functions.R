@@ -36,6 +36,7 @@ extract_exif_metadata_in_csv <- function(images_directory){
     if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GIS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
       # this_directory <- "/media/usb0/data_deep_mapping/good_stuff/session_2017_12_09_kite_Bel_Ombre/DCIM/141GOPRO"
       # this_directory <- "/media/usb0/data_deep_mapping/good_stuff/session_2017_12_09_kite_Bel_Ombre/DCIM/142GOPRO"
+      # this_directory <-  "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_03_kite_Pointe_Esny"
       
       setwd(this_directory)
       dat <-NULL
@@ -47,7 +48,7 @@ extract_exif_metadata_in_csv <- function(images_directory){
       parent_directory <- gsub(remove,"",this_directory)
       parent_directory <- gsub("/DCIM","",parent_directory)
       # this_directory <- gsub("/","_",this_directory)  
-      files <- list.files(pattern = "*.JPG")
+      files <- list.files(pattern = "*.JPG",recursive = TRUE)
       dat <- read_exif(files)
       # head(dat)
       # IF THERE IS NO GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES NA
@@ -411,8 +412,11 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
     metadata$provenance  <- Dublin_Core_metadata$Lineage[i]
     metadata$supplemental_information  <- "TO BE DONE"
     metadata$database_table_name  <- "TABLE NAME"
-    metadata$time_offset =1
+    metadata$time_offset = Dublin_Core_metadata$Offset[i]
     metadata$geometry_session <- NA
+    
+    Dublin_Core_metadata$GPS_time[i]
+    Dublin_Core_metadata$Photo_time[i]
     
     all_metadata <- bind_rows(all_metadata, metadata)
     # all_metadata <- rbind(all_metadata, metadata)
