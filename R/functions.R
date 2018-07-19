@@ -8,7 +8,13 @@ library(dplyr)
 # wd <- "/media/usb0/data_deep_mapping/good_stuff"
 wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
 template_df <- read.csv("/media/julien/Julien_2To/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne/exif/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
+template_df <- read.csv("/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/GO_PRO1/exif/CSV_total.csv",stringsAsFactors = FALSE)
 # template_df <- template_df[1,]
+template_df$DateTimeOriginal
+
+timsetamp_DateTimeOriginal = as.POSIXct(unlist(template_df$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+head(template_df$DateTimeOriginal)
+head(timsetamp_DateTimeOriginal)
 
 sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
 number_sub_directories <-length(sub_directories)
