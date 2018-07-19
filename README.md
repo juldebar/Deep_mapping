@@ -11,7 +11,7 @@ In this repository we use:
 
  Here is the database model
  
-<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://drive.google.com/open?id=1KTMUd6SQ9UGR3xMrtDYsAB0vNSYUlUZ5" width="500">
+<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://drive.google.com/uc?id=1KTMUd6SQ9UGR3xMrtDYsAB0vNSYUlUZ5" width="500">
 
 
 
