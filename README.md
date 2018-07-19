@@ -6,7 +6,9 @@ In this repository we use:
  
  Here is the database model
  
- http://mdst-macroes.ird.fr/BlueBridge/Ichtyop/Ichthyop_tree_structure.svg
+ 
+
+<img style="position: absolute; top: 0; right: 0; border: 0;" src="http://mdst-macroes.ird.fr/BlueBridge/Ichtyop/Ichthyop_tree_structure.svg" width="150">
 
 
 The main steps of the workflow are the following
@@ -14,3 +16,9 @@ The main steps of the workflow are the following
  - extract metadata from photos with exifr package and load them them in a dedicated table of the database
  - extract data from GPS tracks (txc or gpx files) and load them them in a dedicated table of the database
  - correlation of GPS timestamps and photos timestamps to infer photos locations (done with a SQL query / trigger in Postgis)
+ 
+ 
+~~~~
+ffmpeg -y -i GOPR0001.MP4 -codec copy -map 0:m:handler_name:"	GoPro MET" -f rawvideo GOPR0001.bin
+R codes
+~~~~
