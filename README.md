@@ -4,11 +4,15 @@ In this repository we use:
  - exifr package https://www.r-bloggers.com/extracting-exif-data-from-photos-using-r/ to extract exif metadata from JPG images
  - 
  
+ Here is the file structure
+ 
+<img style="position: absolute; top: 0; right: 0; border: 0;" src="http://mdst-macroes.ird.fr/BlueBridge/Ichtyop/Ichthyop_tree_structure.svg" width="500">
+
+
  Here is the database model
  
- 
+<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://raw.githubusercontent.com/juldebar/Deep_mapping/master/SQL/Reef_Database.svg" width="500">
 
-<img style="position: absolute; top: 0; right: 0; border: 0;" src="http://mdst-macroes.ird.fr/BlueBridge/Ichtyop/Ichthyop_tree_structure.svg" width="150">
 
 
 The main steps of the workflow are the following
