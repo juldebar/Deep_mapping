@@ -132,10 +132,10 @@ update_Table <- dbGetQuery(con_Reef_database,query_update_table_spatial_column)
 ~~~~
 
 
-##  Merge all exif metadata and load them in the Postgres datbase
+##  3. Merge all exif metadata and load them in the Postgres / Pöstgis datbase
 
 
-### Extract EXIF metadata from photos in a CSV FILES
+### 3.1 Extract EXIF metadata from each photo and store them in CSV FILES (one per session)
 
 ~~~~
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
@@ -153,7 +153,7 @@ template_df <- read.csv("/media/julien/Julien_2To/data_deep_mapping/done/session
 timsetamp_DateTimeOriginal = as.POSIXct(unlist(template_df$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
 ~~~~
 
-### Merge all EXIF metadata (extracted before in CSV FILES) and load them in the database
+### 3.2 Merge all EXIF metadata (extracted before in CSV FILES) in a single data frame and load them in the Postgres / Pöstgis database
 
 
 ~~~~
@@ -179,31 +179,17 @@ All_Core_Exif_metadata$geometry_native = as.numeric(unlist(All_Core_Exif_metadat
 # All_Core_Exif_metadata %>% top_n(2)
 head(All_Core_Exif_metadata)
 write.csv(All_Core_Exif_metadata,"All_Core_Exif_metadata.csv", row.names=FALSE)
-
-
-###################################### LOAD EXIF METADATA IN POSTGRES DATABASE ############################################################
-con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
-query_create_exif_core_metadata_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_exif_core_metadata_table.sql"), collapse=" ")
-create__exif_core_metadata_table <- dbGetQuery(con_Reef_database,query_create_exif_core_metadata_table)
-# dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
-dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata, row.names=TRUE, append=TRUE)
-dbDisconnect(con_Reef_database)
 ~~~~
 
 OR 
 
 ~~~~
 ###################################### LOAD PHOTOS EXIF CORE METADATA ############################################################
-con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
-query_create_exif_core_metadata_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_exif_core_metadata_table.sql"), collapse=" ")
-create__exif_core_metadata_table <- dbGetQuery(con_Reef_database,query_create_exif_core_metadata_table)
-
 current_wd<-getwd()
 directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2"
 dataframe_csv_files <- return_dataframe_csv_exif_metadata_files(directory)
-
-
 setwd(current_wd)
+
 
 number_row<-nrow(dataframe_csv_files)
 for (csv in 1:number_row){
@@ -258,7 +244,17 @@ for (csv in 1:number_row){
     # dbWriteTable(con_Reef_database, "photos_exif_core_metadata", csv_data_frame, row.names=FALSE, append=TRUE)
   }
 }
+~~~~
 
-update_Table <- dbGetQuery(con_Reef_database,query_update_table_spatial_column)
+### 3.3 Load all EXIF metadata (in  the  data frame) in the Postgres / Pöstgis database
 
+
+~~~~
+###################################### LOAD EXIF METADATA IN POSTGRES DATABASE ############################################################
+con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
+query_create_exif_core_metadata_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_exif_core_metadata_table.sql"), collapse=" ")
+create__exif_core_metadata_table <- dbGetQuery(con_Reef_database,query_create_exif_core_metadata_table)
+# dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
+dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata, row.names=TRUE, append=TRUE)
+dbDisconnect(con_Reef_database)
 ~~~~
