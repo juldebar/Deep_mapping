@@ -11,7 +11,7 @@ In this repository we use:
  
  Data collected have to comply with the following file structure:
  
-<img style="position: absolute; top: 0; right: 0; border: 0;" src="http://mdst-macroes.ird.fr/BlueBridge/Ichtyop/Ichthyop_tree_structure.svg" width="500">
+<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://drive.google.com/uc?id=1xQYlJy1JxOig7gjsXCiPEg74Zgexq8_s" width="500">
 
 Our goal is to use this data structure as an input for R codes which will parse the subdirectories and files to load information in a Postgres / Postgis database with the following conceptual model:
  
