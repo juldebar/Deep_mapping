@@ -1,21 +1,37 @@
-This is a repository providing R codes to manage underwater pictures and their spatial location
+# Main goal
+
+This is a repository providing R codes to manage photos (underwater or aerial) and infer their spatial location from GPS tracks (from other devices: smartphone, watch..)
+
+
+# R packages
+
 
 In this repository we use: 
  - [exifr](https://www.r-bloggers.com/extracting-exif-data-from-photos-using-r/) package to extract exif metadata from JPG images
  - [RPostgreSQL]() package to 
  - [trackeR]() package to 
- - [RPostgreSQL]() package to 
- - [RPostgreSQL]() package to 
- - 
+ - [dplyr]() package to 
+ - [data.table]() package to 
+ - [geometa]() package to 
+ - [geonapi]() package to 
+ - [geosapi]() package to 
  
- 
- Data collected have to comply with the following file structure:
+
+# File structure
+
+Data collected have to comply with the following file structure:
  
 <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://drive.google.com/uc?id=1xQYlJy1JxOig7gjsXCiPEg74Zgexq8_s" width="800">
+
+# Database model (implemented in Postgres / Postgis)
 
 Our goal is to use this data structure as an input for R codes which will parse the subdirectories and files to load information in a Postgres / Postgis database with the following conceptual model (UML schema):
  
 <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://drive.google.com/uc?id=1KTMUd6SQ9UGR3xMrtDYsAB0vNSYUlUZ5" width="800">
+
+
+
+## Main steps of the workflow
 
 
 The main steps of the workflow are :
@@ -24,7 +40,7 @@ The main steps of the workflow are :
  - **extract** data from GPS tracks (txc or gpx files) and load them them in a dedicated table of the database
  - correlation of GPS timestamps and photos timestamps to infer photos locations (done with a SQL query / trigger in Postgis)
  
- 
+## Main functiosn (R)
  
 The file [functions.R](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) contains the following functions:
  - [sessions_metadata_dataframe](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) : this script load the metadata describing all sessions in a data frame (from a google spreadsheet) and load them in the "metadata" table of the Postgres / Postgis database.
