@@ -285,4 +285,9 @@ for (i in 1:number_sub_directories){
 ~~~~
 
 
-<iframe src = 'http://mdst-macroes.ird.fr/BlueBridge/ICCAT_BFTE/tunaAtlasVRE2.png' onload="this.width="800";this.height="400";"></iframe>
+Parameters Name | Type |  Data Type | Default value |  Controlled values | Definition
+--------|--------|--------|--------|--------|--------
+runNumb | Input | Integer | 7 | - | Select the run to run
+filenameVpa | Input | String | bfte2014 | - | Define file names for the vpa
+seedNumb | Input | Integer | -911 | - | Select the seed number to use for the run
+XXX | ... | ... | ... | ... | ...
