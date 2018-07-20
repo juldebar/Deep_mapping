@@ -1,6 +1,6 @@
 # Main goal
 
-This is a repository providing R codes to manage photos (underwater or aerial) and infer their spatial location from GPS tracks (from other devices: smartphone, watch..)
+This is a repository providing R codes to manage exif metadata of photos and infer their spatial location from GPS tracks (from other devices: smartphone, watch..). The repository provides R codes to extract exif metadata and store them in a Postgres / Postgis database along with spatial data (from GPS tracker).
 
 
 # R packages
@@ -283,3 +283,6 @@ for (i in 1:number_sub_directories){
 
 # images_directory <- "/media/usb0/data_deep_mapping/done/session_2018_06_02_kite_Le_Morne"
 ~~~~
+
+
+<iframe src = 'http://mdst-macroes.ird.fr/BlueBridge/ICCAT_BFTE/tunaAtlasVRE2.png' onload="this.width="800";this.height="400";"></iframe>
