@@ -21,7 +21,73 @@ The main steps of the workflow are :
  - correlation of GPS timestamps and photos timestamps to infer photos locations (done with a SQL query / trigger in Postgis)
  
  
+ 
+The file functions.R contains the following functions:
+ - [extract_exif_metadata_in_csv]() 
+ - [rename_exif_csv]() 
+ - [return_dataframe_tcx_files]() 
+ - [return_dataframe_csv_exif_metadata_files]() 
+ - [sessions_metadata_dataframe]() 
+ - [exifr]() 
+ - [exifr]() 
+
+## Set functions and connection details for Postgres / Postgis server (create your own "credentials_databases.R" file)
+
 ~~~~
-ffmpeg -y -i GOPR0001.MP4 -codec copy -map 0:m:handler_name:"	GoPro MET" -f rawvideo GOPR0001.bin
-R codes
+###################################### LOAD SESSION METADATA ############################################################
+source("/home/julien/Bureau/CODES/Deep_mapping/R/functions.R")
+source("/home/julien/Bureau/CODES/credentials_databases.R")
+~~~~
+
+ 
+## CREATE Session Table in the Database and fill it with metadata stored in a google spreadsheet
+
+~~~~
+###################################### LOAD SESSION METADATA ############################################################
+con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
+query_create_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_session_metadata_table.sql"), collapse=" ")
+create_Table <- dbGetQuery(con_Reef_database,query_create_table)
+
+Metadata_sessions <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
+sessions <- as.data.frame(gsheet::gsheet2tbl(Metadata_sessions))
+names(sessions)
+
+session_metadata <- sessions_metadata_dataframe(sessions)
+names(session_metadata)
+head(session_metadata)
+
+dbWriteTable(con_Reef_database, "metadata", session_metadata, row.names=TRUE, append=TRUE)
+dbDisconnect(con_Reef_database)
+~~~~
+
+
+ 
+## Extract EXIF metadata from photos in a CSV FILES
+
+~~~~
+############################ WRITE EXIF METADATA CSV FILES ###################################################
+wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
+sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
+number_sub_directories <-length(sub_directories)
+
+for (i in 1:number_sub_directories){
+  extract_exif_metadata_in_csv(sub_directories[i])
+}
+
+############################ READ Exif metadata in CSV FILES ###################################################
+
+template_df <- read.csv("/media/julien/Julien_2To/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne/exif/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
+timsetamp_DateTimeOriginal = as.POSIXct(unlist(template_df$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+~~~~
+
+
+## TRANSFORM TCF AND CSV FILES IN A DATAFRAME
+
+~~~~
+#############################################################################################################
+current_wd<-getwd()
+directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2"
+dataframe_tcx_files <- return_dataframe_tcx_files(directory)
+dataframe_csv_files <- return_dataframe_csv_exif_metadata_files(directory)
+setwd(current_wd)
 ~~~~
