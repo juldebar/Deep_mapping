@@ -285,9 +285,12 @@ for (i in 1:number_sub_directories){
 ~~~~
 
 
+<!---
 Parameters Name | Type |  Data Type | Default value |  Controlled values | Definition
 --------|--------|--------|--------|--------|--------
 runNumb | Input | Integer | 7 | - | Select the run to run
 filenameVpa | Input | String | bfte2014 | - | Define file names for the vpa
 seedNumb | Input | Integer | -911 | - | Select the seed number to use for the run
 XXX | ... | ... | ... | ... | ...
+-->
+
