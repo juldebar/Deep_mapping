@@ -65,26 +65,6 @@ dbDisconnect(con_Reef_database)
 ~~~~
 
 
- 
-## Extract EXIF metadata from photos in a CSV FILES
-
-~~~~
-############################ WRITE EXIF METADATA CSV FILES ###################################################
-wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
-sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
-number_sub_directories <-length(sub_directories)
-
-for (i in 1:number_sub_directories){
-  extract_exif_metadata_in_csv(sub_directories[i])
-}
-
-############################ READ Exif metadata in CSV FILES ###################################################
-
-template_df <- read.csv("/media/julien/Julien_2To/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne/exif/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
-timsetamp_DateTimeOriginal = as.POSIXct(unlist(template_df$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
-~~~~
-
-
 ## TRANSFORM TCF AND CSV FILES IN A DATAFRAME
 
 ~~~~
@@ -116,41 +96,7 @@ for (i in 1:number_sub_directories){
 
 # LOAD POSTGIS DATABASE WITH EXIF METADATA AND GPS TRACKS DATA 
 
-
-## MERGE ALL EXIF METADATA AND LOAD THEM IN THE DATABASE
-~~~~
-###################################### LOAD PHOTOS EXIF CORE METADATA ############################################################
-
-# All CSV files gathered in a single directory
-setwd("/tmp/csv")
-filenames <- list.files(full.names=TRUE)
-All <- lapply(filenames,function(i){
-  read.csv(i, header=TRUE, skip=0)
-})
-All_Core_Exif_metadata <- do.call(rbind.data.frame, All)
-head(All_Core_Exif_metadata)
-sapply(All_Core_Exif_metadata, class)
-All_Core_Exif_metadata$gpsdatetim = as.character(unlist(All_Core_Exif_metadata$gpsdatetim))
-All_Core_Exif_metadata$datetimeor = as.character(All_Core_Exif_metadata$datetimeor)
-All_Core_Exif_metadata$geometry_postgis <- NA
-All_Core_Exif_metadata$geometry_postgis = as.numeric(unlist(All_Core_Exif_metadata$geometry_postgis))
-All_Core_Exif_metadata$geometry_gps_correlate <- NA
-All_Core_Exif_metadata$geometry_gps_correlate = as.numeric(unlist(All_Core_Exif_metadata$geometry_gps_correlate))
-All_Core_Exif_metadata$geometry_native <- NA
-All_Core_Exif_metadata$geometry_native = as.numeric(unlist(All_Core_Exif_metadata$geometry_native))
-# All_Core_Exif_metadata %>% top_n(2)
-head(All_Core_Exif_metadata)
-write.csv(All_Core_Exif_metadata,"All_Core_Exif_metadata.csv", row.names=FALSE)
-###################################### LOAD EXIF METADATA IN POSTGRES DATABASE ############################################################
-con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
-query_create_exif_core_metadata_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_exif_core_metadata_table.sql"), collapse=" ")
-create__exif_core_metadata_table <- dbGetQuery(con_Reef_database,query_create_exif_core_metadata_table)
-# dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
-dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata, row.names=TRUE, append=TRUE)
-dbDisconnect(con_Reef_database)
-~~~~
-
-##  LOAD GPS TRACKS DATA IN THE DATABASE
+##  Merge GPS tracks data and load them in the Postgres datbase
 ~~~~
 ###################################### LOAD GPS TRACKS DATA ############################################################
 con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
@@ -183,6 +129,65 @@ for (t in 1:number_row){
 }
 
 update_Table <- dbGetQuery(con_Reef_database,query_update_table_spatial_column)
+~~~~
+
+
+##  Merge all exif metadata and load them in the Postgres datbase
+
+
+### Extract EXIF metadata from photos in a CSV FILES
+
+~~~~
+############################ WRITE EXIF METADATA CSV FILES ###################################################
+wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
+sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
+number_sub_directories <-length(sub_directories)
+
+for (i in 1:number_sub_directories){
+  extract_exif_metadata_in_csv(sub_directories[i])
+}
+
+############################ READ Exif metadata in CSV FILES ###################################################
+
+template_df <- read.csv("/media/julien/Julien_2To/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne/exif/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
+timsetamp_DateTimeOriginal = as.POSIXct(unlist(template_df$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+~~~~
+
+### Merge all EXIF metadata (extracted before in CSV FILES) and load them in the database
+
+
+~~~~
+###################################### LOAD PHOTOS EXIF CORE METADATA ############################################################
+
+# All CSV files gathered in a single directory
+setwd("/tmp/csv")
+filenames <- list.files(full.names=TRUE)
+All <- lapply(filenames,function(i){
+  read.csv(i, header=TRUE, skip=0)
+})
+All_Core_Exif_metadata <- do.call(rbind.data.frame, All)
+head(All_Core_Exif_metadata)
+sapply(All_Core_Exif_metadata, class)
+All_Core_Exif_metadata$gpsdatetim = as.character(unlist(All_Core_Exif_metadata$gpsdatetim))
+All_Core_Exif_metadata$datetimeor = as.character(All_Core_Exif_metadata$datetimeor)
+All_Core_Exif_metadata$geometry_postgis <- NA
+All_Core_Exif_metadata$geometry_postgis = as.numeric(unlist(All_Core_Exif_metadata$geometry_postgis))
+All_Core_Exif_metadata$geometry_gps_correlate <- NA
+All_Core_Exif_metadata$geometry_gps_correlate = as.numeric(unlist(All_Core_Exif_metadata$geometry_gps_correlate))
+All_Core_Exif_metadata$geometry_native <- NA
+All_Core_Exif_metadata$geometry_native = as.numeric(unlist(All_Core_Exif_metadata$geometry_native))
+# All_Core_Exif_metadata %>% top_n(2)
+head(All_Core_Exif_metadata)
+write.csv(All_Core_Exif_metadata,"All_Core_Exif_metadata.csv", row.names=FALSE)
+
+
+###################################### LOAD EXIF METADATA IN POSTGRES DATABASE ############################################################
+con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
+query_create_exif_core_metadata_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_exif_core_metadata_table.sql"), collapse=" ")
+create__exif_core_metadata_table <- dbGetQuery(con_Reef_database,query_create_exif_core_metadata_table)
+# dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
+dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata, row.names=TRUE, append=TRUE)
+dbDisconnect(con_Reef_database)
 ~~~~
 
 OR 
