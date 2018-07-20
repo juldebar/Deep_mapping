@@ -43,7 +43,7 @@ source("/home/julien/Bureau/CODES/credentials_databases.R")
 ~~~~
 
  
-## CREATE Session Table in the Database and fill it with metadata stored in a google spreadsheet
+## Create "metadata" table (to describe sessions) in the Postgres/ Postgis database and fill it with metadata stored in a google spreadsheet
 
 ~~~~
 ###################################### LOAD SESSION METADATA ############################################################
@@ -64,8 +64,11 @@ dbDisconnect(con_Reef_database)
 
 ~~~~
 
-
 ## TRANSFORM TCF AND CSV FILES IN A DATAFRAME
+
+
+##  2. Merge GPS tracks data and load them in the Postgres / Postgis datbase
+
 
 ~~~~
 current_wd<-getwd()
@@ -76,27 +79,6 @@ setwd(current_wd)
 ~~~~
 
 
-## RENAME CSV files
-
-~~~~
-# wd <- "/media/julien/Julien_2To/data_deep_mapping/done"
-wd <- "/media/usb0/data_deep_mapping/done"
-sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
-number_sub_directories <-length(sub_directories)
-
-for (i in 1:number_sub_directories){
-  rename_exif_csv(sub_directories[i])
-}
-
-# images_directory <- "/media/usb0/data_deep_mapping/done/session_2018_06_02_kite_Le_Morne"
-~~~~
-
-
-
-
-# LOAD POSTGIS DATABASE WITH EXIF METADATA AND GPS TRACKS DATA 
-
-##  Merge GPS tracks data and load them in the Postgres datbase
 ~~~~
 ###################################### LOAD GPS TRACKS DATA ############################################################
 con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
@@ -137,6 +119,8 @@ update_Table <- dbGetQuery(con_Reef_database,query_update_table_spatial_column)
 
 ### 3.1 Extract EXIF metadata from each photo and store them in CSV FILES (one per session)
 
+Extract exif metadata from photos and store them in CSV files
+
 ~~~~
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
@@ -155,11 +139,20 @@ timsetamp_DateTimeOriginal = as.POSIXct(unlist(template_df$DateTimeOriginal),"%Y
 
 ### 3.2 Merge all EXIF metadata (extracted before in CSV FILES) in a single data frame and load them in the Postgres / Pöstgis database
 
+Find all CSV files and return the list in a dataframe
 
 ~~~~
-###################################### LOAD PHOTOS EXIF CORE METADATA ############################################################
+current_wd<-getwd()
+directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2"
+dataframe_csv_files <- return_dataframe_csv_exif_metadata_files(directory)
+setwd(current_wd)
+~~~~
 
-# All CSV files gathered in a single directory
+Copy all CSV files in a single directory (TO BE DONE)
+
+Merge all CSV files gathered in a single directory
+~~~~
+###################################### LOAD PHOTOS EXIF CORE METADATA ############################################################
 setwd("/tmp/csv")
 filenames <- list.files(full.names=TRUE)
 All <- lapply(filenames,function(i){
@@ -246,7 +239,7 @@ for (csv in 1:number_row){
 }
 ~~~~
 
-### 3.3 Load all EXIF metadata (in  the  data frame) in the Postgres / Pöstgis database
+### 3.3 Load all EXIF metadata (in  the  data frame) in the Postgres / Postgis database
 
 
 ~~~~
@@ -257,4 +250,20 @@ create__exif_core_metadata_table <- dbGetQuery(con_Reef_database,query_create_ex
 # dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
 dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata, row.names=TRUE, append=TRUE)
 dbDisconnect(con_Reef_database)
+~~~~
+
+
+#### RENAME CSV files
+
+~~~~
+# wd <- "/media/julien/Julien_2To/data_deep_mapping/done"
+wd <- "/media/usb0/data_deep_mapping/done"
+sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = FALSE)
+number_sub_directories <-length(sub_directories)
+
+for (i in 1:number_sub_directories){
+  rename_exif_csv(sub_directories[i])
+}
+
+# images_directory <- "/media/usb0/data_deep_mapping/done/session_2018_06_02_kite_Le_Morne"
 ~~~~

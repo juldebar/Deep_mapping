@@ -7,6 +7,117 @@ library(data.table)
 library(dplyr)
 library(trackeR)
 #############################################################################################################
+###################################### LOAD SESSION METADATA ############################################################
+#############################################################################################################
+sessions_metadata_dataframe <- function(Dublin_Core_metadata){
+  all_metadata <- NULL
+  
+  number_row<-nrow(Dublin_Core_metadata)
+  for (i in 1:number_row) {
+    # metadata <- Dublin_Core_metadata[i,]
+    metadata <- NULL
+    
+    metadata$id_session  <- Dublin_Core_metadata$Identifier[i]# if(is.na(metadata$Identifier)){metadata$Identifier="TITLE AND DATASET NAME TO BE FILLED !!"}
+    metadata$persistent_identifier <- Dublin_Core_metadata$Identifier[i]
+    metadata$related_sql_query <- "SELECT TOTO..;"
+    metadata$related_view_name <- paste("view_", Dublin_Core_metadata$Identifier[i], sep="")
+    metadata$identifier <- Dublin_Core_metadata$Identifier[i]
+    metadata$title  <- Dublin_Core_metadata$Title[i]
+    metadata$contacts_and_roles  <- Dublin_Core_metadata$Creator[i]
+    metadata$subject  <- Dublin_Core_metadata$Subject[i]
+    metadata$description <- Dublin_Core_metadata$Description[i]
+    metadata$date  <- Dublin_Core_metadata$Date[i]
+    metadata$dataset_type  <- Dublin_Core_metadata$Type[i]
+    metadata$format  <- Dublin_Core_metadata$Format[i]
+    metadata$language  <- Dublin_Core_metadata$Language[i] #resource_language <- "eng"
+    metadata$relation  <- NA
+    metadata$spatial_coverage  <-  Dublin_Core_metadata$Spatial_Coverage[i]
+    metadata$temporal_coverage  <-  Dublin_Core_metadata$Temporal_Coverage[i]
+    metadata$rights  <- Dublin_Core_metadata$Rights[i] #UseLimitation <- "intellectualPropertyRights"
+    metadata$source  <- "TO BE DONE"
+    metadata$provenance  <- Dublin_Core_metadata$Lineage[i]
+    metadata$supplemental_information  <- "TO BE DONE"
+    metadata$database_table_name  <- "TABLE NAME"
+    metadata$time_offset = Dublin_Core_metadata$Offset[i]
+    metadata$geometry_session <- NA
+    
+    Dublin_Core_metadata$GPS_time[i]
+    Dublin_Core_metadata$Photo_time[i]
+    
+    all_metadata <- bind_rows(all_metadata, metadata)
+    # all_metadata <- rbind(all_metadata, metadata)
+    
+    
+    #complex metadata elements
+    #     Creator 
+    #     Subject
+    #     Relation
+    #     Google_doc_folder
+    #     Spatial_Coverage
+    #     Temporal_Coverage
+    #     view_name
+    #     GPS_tcx_file  # runDF <- readTCX(file=file, timezone = "GMT")
+    #     GPS_gpx_file
+    #     Photo_for_GPS_Time_Correlation
+    #     Photo_for_calibration
+    #     GPS_time
+    #     Photo_time
+    #     Offset
+    #     First_Photo_Correlated
+    #     Parameters
+    #     
+    #     Number_of_photos
+    #     Number.of.Pictures
+    
+    
+    # select_columns = subset(runDF, select = c(session,latitude,longitude,altitude,time,heart.rate))
+    #   extended_df$session_photo_number <-c(1:nrow(extended_df))
+    #   extended_df$relative_path <-"next time"
+    #   extended_df <- extended_df[,c(9,10,11,1,2,3,4,5,6,7,8)]
+    #   extended_df = rename(extended_df, filename=FileName, gpslatitud=GPSLatitude,gpslongitu=GPSLongitude, gpsdatetim=GPSDateTime, datetimeor=DateTimeOriginal, lightvalue=LightValue, imagesize=ImageSize,	model=Model)
+    # write.csv(extended_df, paste("Core_Exif_metadata_", name_session,".csv", sep=""),row.names = F)
+    # command <- paste("cp Core_Exif_metadata_DCIM.csv Core_Exif_metadata_", name_session,".csv", sep="")
+    # system(command)
+    
+    
+  }
+  return(all_metadata)
+}
+#############################################################################################################
+############################ RETRIEVE TCX FILES ###################################################
+#############################################################################################################
+return_dataframe_tcx_files <- function(wd){
+  setwd(wd)
+  dataframe_tcx_files <- NULL
+  dataframe_tcx_files <- data.frame(session=character(), path=character(), file_name=character())
+  sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
+  sub_directories  
+  for (i in sub_directories){
+    if (substr(i, nchar(i)-3, nchar(i))=="/GPS"){
+      setwd(i)
+      cat(i)
+      cat("\n Name session\n")
+      name_session <-gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
+      cat(name_session)
+      cat("\n List tcx \n")
+      files <- list.files(pattern = "*.tcx")
+      tcx_files <- files
+      cat(tcx_files)
+      if(length(tcx_files)>1){cat("\n FUCK \n")}
+      cat("\n Le vecteur \n")
+      cat(c(name_session,i,tcx_files))
+      newRow <- data.frame(session=name_session,path=i,file_name=tcx_files)
+      dataframe_tcx_files <- rbind(dataframe_tcx_files,newRow)
+    }
+    else {
+      # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
+      # cat("nada \n")
+      # cat(substr(i, nchar(i)-2, nchar(i)))
+    }
+  }
+  return(dataframe_tcx_files)
+}
+#############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
 extract_exif_metadata_in_csv <- function(images_directory){
@@ -114,61 +225,6 @@ extract_exif_metadata_in_csv <- function(images_directory){
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
 }
-
-#############################################################################################################
-############################ RENAME CSV FILES ###################################################
-#############################################################################################################
-rename_exif_csv <- function(images_directory){
-  metadata_directory <- paste(images_directory,"/exif/",sep="")
-  setwd(metadata_directory)
-  name_session <-gsub(paste(dirname(images_directory),"/",sep=""),"",images_directory)
-  extended_df <- read.csv("Core_Exif_metadata_DCIM.csv")
-  extended_df$session_id <-name_session
-  extended_df$session_photo_number <-c(1:nrow(extended_df))
-  extended_df$relative_path <-"next time"
-  extended_df <- extended_df[,c(9,10,11,1,2,3,4,5,6,7,8)]
-  extended_df = rename(extended_df, filename=FileName, gpslatitud=GPSLatitude,gpslongitu=GPSLongitude, gpsdatetim=GPSDateTime, datetimeor=DateTimeOriginal, lightvalue=LightValue, imagesize=ImageSize,	model=Model)
-  						
-  
-  write.csv(extended_df, paste("Core_Exif_metadata_", name_session,".csv", sep=""),row.names = F)
-  
-  # command <- paste("cp Core_Exif_metadata_DCIM.csv Core_Exif_metadata_", name_session,".csv", sep="")
-  # system(command)
-}
-#############################################################################################################
-############################ RETRIEVE TCX FILES ###################################################
-#############################################################################################################
-return_dataframe_tcx_files <- function(wd){
-  setwd(wd)
-  dataframe_tcx_files <- NULL
-  dataframe_tcx_files <- data.frame(session=character(), path=character(), file_name=character())
-  sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
-  sub_directories  
-  for (i in sub_directories){
-    if (substr(i, nchar(i)-3, nchar(i))=="/GPS"){
-      setwd(i)
-      cat(i)
-      cat("\n Name session\n")
-      name_session <-gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
-      cat(name_session)
-      cat("\n List tcx \n")
-      files <- list.files(pattern = "*.tcx")
-      tcx_files <- files
-      cat(tcx_files)
-      if(length(tcx_files)>1){cat("\n FUCK \n")}
-      cat("\n Le vecteur \n")
-      cat(c(name_session,i,tcx_files))
-      newRow <- data.frame(session=name_session,path=i,file_name=tcx_files)
-      dataframe_tcx_files <- rbind(dataframe_tcx_files,newRow)
-    }
-    else {
-      # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
-      # cat("nada \n")
-      # cat(substr(i, nchar(i)-2, nchar(i)))
-    }
-  }
-  return(dataframe_tcx_files)
-}
 #############################################################################################################
 ############################ RETRIEVE CSV EXIF METADATA FILES ###################################################
 #############################################################################################################
@@ -196,79 +252,22 @@ return_dataframe_csv_exif_metadata_files <- function(wd){
   return(dataframe_csv_files)
 }
 #############################################################################################################
-###################################### LOAD SESSION METADATA ############################################################
+############################ RENAME CSV FILES ###################################################
 #############################################################################################################
-sessions_metadata_dataframe <- function(Dublin_Core_metadata){
-  all_metadata <- NULL
+rename_exif_csv <- function(images_directory){
+  metadata_directory <- paste(images_directory,"/exif/",sep="")
+  setwd(metadata_directory)
+  name_session <-gsub(paste(dirname(images_directory),"/",sep=""),"",images_directory)
+  extended_df <- read.csv("Core_Exif_metadata_DCIM.csv")
+  extended_df$session_id <-name_session
+  extended_df$session_photo_number <-c(1:nrow(extended_df))
+  extended_df$relative_path <-"next time"
+  extended_df <- extended_df[,c(9,10,11,1,2,3,4,5,6,7,8)]
+  extended_df = rename(extended_df, filename=FileName, gpslatitud=GPSLatitude,gpslongitu=GPSLongitude, gpsdatetim=GPSDateTime, datetimeor=DateTimeOriginal, lightvalue=LightValue, imagesize=ImageSize,	model=Model)
   
-  number_row<-nrow(Dublin_Core_metadata)
-  for (i in 1:number_row) {
-    # metadata <- Dublin_Core_metadata[i,]
-    metadata <- NULL
-    
-    metadata$id_session  <- Dublin_Core_metadata$Identifier[i]# if(is.na(metadata$Identifier)){metadata$Identifier="TITLE AND DATASET NAME TO BE FILLED !!"}
-    metadata$persistent_identifier <- Dublin_Core_metadata$Identifier[i]
-    metadata$related_sql_query <- "SELECT TOTO..;"
-    metadata$related_view_name <- paste("view_", Dublin_Core_metadata$Identifier[i], sep="")
-    metadata$identifier <- Dublin_Core_metadata$Identifier[i]
-    metadata$title  <- Dublin_Core_metadata$Title[i]
-    metadata$contacts_and_roles  <- Dublin_Core_metadata$Creator[i]
-    metadata$subject  <- Dublin_Core_metadata$Subject[i]
-    metadata$description <- Dublin_Core_metadata$Description[i]
-    metadata$date  <- Dublin_Core_metadata$Date[i]
-    metadata$dataset_type  <- Dublin_Core_metadata$Type[i]
-    metadata$format  <- Dublin_Core_metadata$Format[i]
-    metadata$language  <- Dublin_Core_metadata$Language[i] #resource_language <- "eng"
-    metadata$relation  <- NA
-    metadata$spatial_coverage  <-  Dublin_Core_metadata$Spatial_Coverage[i]
-    metadata$temporal_coverage  <-  Dublin_Core_metadata$Temporal_Coverage[i]
-    metadata$rights  <- Dublin_Core_metadata$Rights[i] #UseLimitation <- "intellectualPropertyRights"
-    metadata$source  <- "TO BE DONE"
-    metadata$provenance  <- Dublin_Core_metadata$Lineage[i]
-    metadata$supplemental_information  <- "TO BE DONE"
-    metadata$database_table_name  <- "TABLE NAME"
-    metadata$time_offset = Dublin_Core_metadata$Offset[i]
-    metadata$geometry_session <- NA
-    
-    Dublin_Core_metadata$GPS_time[i]
-    Dublin_Core_metadata$Photo_time[i]
-    
-    all_metadata <- bind_rows(all_metadata, metadata)
-    # all_metadata <- rbind(all_metadata, metadata)
-    
-    
-    #complex metadata elements
-#     Creator 
-#     Subject
-#     Relation
-#     Google_doc_folder
-#     Spatial_Coverage
-#     Temporal_Coverage
-#     view_name
-#     GPS_tcx_file  # runDF <- readTCX(file=file, timezone = "GMT")
-#     GPS_gpx_file
-#     Photo_for_GPS_Time_Correlation
-#     Photo_for_calibration
-#     GPS_time
-#     Photo_time
-#     Offset
-#     First_Photo_Correlated
-#     Parameters
-#     
-#     Number_of_photos
-#     Number.of.Pictures
-
-    
-    # select_columns = subset(runDF, select = c(session,latitude,longitude,altitude,time,heart.rate))
-    #   extended_df$session_photo_number <-c(1:nrow(extended_df))
-    #   extended_df$relative_path <-"next time"
-    #   extended_df <- extended_df[,c(9,10,11,1,2,3,4,5,6,7,8)]
-    #   extended_df = rename(extended_df, filename=FileName, gpslatitud=GPSLatitude,gpslongitu=GPSLongitude, gpsdatetim=GPSDateTime, datetimeor=DateTimeOriginal, lightvalue=LightValue, imagesize=ImageSize,	model=Model)
-    # write.csv(extended_df, paste("Core_Exif_metadata_", name_session,".csv", sep=""),row.names = F)
-    # command <- paste("cp Core_Exif_metadata_DCIM.csv Core_Exif_metadata_", name_session,".csv", sep="")
-    # system(command)
-    
-    
-  }
-    return(all_metadata)
-  }
+  
+  write.csv(extended_df, paste("Core_Exif_metadata_", name_session,".csv", sep=""),row.names = F)
+  
+  # command <- paste("cp Core_Exif_metadata_DCIM.csv Core_Exif_metadata_", name_session,".csv", sep="")
+  # system(command)
+}
