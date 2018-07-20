@@ -2006,11 +2006,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.83395353"
-     inkscape:cx="140.56456"
-     inkscape:cy="461.68706"
+     inkscape:zoom="4.6348889"
+     inkscape:cx="574.38168"
+     inkscape:cy="312.75447"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g19242-8"
      showgrid="false"
      inkscape:window-width="1920"
      inkscape:window-height="1014"
@@ -3941,7 +3941,7 @@
          xml:space="preserve"
          inkscape:export-ydpi="75.042641"
          style="font-size:4.77992344px;font-weight:bold;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;stroke-width:3.67000008;stroke-miterlimit:4;stroke-dasharray:none;font-family:Sans"
-         id="text14486-23-1-6-4-4">NC</text>
+         id="text14486-23-1-6-4-4">GPX</text>
       <text
          sodipodi:linespacing="125%"
          x="6016.291"
@@ -3957,7 +3957,7 @@
            style="color:#000000;fill:#225a8b;fill-opacity:1;stroke-width:3.67000008;stroke-miterlimit:4;stroke-dasharray:none;font-family:DejaVu Sans"
            x="6016.291"
            sodipodi:role="line"
-           id="tspan14492-4-0-9-9-2">netCDF</tspan></text>
+           id="tspan14492-4-0-9-9-2">Spatial</tspan></text>
     </g>
     <path
        style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-mid:none;marker-end:url(#Arrow1Lend)"
@@ -3967,7 +3967,7 @@
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-mid:none;marker-end:url(#Arrow1Lend)"
-       d="m 752.28714,518.61131 c -51.9277,11.72866 -73.99908,20.48168 -167.87512,15.5884"
+       d="m 769.54753,473.73429 c -51.9277,11.72866 -98.16363,51.55039 -192.03967,46.65711"
        id="path4156-8"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />
@@ -7827,6 +7827,20 @@
            display="inline"
            inkscape:connector-curvature="0"
            style="opacity:0.2;fill:#ffffff;display:inline" />
+      </g>
+    </g>
+    <g
+       id="g6772"
+       clip-rule="evenodd"
+       transform="matrix(-1.0422609,0,0,1.0422609,852.80265,345.54225)"
+       style="fill-rule:evenodd">
+      <g
+         id="g6787">
+        <path
+           sodipodi:nodetypes="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+           inkscape:connector-curvature="0"
+           d="m 25.569,121.553 -8.564,-9.137 4.613,-4.338 -1.334,-1.996 -11.05,10.385 1.507,1.838 4.484,-4.215 8.576,9.125 -9.003,8.461 -8.577,-9.125 4.52,-4.246 -1.507,-1.838 -6.4,6.013 11.835,12.592 23.317,-21.91 -11.835,-12.594 -5.867,5.514 1.334,1.996 4.394,-4.127 8.578,9.121 -8.997,8.459 z m 45.635,-42.892 -8.574,-9.126 4.148,-3.901 -0.931,-2.377 -10.176,9.562 0.847,2.459 4.331,-4.07 8.577,9.125 -9.007,8.462 -8.573,-9.126 4.672,-4.391 -0.847,-2.459 -7.212,6.779 11.835,12.593 23.317,-21.915 -11.838,-12.593 -5.926,5.574 0.931,2.377 4.859,-4.565 8.574,9.126 z m -38.246,6.761 c 2.31,-2.174 4.378,-4.02 7.087,-4.114 l 16.833,17.895 c -1.937,-0.043 -5.397,1.809 -7.443,3.732 -2.015,1.896 -3.82,5.461 -4.019,7.352 L 28.989,92.838 c -0.037,-2.174 1.659,-5.245 3.969,-7.416 l -1.442,-1.544 c -1.558,1.466 -3.176,3.454 -3.958,4.994 L 20.87,85.838 c 0.024,-2.191 1.957,-6.254 4.659,-8.794 l -1.381,-1.493 c -3.897,3.661 -5.878,8.124 -5.215,12.092 l 7.893,3.566 c -0.23,1.368 -0.081,2.557 0.664,3.349 l 18.059,19.178 2.265,-2.203 c -1.107,-1.176 0.315,-4.311 3.176,-7 2.861,-2.691 6.078,-3.918 7.186,-2.738 1.036,1.1 -0.125,3.924 -2.625,6.484 l -2.12,-2.262 c -0.139,-0.15 -0.613,0.066 -0.904,0.342 -0.292,0.27 -0.535,0.73 -0.396,0.879 l 2.117,2.236 c -2.655,2.217 -5.425,3.135 -6.434,2.059 l -2.265,2.203 c 1.859,1.982 6.383,0.816 10.324,-2.521 l 6.532,6.951 c 0.139,0.148 0.61,-0.068 0.901,-0.338 0.291,-0.275 0.538,-0.736 0.396,-0.881 l -6.504,-6.928 c 3.701,-3.756 5.15,-8.287 3.261,-10.297 L 42.425,80.519 c -0.741,-0.792 -1.873,-1.06 -3.254,-0.914 l -2.743,-8.438 c -3.491,-0.816 -7.842,0.214 -12.281,4.385 l 1.381,1.493 c 2.703,-2.543 6.4,-4.252 8.916,-4.019 l 2.482,7.057 c -1.687,0.688 -3.752,2.238 -5.411,3.796 z"
+           id="path6776" />
       </g>
     </g>
   </g>
