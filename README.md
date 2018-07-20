@@ -11,11 +11,11 @@ In this repository we use:
  
  Data collected have to comply with the following file structure:
  
-<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://drive.google.com/uc?id=1xQYlJy1JxOig7gjsXCiPEg74Zgexq8_s" width="500">
+<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://drive.google.com/uc?id=1xQYlJy1JxOig7gjsXCiPEg74Zgexq8_s" width="800">
 
-Our goal is to use this data structure as an input for R codes which will parse the subdirectories and files to load information in a Postgres / Postgis database with the following conceptual model:
+Our goal is to use this data structure as an input for R codes which will parse the subdirectories and files to load information in a Postgres / Postgis database with the following conceptual model (UML schema):
  
-<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://drive.google.com/uc?id=1KTMUd6SQ9UGR3xMrtDYsAB0vNSYUlUZ5" width="500">
+<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://drive.google.com/uc?id=1KTMUd6SQ9UGR3xMrtDYsAB0vNSYUlUZ5" width="800">
 
 
 The main steps of the workflow are :
@@ -27,11 +27,11 @@ The main steps of the workflow are :
  
  
 The file [functions.R](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) contains the following functions:
- - [extract_exif_metadata_in_csv](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) 
- - [rename_exif_csv](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) 
- - [return_dataframe_tcx_files](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) 
- - [return_dataframe_csv_exif_metadata_files](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) 
- - [sessions_metadata_dataframe](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) 
+ - [sessions_metadata_dataframe](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) : this script load the metadata describing all sessions in a data frame (from a google spreadsheet) and load them in the "metadata" table of the Postgres / Postgis database.
+ - [return_dataframe_tcx_files](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R): this script will find all TXC files and merge them into a single data frame (which keep tracks of relation sessions). This will be used to load GPS tracks data in the "gps_tracks" of the Postgres / Postgis database.
+ - [extract_exif_metadata_in_csv](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) : for a session, this script will copy exif metadata stored in the picture into a single CSV file,
+ - [return_dataframe_csv_exif_metadata_files](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R): this script will find all CSV files storing exif metadata of each session and merge them into a single data frame (which keep tracks of relation sessions). This will be used to load Exif metadata in the "photos_exif_core_metadata" table of Postgres / Postgis database.
+ - [rename_exif_csv](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R), if needed CSV files can be renamed
 
 ## Set functions and connection details for Postgres / Postgis server (create your own "credentials_databases.R" file)
 
