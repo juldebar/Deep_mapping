@@ -120,78 +120,81 @@ return_dataframe_tcx_files <- function(wd){
 #############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
-extract_exif_metadata_in_csv <- function(images_directory){
+extract_exif_metadata_in_csv <- function(images_directory,load_metadata_in_database=FALSE){
   setwd(images_directory)
-  system("mkdir exif")
-  metadata_directory <- paste(images_directory,"/exif/",sep="")
-  sub_directories <- list.dirs(path='./',full.names = TRUE,recursive = TRUE)
+  dir.create(file.path(images_directory, "METADATA"))
+  setwd(file.path(images_directory, "METADATA"))
+  dir.create(file.path(getwd(), "exif"))
+  metadata_directory <- file.path(getwd(), "exif")
+  setwd(images_directory)
+  sub_directories <- list.dirs(path=getwd(),full.names = TRUE, recursive = TRUE)
   number_sub_directories <-length(sub_directories)
   CSV_total <-NULL
-  # directories_level1 <- list.dirs(full.names = TRUE,recursive = FALSE)
-  # directories_level1 <- strsplit(directories_level1, "/")
   
   for (i in 1:number_sub_directories){
-    dat <-template_df
+    # dat <-template_df
     metadata_pictures <-NULL
     setwd(images_directory)
     this_directory <- sub_directories[i]
     
-    if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GIS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
-      # this_directory <- "/media/usb0/data_deep_mapping/good_stuff/session_2017_12_09_kite_Bel_Ombre/DCIM/141GOPRO"
+    if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
       # this_directory <- "/media/usb0/data_deep_mapping/good_stuff/session_2017_12_09_kite_Bel_Ombre/DCIM/142GOPRO"
       # this_directory <-  "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_03_kite_Pointe_Esny"
-      
       setwd(this_directory)
-      dat <-NULL
       
       log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
       # cat(log)
-      this_directory <- gsub(".//","",this_directory)
-      remove <-substr(this_directory, nchar(this_directory)-8, nchar(this_directory))
-      parent_directory <- gsub(remove,"",this_directory)
-      parent_directory <- gsub("/DCIM","",parent_directory)
-      # this_directory <- gsub("/","_",this_directory)  
-      files <- list.files(pattern = "*.JPG",recursive = TRUE)
-      dat <- read_exif(files)
-      # head(dat)
-      # IF THERE IS NO GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES NA
-      # if(is.null(dat$GPSLatitude)){ # TO BE DONE => CHECK THIS CRITERIA / TOO PERMISIVE
-      if(exists("dat$GPSLatitude")==FALSE){ # TO BE DONE => CHECK THIS CRITERIA / TOO PERMISIVE
-        dat$GPSVersionID <-NA
-        dat$GPSLatitudeRef <-NA
-        dat$GPSLongitudeRef <-NA
-        dat$GPSAltitudeRef <-NA
-        dat$GPSTimeStamp <-NA
-        dat$GPSMapDatum <-NA
-        dat$GPSDateStamp <-NA
-        dat$GPSAltitude <-NA
-        dat$GPSDateTime <-NA
-        dat$GPSLatitude <-NA
-        dat$GPSLongitude <-NA
-        dat$GPSPosition <-NA
-      }
-      # sapply(dat,class)
-      # sapply(template_df,class)
-      # head(template_df)
-      # new_dat <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
-      # new_dat <- rbind(template_df, dat)
-      new_dat <- bind_rows(template_df, dat)
+      parent_directory <- gsub(dirname(dirname(dirname(this_directory))),"",dirname(dirname(this_directory)))
+      parent_directory <- gsub("/","",parent_directory)
       
-      # new_dat <- full_join(template_df, dat)
+      files <- list.files(pattern = "*.JPG",recursive = TRUE)
+      exif_metadata <-template_df
+      exif_metadata <- read_exif(files)
+      exif_metadata$session_id = parent_directory
+      exif_metadata$session_photo_number <-c(1:nrow(exif_metadata))# @julien => A INCREMENTER ?
+      exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
+      
+      # # IF THERE IS NO GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES NA
+      # if(exists(exif_metadata$GPSLatitude)==FALSE){ # TO BE DONE => CHECK THIS CRITERIA / TOO PERMISIVE
+      #   exif_metadata$GPSVersionID <-NA
+      #   exif_metadata$GPSLatitudeRef <-NA
+      #   exif_metadata$GPSLongitudeRef <-NA
+      #   exif_metadata$GPSAltitudeRef <-NA
+      #   exif_metadata$GPSTimeStamp <-NA
+      #   exif_metadata$GPSMapDatum <-NA
+      #   exif_metadata$GPSDateStamp <-NA
+      #   exif_metadata$GPSAltitude <-NA
+      #   exif_metadata$GPSDateTime <-NA
+      #   exif_metadata$GPSLatitude <-NA
+      #   exif_metadata$GPSLongitude <-NA
+      #   exif_metadata$GPSPosition <-NA
+      # }
+      # change default data types
+      exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%S", tz="UTC")
+      exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+      exif_metadata$GPSLatitude = as.numeric(exif_metadata$GPSLatitude)
+      exif_metadata$GPSLongitude = as.numeric(exif_metadata$GPSLongitude)
+      exif_metadata$geometry_postgis <- NA
+      exif_metadata$geometry_postgis = as.numeric(unlist(exif_metadata$geometry_postgis))
+      exif_metadata$geometry_gps_correlate <- NA
+      exif_metadata$geometry_gps_correlate = as.numeric(unlist(exif_metadata$geometry_gps_correlate))
+      exif_metadata$geometry_native <- NA
+      exif_metadata$geometry_native = as.numeric(unlist(exif_metadata$geometry_native))
+      
+      # sapply(dat,class)
+      # new_exif_metadata <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
+      # new_exif_metadata <- rbind(template_df, dat)
+      new_exif_metadata <- bind_rows(template_df, exif_metadata)
+      
+      # new_exif_metadata <- full_join(template_df, dat)
       # m = similar(dat, 0) 
-      # sapply(new_dat,class)
+      
       # Ajouter le path de la photo ou this_directory
       # metadata_pictures <- merge(c(this_directory),metadata_pictures))
       # metadata_pictures$path <- this_directory
       # metadata_pictures$parent_directory <- parent_directory
-      cat("\n done ? \n")
       
-      CSV_total <- rbind(CSV_total, new_dat)
-      
-      # CSV_total$ThumbnailImage[1]
-      # CSV_total$ThumbnailOffset[1]
-      # CSV_total$ThumbnailLength[1]
-      
+      CSV_total <- rbind(CSV_total, new_exif_metadata)
       
       message_done <- paste("References for photos in ", this_directory, " are extracted !\n", sep=" ")
       cat(message_done)
@@ -209,9 +212,15 @@ extract_exif_metadata_in_csv <- function(images_directory){
   }
   
   setwd(metadata_directory)
-  write.csv(CSV_total, "All_Exif_metadata.csv",row.names = F)
+  name_file_csv<-paste("All_Exif_metadata_",parent_directory,".csv",sep="")
+  # write.csv(CSV_total, name_file_csv,row.names = F)
+  saveRDS(CSV_total, paste("All_Exif_metadata_",parent_directory,".RDS",sep=""))
   
+  # add condition exists before susbet ?
   metadata_pictures <- select(CSV_total,
+                              session_id,
+                              session_photo_number,
+                              relative_path,
                               FileName,
                               GPSLatitude,
                               GPSLongitude,
@@ -219,11 +228,19 @@ extract_exif_metadata_in_csv <- function(images_directory){
                               DateTimeOriginal,
                               LightValue,
                               ImageSize,
-                              Model)
+                              Model,
+                              geometry_postgis,
+                              geometry_gps_correlate,
+                              geometry_native                              
+                              )
+  
+  
   name_file_csv<-paste("Core_Exif_metadata_",parent_directory,".csv",sep="")
-  write.csv(metadata_pictures, name_file_csv,row.names = F)
+  # write.csv(metadata_pictures, name_file_csv,row.names = F)
+  saveRDS(metadata_pictures, paste("Core_Exif_metadata_",parent_directory,".RDS",sep=""))
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
+  return(head(metadata_pictures))
 }
 #############################################################################################################
 ############################ RETRIEVE CSV EXIF METADATA FILES ###################################################
