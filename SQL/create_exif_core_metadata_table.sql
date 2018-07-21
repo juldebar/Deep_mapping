@@ -1,16 +1,18 @@
+DROP TABLE IF EXISTS  "public"."photos_exif_core_metadata" CASCADE;
+
 CREATE TABLE "public"."photos_exif_core_metadata" ("ogc_fid" SERIAL, CONSTRAINT "photos_exif_core_metadata_pk" PRIMARY KEY ("ogc_fid") );
 
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "session_id" VARCHAR(254);
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "session_photo_number" integer;
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "relative_path" VARCHAR(254);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "filename" VARCHAR(254);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "gpslatitud" NUMERIC(24,15);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "gpslongitu" NUMERIC(24,15);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "gpsdatetim" VARCHAR(254);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "datetimeor" VARCHAR(254);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "lightvalue" NUMERIC(24,15);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "imagesize" VARCHAR(254);
-ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "model" VARCHAR(254);
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "FileName" VARCHAR(254);
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "GPSLatitude" NUMERIC(24,15);
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "GPSLongitude" NUMERIC(24,15);
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "GPSDateTime" timestamp with time zone;
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "DateTimeOriginal" timestamp with time zone ;
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "LightValue" NUMERIC(24,15);
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "ImageSize" VARCHAR(254);
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "Model" VARCHAR(254);
 
 SELECT AddGeometryColumn('public','photos_exif_core_metadata','geometry_postgis',4326,'POINT',2);
 SELECT AddGeometryColumn('public','photos_exif_core_metadata','geometry_gps_correlate',4326,'POINT',2);
@@ -20,3 +22,4 @@ CREATE INDEX "photos_exif_core_metadata_geometry_gps_correlate_geom_idx" ON "pub
 CREATE INDEX "photos_exif_core_metadata_geometry_native_geom_idx" ON "public"."photos_exif_core_metadata" USING GIST ("geometry_native");
 
 -- add foreign key constraint
+
