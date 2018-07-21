@@ -1,4 +1,5 @@
-CREATE TABLE public.gps_tracks(
+DROP TABLE IF EXISTS  "public"."gps_tracks" CASCADE;
+CREATE TABLE "public"."gps_tracks"(
     fid serial NOT NULL,
     session_id character varying(254),
     latitude double precision,
@@ -9,4 +10,3 @@ CREATE TABLE public.gps_tracks(
     the_geom geometry(Point,4326),
     CONSTRAINT activities_pk PRIMARY KEY (fid,session_id)
 );
---DROP TABLE public.gps_tracks; 
