@@ -338,3 +338,11 @@ infer_photo_location_from_gps_tracks <- function(con, codes_directory, session_i
     execute_query <- dbGetQuery(con,query_create_table)
   }
 }
+
+#############################################################################################################
+############################ read_rtk ###################################################
+#############################################################################################################
+read_rtk <- function(file_rtk){
+  gps_tracks <- read.csv(file_rtk,stringsAsFactors = FALSE)
+  return(gps_tracks)
+}
