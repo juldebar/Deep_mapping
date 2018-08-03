@@ -1,4 +1,4 @@
-extract_exif_metadata_in_this_directory <- function(this_directory,template_df, mime_type = "*.JPG"){
+extract_exif_metadata_in_this_directory <- function(images_directory,this_directory,template_df, mime_type = "*.JPG"){
   setwd(this_directory)
   
   log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
