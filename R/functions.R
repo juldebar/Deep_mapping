@@ -138,54 +138,12 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
     this_directory <- sub_directories[i]
     
     if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
-      # this_directory <- "/media/usb0/data_deep_mapping/good_stuff/session_2017_12_09_kite_Bel_Ombre/DCIM/142GOPRO"
-      # this_directory <-  "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_03_kite_Pointe_Esny"
-      setwd(this_directory)
-      
-      log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
-      # cat(log)
-      parent_directory <- gsub(dirname(dirname(dirname(this_directory))),"",dirname(dirname(this_directory)))
-      parent_directory <- gsub("/","",parent_directory)
-      
-      files <- list.files(pattern = "*.JPG",recursive = TRUE)
-      exif_metadata <-template_df
-      exif_metadata <- read_exif(files)
-      exif_metadata$session_id = parent_directory
-      exif_metadata$session_photo_number <-c(1:nrow(exif_metadata))# @julien => A INCREMENTER ?
-      exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
-      
-      # # IF THERE IS NO GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES NA
-      if(exists("exif_metadata$GPSLatitude")==FALSE){ # TO BE DONE => CHECK THIS CRITERIA / TOO PERMISIVE
-        exif_metadata$GPSVersionID <-NA
-        exif_metadata$GPSLatitudeRef <-NA
-        exif_metadata$GPSLongitudeRef <-NA
-        exif_metadata$GPSAltitudeRef <-NA
-        exif_metadata$GPSTimeStamp <-NA
-        exif_metadata$GPSMapDatum <-NA
-        exif_metadata$GPSDateStamp <-NA
-        exif_metadata$GPSAltitude <-NA
-        exif_metadata$GPSDateTime <-NA
-        exif_metadata$GPSLatitude <-NA
-        exif_metadata$GPSLongitude <-NA
-        exif_metadata$GPSPosition <-NA
-      }
-      # change default data types
-      exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%S", tz="UTC")
-      exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
-      exif_metadata$GPSLatitude = as.numeric(exif_metadata$GPSLatitude)
-      exif_metadata$GPSLongitude = as.numeric(exif_metadata$GPSLongitude)
-      exif_metadata$geometry_postgis <- NA
-      exif_metadata$geometry_postgis = as.numeric(unlist(exif_metadata$geometry_postgis))
-      exif_metadata$geometry_gps_correlate <- NA
-      exif_metadata$geometry_gps_correlate = as.numeric(unlist(exif_metadata$geometry_gps_correlate))
-      exif_metadata$geometry_native <- NA
-      exif_metadata$geometry_native = as.numeric(unlist(exif_metadata$geometry_native))
-      
+
+      exif_metadata <- extract_exif_metadata_in_this_directory(images_directory,this_directory,template_df)
       # sapply(dat,class)
       # new_exif_metadata <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
       # new_exif_metadata <- rbind(template_df, dat)
       new_exif_metadata <- bind_rows(template_df, exif_metadata)
-      
       # new_exif_metadata <- full_join(template_df, dat)
       # m = similar(dat, 0) 
       
@@ -234,7 +192,6 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
                               geometry_native                              
                               )
   
-  
   name_file_csv<-paste("Core_Exif_metadata_",parent_directory,".csv",sep="")
   # write.csv(metadata_pictures, name_file_csv,row.names = F)
   saveRDS(metadata_pictures, paste("Core_Exif_metadata_",parent_directory,".RDS",sep=""))
@@ -242,6 +199,52 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
   return(head(metadata_pictures))
 }
+
+
+extract_exif_metadata_in_this_directory <- function(images_directory,this_directory,template_df, mime_type = "*.JPG"){
+  setwd(this_directory)
+  
+  log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
+  parent_directory <- gsub(dirname(dirname(dirname(this_directory))),"",dirname(dirname(this_directory)))
+  parent_directory <- gsub("/","",parent_directory)
+  
+  files <- list.files(pattern = mime_type ,recursive = TRUE)
+  exif_metadata <-template_df
+  exif_metadata <- read_exif(files)
+  exif_metadata$session_id = parent_directory
+  exif_metadata$session_photo_number <-c(1:nrow(exif_metadata))# @julien => A INCREMENTER ?
+  exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
+  
+  # # IF THERE IS NO GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES NA
+  if(exists("exif_metadata$GPSLatitude")==FALSE){
+    exif_metadata$GPSVersionID <-NA
+    exif_metadata$GPSLatitudeRef <-NA
+    exif_metadata$GPSLongitudeRef <-NA
+    exif_metadata$GPSAltitudeRef <-NA
+    exif_metadata$GPSTimeStamp <-NA
+    exif_metadata$GPSMapDatum <-NA
+    exif_metadata$GPSDateStamp <-NA
+    exif_metadata$GPSAltitude <-NA
+    exif_metadata$GPSDateTime <-NA
+    exif_metadata$GPSLatitude <-NA
+    exif_metadata$GPSLongitude <-NA
+    exif_metadata$GPSPosition <-NA
+  }
+  # change default data types
+  exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%S", tz="UTC")
+  exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+  exif_metadata$GPSLatitude = as.numeric(exif_metadata$GPSLatitude)
+  exif_metadata$GPSLongitude = as.numeric(exif_metadata$GPSLongitude)
+  exif_metadata$geometry_postgis <- NA
+  exif_metadata$geometry_postgis = as.numeric(unlist(exif_metadata$geometry_postgis))
+  exif_metadata$geometry_gps_correlate <- NA
+  exif_metadata$geometry_gps_correlate = as.numeric(unlist(exif_metadata$geometry_gps_correlate))
+  exif_metadata$geometry_native <- NA
+  exif_metadata$geometry_native = as.numeric(unlist(exif_metadata$geometry_native))
+  
+  return(exif_metadata)
+}
+
 #############################################################################################################
 ############################ RETRIEVE CSV EXIF METADATA FILES ###################################################
 #############################################################################################################
