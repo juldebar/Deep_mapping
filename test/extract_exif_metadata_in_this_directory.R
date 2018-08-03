@@ -41,11 +41,3 @@ extract_exif_metadata_in_this_directory <- function(this_directory,template_df, 
   
   return(exif_metadata)
 }
-
-codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
-image_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_01_kite_Le_Morne/DCIM/100GOPRO"
-template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),stringsAsFactors = FALSE)
-extract_exif_metadata_in_this_directory(image_directory,template_df, mime_type = "*.JPG.jpg")
-setwd("/tmp")
-write.csv(exif_metadata, "exif_metadata.csv",row.names = F)
-
