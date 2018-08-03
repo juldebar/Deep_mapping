@@ -19,11 +19,12 @@ GPS_time <-  as.POSIXct("2018-01-01 14:47:00", tz="Indian/Mauritius")
 exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
 
 
-offset <-difftime(difftime(photo_time, GPS_time, units="secs"))
+offset <-difftime(photo_time, GPS_time, units="secs")
+offset
 ############################################################################################
 ###################### EXTRACT CSV METADATA ##################################
 ############################################################################################
-template_df <- read.csv("CSV/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
+template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),stringsAsFactors = FALSE)
 # sapply(template_df,class)
 # head(template_df)
 last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory, template_df, load_metadata_in_database=FALSE)
@@ -83,3 +84,61 @@ for (t in 1:number_row){
 ############################################################################################ 
   
 dbDisconnect(con_Reef_database)
+
+
+
+
+
+############################################################################################
+###################### EXTRACT EXIF METADATA FROM GOPRO DIRECTORY  ########
+############################################################################################ 
+
+rm(list=ls())
+codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
+image_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_01_kite_Le_Morne/DCIM/100GOPRO"
+source(paste0(codes_directory,"test/extract_exif_metadata_in_this_directory.R"))
+template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),stringsAsFactors = FALSE)
+exif_metadata <- extract_exif_metadata_in_this_directory(images_directory=dirname(image_directory),image_directory,template_df, mime_type = "*.JPG")
+metadata_pictures <- select(exif_metadata,
+                            session_id,
+                            session_photo_number,
+                            relative_path,
+                            FileName,
+                            GPSLatitude,
+                            GPSLongitude,
+                            GPSDateTime,
+                            DateTimeOriginal,
+                            LightValue,
+                            ImageSize,
+                            Model,
+                            geometry_postgis,
+                            geometry_gps_correlate,
+                            geometry_native                              
+)
+setwd("/tmp")
+write.csv(metadata_pictures, "exif_metadata.csv",row.names = F)
+
+
+############################################################################################
+###################### EXTRACT EXIF METADATA FROM GOPRO DIRECTORY  ########
+############################################################################################ 
+file <-"/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/raw_201707111046-4.csv"
+tracks<-read_rtk(file_rtk=file)
+head(tracks)
+sapply(tracks,class)
+
+# select_columns = subset(tracks, select = c(ratio,latitude,longitude,altitude,time,heart.rate))
+select_columns = subset(tracks, select = c(ratio,latitude,longitude,height,GPST,age))
+GPS_tracks_values = rename(select_columns, session_id=ratio, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
+names(GPS_tracks_values)
+sapply(GPS_tracks_values,class)
+
+# GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
+# GPS_tracks_values <- GPS_tracks_values[,c(6,1,2,3,4,5)]
+GPS_tracks_values$session_id <- 1111
+GPS_tracks_values$heart_rate <- as.numeric(GPS_tracks_values$heart_rate)
+GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y/%m/%d %H:%M:%OS")
+GPS_tracks_values$the_geom <- NA
+head(GPS_tracks_values)
+
+load_gps_tracks_in_database(con_Reef_database, codes_directory, GPS_tracks_values, create_table=TRUE)
