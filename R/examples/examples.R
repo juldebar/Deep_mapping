@@ -1,47 +1,37 @@
 rm(list=ls())
-template_df <- read.csv("/home/julien/Bureau/CODES/Deep_mapping/CSV/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
+############################################################################################
+######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
+############################################################################################
+codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
+setwd(codes_directory)
+source(paste0(codes_directory,"R/credentials_databases.R"))
+source(paste0(codes_directory,"R/functions.R"))
+images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_01_kite_Le_Morne"
+con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
+############################################################################################
+###################### EXTRACT CSV METADATA ##################################
+############################################################################################
+template_df <- read.csv("CSV/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
 # sapply(template_df,class)
 # head(template_df)
-images_directory <-"/media/julien/3564-3063/session_2018_07_14_Le_Morne_Manawa"
-images_directory <-"/media/julien/2958-AF3E"
-source("/home/julien/Bureau/CODES/Deep_mapping/R/functions.R")
-last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory)
-
+last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory, template_df, load_metadata_in_database=FALSE)
 head(last_metadata_pictures)
 sapply(last_metadata_pictures,class)
 class(last_metadata_pictures$LightValue)
 last_metadata_pictures$DateTimeOriginal
 last_metadata_pictures$GPSDateTime
-
 # SUR CSV ALL METADATA
 # CSV_total$ThumbnailImage[1] 
 # CSV_total$ThumbnailOffset[1]
 # CSV_total$ThumbnailLength[1]
+exif_core_metadata_elements <- list.files(path = paste0(images_directory,"/METADATA/exif"), pattern = "Core_Exif_metadata_")
+photos_metadata <- readRDS(exif_core_metadata_elements)
 
-# toto <- readRDS("/media/julien/3564-3063/session_2018_07_14_Le_Morne_Manawa/METADATA/exif/All_Exif_metadata_session_2018_07_14_Le_Morne_Manawa.RDS")
-toto <- readRDS("/media/julien/3564-3063/session_2018_07_14_Le_Morne_Manawa/METADATA/exif/Core_Exif_metadata_session_2018_07_14_Le_Morne_Manawa.RDS")
-toto <- readRDS("/media/julien/2958-AF3E/DCIM/METADATA/exif/Core_Exif_metadata_2958-AF3E.RDS")
-sapply(toto,class)
-head(toto)
-toto$GPSDateTime
-
-
-con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
-query_create_exif_core_metadata_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_exif_core_metadata_table.sql"), collapse=" ")
-create__exif_core_metadata_table <- dbGetQuery(con_Reef_database,query_create_exif_core_metadata_table)
-# dbWriteTable(con_Reef_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
-dbWriteTable(con_Reef_database, "photos_exif_core_metadata", toto, row.names=FALSE, append=TRUE)
-dbDisconnect(con_Reef_database)
-
-#################################################################################################vv 
+load_exif_metadata_in_database(con_Reef_database, codes_directory, photos_metadata, create_table=TRUE)
+############################################################################################
+###################### EXTRACT GPS TRACKS DATA AND LOAD THEM INTO POSTGRES DATABASE ########
+############################################################################################ 
 dataframe_tcx_files <- return_dataframe_tcx_files(images_directory)
-
-
-con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
-query_create_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_tables_GPS_tracks.sql"), collapse=" ")
-query_update_table_spatial_column <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/add_spatial_column.sql"), collapse=" ")
-create_Table <- dbGetQuery(con_Reef_database,query_create_table)
-# dbWriteTable(con_Reef_database, "gps_tracks", GPS_tracks_values, row.names=FALSE, append=TRUE)
 
 number_row<-nrow(dataframe_tcx_files)
 for (t in 1:number_row){
@@ -50,13 +40,12 @@ for (t in 1:number_row){
   path <- dataframe_tcx_files$path[t]
   file_name <- dataframe_tcx_files$file_name[t]
   file = paste(path,file_name,sep="/")
+  
   runDF <- NULL
   #   # runDF <- readTCX(file=file, timezone = "GMT")
   runDF <- readTCX(file=file)
-  # head(runDF)
   runDF$session <- session
   runDF$time <- as.POSIXct(runDF$time, "%Y:%m:%d %H:%M:%S", tz="UTC")
-  
   select_columns = subset(runDF, select = c(session,latitude,longitude,altitude,time,heart.rate))
   GPS_tracks_values = rename(select_columns, session_id=session, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart.rate, time=time)
   names(GPS_tracks_values)
@@ -64,6 +53,11 @@ for (t in 1:number_row){
   # GPS_tracks_values <- GPS_tracks_values[,c(6,1,2,3,4,5)]
   # GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y-%m-%d %H:%M:%OS")
   GPS_tracks_values$the_geom <- NA
-  dbWriteTable(con_Reef_database, "gps_tracks", GPS_tracks_values, row.names=FALSE, append=TRUE)
+  load_gps_tracks_in_database(con_Reef_database, codes_directory, GPS_tracks_values, create_table=TRUE)
 }
-update_Table <- dbGetQuery(con_Reef_database,query_update_table_spatial_column)
+############################################################################################
+###################### INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP  ########
+############################################################################################ 
+
+
+dbDisconnect(con_Reef_database)

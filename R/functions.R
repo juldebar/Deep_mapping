@@ -120,7 +120,7 @@ return_dataframe_tcx_files <- function(wd){
 #############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
-extract_exif_metadata_in_csv <- function(images_directory,load_metadata_in_database=FALSE){
+extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metadata_in_database=FALSE){
   setwd(images_directory)
   dir.create(file.path(images_directory, "METADATA"))
   setwd(file.path(images_directory, "METADATA"))
@@ -287,4 +287,51 @@ rename_exif_csv <- function(images_directory){
   
   # command <- paste("cp Core_Exif_metadata_DCIM.csv Core_Exif_metadata_", name_session,".csv", sep="")
   # system(command)
+}
+
+
+#############################################################################################################
+############################ load_metadata_in_database ###################################################
+#############################################################################################################
+
+
+load_exif_metadata_in_database <- function(con, codes_directory, exif_metadata, create_table=FALSE){
+  if(create_table==TRUE){
+    query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_directory,"SQL/create_exif_core_metadata_table.sql")), collapse=" ")
+    create_exif_core_metadata_table <- dbGetQuery(con,query_create_exif_core_metadata_table)
+    dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=TRUE, append=TRUE)
+  } else {dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=FALSE, append=TRUE)}
+  # dbWriteTable(con, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
+}
+
+
+#############################################################################################################
+############################ load_gps_tracks_in_database ###################################################
+#############################################################################################################
+
+load_gps_tracks_in_database <- function(con, codes_directory, gps_tracks, create_table=TRUE){
+  if(create_table==TRUE){
+    query_create_table <- paste(readLines(paste0(codes_directory,"SQL/create_tables_GPS_tracks.sql")), collapse=" ")
+    create_Table <- dbGetQuery(con,query_create_table)
+    dbWriteTable(con, "gps_tracks", gps_tracks, row.names=TRUE, append=TRUE)
+  } else {
+    dbWriteTable(con, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
+  }
+  query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column.sql")), collapse=" ")
+  update_Table <- dbGetQuery(con,query_update_table_spatial_column)
+  
+}
+
+
+#############################################################################################################
+############################ infer_photo_location_from_gps_tracks ###################################################
+#############################################################################################################
+
+infer_photo_location_from_gps_tracks <- function(con, codes_directory, session_id="all"){
+  if(session_id=="all"){
+    query <- paste(readLines(paste0(codes_directory,"SQL/interpolation_between_closest_GPS_POINTS.sql")), collapse=" ")
+    execute_query <- dbGetQuery(con,query_create_table)
+  } else {
+    execute_query <- dbGetQuery(con,query_create_table)
+  }
 }
