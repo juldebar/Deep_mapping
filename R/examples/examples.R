@@ -6,8 +6,20 @@ codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
 setwd(codes_directory)
 source(paste0(codes_directory,"R/credentials_databases.R"))
 source(paste0(codes_directory,"R/functions.R"))
-images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_01_kite_Le_Morne"
 con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
+images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_01_kite_Le_Morne"
+session_id <-"session_2018_01_01_kite_Le_Morne"
+
+#SELECT "DateTimeOriginal" FROM photos_exif_core_metadata WHERE "FileName"='G0020045.JPG'
+photo_time <- as.POSIXct("2015-01-01 05:23:30+01") 
+photo_time <- "2015-01-01 05:23:30" 
+
+GPS_time <- 
+GPS_time <-  as.POSIXct("2018-01-01 14:47:00", tz="Indian/Mauritius")
+exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+
+
+offset <-difftime(difftime(photo_time, GPS_time, units="secs"))
 ############################################################################################
 ###################### EXTRACT CSV METADATA ##################################
 ############################################################################################
@@ -59,5 +71,15 @@ for (t in 1:number_row){
 ###################### INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP  ########
 ############################################################################################ 
 
+# query <- paste(readLines(paste0(codes_directory,"SQL/interpolation_between_closest_GPS_POINTS.sql")), collapse=" ")
+# query <- gsub("","",query)
 
+# infer_photo_location_from_gps_tracks(con_Reef_database, codes_directory, session_id=session)
+
+
+
+############################################################################################
+###################### CLOSE  ########
+############################################################################################ 
+  
 dbDisconnect(con_Reef_database)
