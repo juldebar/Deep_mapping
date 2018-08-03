@@ -1,7 +1,9 @@
+rm(list=ls())
 template_df <- read.csv("/home/julien/Bureau/CODES/Deep_mapping/CSV/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
 # sapply(template_df,class)
 # head(template_df)
 images_directory <-"/media/julien/3564-3063/session_2018_07_14_Le_Morne_Manawa"
+images_directory <-"/media/julien/2958-AF3E"
 source("/home/julien/Bureau/CODES/Deep_mapping/R/functions.R")
 last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory)
 
@@ -18,6 +20,7 @@ last_metadata_pictures$GPSDateTime
 
 # toto <- readRDS("/media/julien/3564-3063/session_2018_07_14_Le_Morne_Manawa/METADATA/exif/All_Exif_metadata_session_2018_07_14_Le_Morne_Manawa.RDS")
 toto <- readRDS("/media/julien/3564-3063/session_2018_07_14_Le_Morne_Manawa/METADATA/exif/Core_Exif_metadata_session_2018_07_14_Le_Morne_Manawa.RDS")
+toto <- readRDS("/media/julien/2958-AF3E/DCIM/METADATA/exif/Core_Exif_metadata_2958-AF3E.RDS")
 sapply(toto,class)
 head(toto)
 toto$GPSDateTime
