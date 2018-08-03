@@ -155,20 +155,20 @@ extract_exif_metadata_in_csv <- function(images_directory,load_metadata_in_datab
       exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
       
       # # IF THERE IS NO GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES NA
-      # if(exists(exif_metadata$GPSLatitude)==FALSE){ # TO BE DONE => CHECK THIS CRITERIA / TOO PERMISIVE
-      #   exif_metadata$GPSVersionID <-NA
-      #   exif_metadata$GPSLatitudeRef <-NA
-      #   exif_metadata$GPSLongitudeRef <-NA
-      #   exif_metadata$GPSAltitudeRef <-NA
-      #   exif_metadata$GPSTimeStamp <-NA
-      #   exif_metadata$GPSMapDatum <-NA
-      #   exif_metadata$GPSDateStamp <-NA
-      #   exif_metadata$GPSAltitude <-NA
-      #   exif_metadata$GPSDateTime <-NA
-      #   exif_metadata$GPSLatitude <-NA
-      #   exif_metadata$GPSLongitude <-NA
-      #   exif_metadata$GPSPosition <-NA
-      # }
+      if(exists("exif_metadata$GPSLatitude")==FALSE){ # TO BE DONE => CHECK THIS CRITERIA / TOO PERMISIVE
+        exif_metadata$GPSVersionID <-NA
+        exif_metadata$GPSLatitudeRef <-NA
+        exif_metadata$GPSLongitudeRef <-NA
+        exif_metadata$GPSAltitudeRef <-NA
+        exif_metadata$GPSTimeStamp <-NA
+        exif_metadata$GPSMapDatum <-NA
+        exif_metadata$GPSDateStamp <-NA
+        exif_metadata$GPSAltitude <-NA
+        exif_metadata$GPSDateTime <-NA
+        exif_metadata$GPSLatitude <-NA
+        exif_metadata$GPSLongitude <-NA
+        exif_metadata$GPSPosition <-NA
+      }
       # change default data types
       exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%S", tz="UTC")
       exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
