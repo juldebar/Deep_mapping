@@ -2,25 +2,36 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
+codes_directory <-"~/Bureau/CODES/Deep_mapping/"
+# codes_directory <-"~/Deep_mapping-master/"
+
 setwd(codes_directory)
 source(paste0(codes_directory,"R/credentials_databases.R"))
 source(paste0(codes_directory,"R/functions.R"))
-con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
-images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_01_kite_Le_Morne"
-session_id <-"session_2018_01_01_kite_Le_Morne"
-
-#SELECT "DateTimeOriginal" FROM photos_exif_core_metadata WHERE "FileName"='G0020045.JPG'
-photo_time <- as.POSIXct("2015-01-01 05:23:30+01") 
-photo_time <- "2015-01-01 05:23:30" 
-
-GPS_time <- 
-GPS_time <-  as.POSIXct("2018-01-01 14:47:00", tz="Indian/Mauritius")
-exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
 
 
+Session_metadata_table <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
+Datasets <- as.data.frame(gsheet::gsheet2tbl(Session_metadata_table))
+
+images_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne"
+session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
+
+session_metadata <-filter(Datasets, Identifier==session_id)
+session_metadata$Photo_for_GPS_Time_Correlation
+photo_time <- as.POSIXct(session_metadata$Photo_time, tz="Indian/Mauritius")
+GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="UTC")
 offset <-difftime(photo_time, GPS_time, units="secs")
 offset
+
+
+#SELECT "DateTimeOriginal" FROM photos_exif_core_metadata WHERE "FileName"='G0020045.JPG'
+# photo_time <- as.POSIXct("2015-01-01 05:23:30+01") 
+# photo_time <- "2015-01-01 05:23:30" 
+# exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+
+
+
 ############################################################################################
 ###################### EXTRACT CSV METADATA ##################################
 ############################################################################################
@@ -34,29 +45,44 @@ class(last_metadata_pictures$LightValue)
 last_metadata_pictures$DateTimeOriginal
 last_metadata_pictures$GPSDateTime
 # SUR CSV ALL METADATA
+
+# CSV_total$PreviewImage[1] 
+# CSV_total$PreviewImage[1] 
 # CSV_total$ThumbnailImage[1] 
 # CSV_total$ThumbnailOffset[1]
 # CSV_total$ThumbnailLength[1]
+
+
 exif_core_metadata_elements <- list.files(path = paste0(images_directory,"/METADATA/exif"), pattern = "Core_Exif_metadata_")
 photos_metadata <- readRDS(exif_core_metadata_elements)
+head(photos_metadata)
+load_exif_metadata_in_database(con_Reef_database, codes_directory, photos_metadata, create_table=FALSE)
 
-load_exif_metadata_in_database(con_Reef_database, codes_directory, photos_metadata, create_table=TRUE)
+# check_database <- dbSendQuery(con_Reef_database, paste0("SELECT * FROM gps_tracks WHERE session_id='",session_id,"' LIMIT 10"))
+check_database <- dbGetQuery(con_Reef_database, paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 10"))
+check_database
 ############################################################################################
 ###################### EXTRACT GPS TRACKS DATA AND LOAD THEM INTO POSTGRES DATABASE ########
 ############################################################################################ 
 dataframe_tcx_files <- return_dataframe_tcx_files(images_directory)
+tcx_file <- paste(dataframe_tcx_files$path,dataframe_tcx_files$file_name,sep="/")
+type<-"TCX"
+dataframe_gps_file <-return_dataframe_gps_file(codes_directory, tcx_file, type, session_id,load_in_database=FALSE)
+head(dataframe_gps_file)
+load_gps_tracks_in_database(con_Reef_database, codes_directory, dataframe_gps_file, create_table=FALSE)
+
 
 number_row<-nrow(dataframe_tcx_files)
 for (t in 1:number_row){
   row <- dataframe_tcx_files[t,]
-  session <- dataframe_tcx_files$session[t]
+  session <- "sess  ion_2018_01_01_kite_Le_Morne"
   path <- dataframe_tcx_files$path[t]
   file_name <- dataframe_tcx_files$file_name[t]
   file = paste(path,file_name,sep="/")
   
   runDF <- NULL
   #   # runDF <- readTCX(file=file, timezone = "GMT")
-  runDF <- readTCX(file=file)
+  runDF <- readTCX(file="./R/examples/11597621537.tcx")
   runDF$session <- session
   runDF$time <- as.POSIXct(runDF$time, "%Y:%m:%d %H:%M:%S", tz="UTC")
   select_columns = subset(runDF, select = c(session,latitude,longitude,altitude,time,heart.rate))
@@ -68,26 +94,6 @@ for (t in 1:number_row){
   GPS_tracks_values$the_geom <- NA
   load_gps_tracks_in_database(con_Reef_database, codes_directory, GPS_tracks_values, create_table=TRUE)
 }
-############################################################################################
-###################### INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP  ########
-############################################################################################ 
-
-# query <- paste(readLines(paste0(codes_directory,"SQL/interpolation_between_closest_GPS_POINTS.sql")), collapse=" ")
-# query <- gsub("","",query)
-
-# infer_photo_location_from_gps_tracks(con_Reef_database, codes_directory, session_id=session)
-
-
-
-############################################################################################
-###################### CLOSE  ########
-############################################################################################ 
-  
-dbDisconnect(con_Reef_database)
-
-
-
-
 
 ############################################################################################
 ###################### EXTRACT EXIF METADATA FROM GOPRO DIRECTORY  ########
@@ -118,27 +124,48 @@ metadata_pictures <- select(exif_metadata,
 setwd("/tmp")
 write.csv(metadata_pictures, "exif_metadata.csv",row.names = F)
 
+############################################################################################
+###################### INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP  ########
+############################################################################################ 
+
+# query <- paste(readLines(paste0(codes_directory,"SQL/interpolation_between_closest_GPS_POINTS.sql")), collapse=" ")
+# query <- gsub("","",query)
+
+# infer_photo_location_from_gps_tracks(con_Reef_database, codes_directory, session_id=session)
+
+
 
 ############################################################################################
-###################### EXTRACT EXIF METADATA FROM GOPRO DIRECTORY  ########
+###################### CLOSE  ########
 ############################################################################################ 
-file <-"/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/raw_201707111046-4.csv"
-tracks<-read_rtk(file_rtk=file)
-head(tracks)
-sapply(tracks,class)
 
-# select_columns = subset(tracks, select = c(ratio,latitude,longitude,altitude,time,heart.rate))
-select_columns = subset(tracks, select = c(ratio,latitude,longitude,height,GPST,age))
-GPS_tracks_values = rename(select_columns, session_id=ratio, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
-names(GPS_tracks_values)
-sapply(GPS_tracks_values,class)
+tcx_file <-"./R/examples/11597621537.tcx"
+type<-"TCX"
+gpx_file <-"./R/examples/11597621537.gpx"
+type<-"GPX"
+rtk_file <-"/home/julien/Téléchargements/raw_201707111046-4.csv"
+type="RTK"
+session_id="FAKE"
+dataframe_gps_file <-NULL
+dataframe_gps_file <- switch(type,
+                             "RTK" = return_dataframe_gps_file(codes_directory, rtk_file, type, session_id,load_in_database=FALSE),
+                             "TCX" = return_dataframe_gps_file(codes_directory, tcx_file, type, session_id,load_in_database=FALSE),
+                             "GPX" = return_dataframe_gps_file(codes_directory, gpx_file, type, session_id,load_in_database=FALSE)
+)
+head(dataframe_gps_file)
+nrow(dataframe_gps_file)
+load_gps_tracks_in_database(con_Reef_database, codes_directory, dataframe_gps_file, create_table=FALSE)
 
-# GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
-# GPS_tracks_values <- GPS_tracks_values[,c(6,1,2,3,4,5)]
-GPS_tracks_values$session_id <- 1111
-GPS_tracks_values$heart_rate <- as.numeric(GPS_tracks_values$heart_rate)
-GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y/%m/%d %H:%M:%OS")
-GPS_tracks_values$the_geom <- NA
-head(GPS_tracks_values)
 
-load_gps_tracks_in_database(con_Reef_database, codes_directory, GPS_tracks_values, create_table=TRUE)
+
+
+dsn <- paste0("PG:dbname='",Dbname,"' host='",Host,"' port='5432' user='",User,"' password='",Password," ' \" ")
+obj <- rgdal::readOGR(dsn=dsn, layer = "photos_exif_core_metadata") 
+spdf <- dbReadSpatial(con_Reef_database, schemaname="public", tablename="gps_tracks", geomcol="the_geom")
+buffer <- rgdal::readOGR("PG:dbname=Reef_database", "gps_tracks")
+
+############################################################################################
+###################### CLOSE  ########
+############################################################################################ 
+
+dbDisconnect(con_Reef_database)
