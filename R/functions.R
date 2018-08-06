@@ -84,44 +84,11 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
   return(all_metadata)
 }
 #############################################################################################################
-############################ RETRIEVE TCX FILES ###################################################
-#############################################################################################################
-return_dataframe_tcx_files <- function(wd){
-  setwd(wd)
-  dataframe_tcx_files <- NULL
-  dataframe_tcx_files <- data.frame(session=character(), path=character(), file_name=character())
-  sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
-  sub_directories  
-  for (i in sub_directories){
-    if (substr(i, nchar(i)-3, nchar(i))=="/GPS"){
-      setwd(i)
-      cat(i)
-      cat("\n Name session\n")
-      name_session <-gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
-      cat(name_session)
-      cat("\n List tcx \n")
-      files <- list.files(pattern = "*.tcx")
-      tcx_files <- files
-      cat(tcx_files)
-      if(length(tcx_files)>1){cat("\n FUCK \n")}
-      cat("\n Le vecteur \n")
-      cat(c(name_session,i,tcx_files))
-      newRow <- data.frame(session=name_session,path=i,file_name=tcx_files)
-      dataframe_tcx_files <- rbind(dataframe_tcx_files,newRow)
-    }
-    else {
-      # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
-      # cat("nada \n")
-      # cat(substr(i, nchar(i)-2, nchar(i)))
-    }
-  }
-  return(dataframe_tcx_files)
-}
-#############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
 extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metadata_in_database=FALSE){
   setwd(images_directory)
+  session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
   dir.create(file.path(images_directory, "METADATA"))
   setwd(file.path(images_directory, "METADATA"))
   dir.create(file.path(getwd(), "exif"))
@@ -138,9 +105,8 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
     this_directory <- sub_directories[i]
     
     if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
-
+      # this_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne/DCIM/101GOPRO"
       exif_metadata <- extract_exif_metadata_in_this_directory(images_directory,this_directory,template_df)
-      # sapply(dat,class)
       # new_exif_metadata <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
       # new_exif_metadata <- rbind(template_df, dat)
       new_exif_metadata <- bind_rows(template_df, exif_metadata)
@@ -149,8 +115,6 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
       
       # Ajouter le path de la photo ou this_directory
       # metadata_pictures <- merge(c(this_directory),metadata_pictures))
-      # metadata_pictures$path <- this_directory
-      # metadata_pictures$parent_directory <- parent_directory
       
       CSV_total <- rbind(CSV_total, new_exif_metadata)
       
@@ -170,9 +134,10 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
   }
   
   setwd(metadata_directory)
-  name_file_csv<-paste("All_Exif_metadata_",parent_directory,".csv",sep="")
+  
+  name_file_csv<-paste("All_Exif_metadata_",session_id,".csv",sep="")
   # write.csv(CSV_total, name_file_csv,row.names = F)
-  saveRDS(CSV_total, paste("All_Exif_metadata_",parent_directory,".RDS",sep=""))
+  saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,".RDS",sep=""))
   
   # add condition exists before susbet ?
   metadata_pictures <- select(CSV_total,
@@ -190,11 +155,11 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
                               geometry_postgis,
                               geometry_gps_correlate,
                               geometry_native                              
-                              )
+  )
   
-  name_file_csv<-paste("Core_Exif_metadata_",parent_directory,".csv",sep="")
-  # write.csv(metadata_pictures, name_file_csv,row.names = F)
-  saveRDS(metadata_pictures, paste("Core_Exif_metadata_",parent_directory,".RDS",sep=""))
+  name_file_csv<-paste("Core_Exif_metadata_",session_id,".csv",sep="")
+  write.csv(metadata_pictures, name_file_csv,row.names = F)
+  saveRDS(metadata_pictures, paste("Core_Exif_metadata_",session_id,".RDS",sep=""))
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
   return(head(metadata_pictures))
@@ -210,13 +175,13 @@ extract_exif_metadata_in_this_directory <- function(images_directory,this_direct
   
   files <- list.files(pattern = mime_type ,recursive = TRUE)
   exif_metadata <-template_df
-  exif_metadata <- read_exif(files)
+  exif_metadata <- read_exif(files,quiet = FALSE)#DDD deg MM' SS.SS"
   exif_metadata$session_id = parent_directory
   exif_metadata$session_photo_number <-c(1:nrow(exif_metadata))# @julien => A INCREMENTER ?
   exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
   
   # # IF THERE IS NO GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES NA
-  if(exists("exif_metadata$GPSLatitude")==FALSE){
+  if(is.null(exif_metadata$GPSLatitude)==TRUE){
     exif_metadata$GPSVersionID <-NA
     exif_metadata$GPSLatitudeRef <-NA
     exif_metadata$GPSLongitudeRef <-NA
@@ -231,10 +196,10 @@ extract_exif_metadata_in_this_directory <- function(images_directory,this_direct
     exif_metadata$GPSPosition <-NA
   }
   # change default data types
-  exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%S", tz="UTC")
+  exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ", tz="UTC")
   exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
-  exif_metadata$GPSLatitude = as.numeric(exif_metadata$GPSLatitude)
-  exif_metadata$GPSLongitude = as.numeric(exif_metadata$GPSLongitude)
+  # exif_metadata$GPSLatitude = as.numeric(exif_metadata$GPSLatitude)
+  # exif_metadata$GPSLongitude = as.numeric(exif_metadata$GPSLongitude)
   exif_metadata$geometry_postgis <- NA
   exif_metadata$geometry_postgis = as.numeric(unlist(exif_metadata$geometry_postgis))
   exif_metadata$geometry_gps_correlate <- NA
@@ -303,7 +268,7 @@ load_exif_metadata_in_database <- function(con, codes_directory, exif_metadata, 
     query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_directory,"SQL/create_exif_core_metadata_table.sql")), collapse=" ")
     create_exif_core_metadata_table <- dbGetQuery(con,query_create_exif_core_metadata_table)
     dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=TRUE, append=TRUE)
-  } else {dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=FALSE, append=TRUE)}
+  } else {dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=TRUE, append=TRUE)}
   # dbWriteTable(con, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
 }
 
@@ -327,6 +292,103 @@ load_gps_tracks_in_database <- function(con, codes_directory, gps_tracks, create
 
 
 #############################################################################################################
+############################ read_rtk ###################################################
+#############################################################################################################
+return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_in_database=FALSE){
+  setwd(wd)
+  if(type=="RTK"){
+    gpx_file=rtk_file
+    gps_tracks <- read.csv(rtk_file,stringsAsFactors = FALSE)
+    head(gps_tracks)
+    sapply(gps_tracks,class)
+    select_columns = subset(gps_tracks, select = c(ratio,latitude,longitude,height,GPST,age))
+    head(select_columns)
+    GPS_tracks_values = dplyr::rename(select_columns, session_id=ratio, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
+    head(GPS_tracks_values)
+    names(GPS_tracks_values)
+    sapply(GPS_tracks_values,class)
+    GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
+    GPS_tracks_values$session_id <- session_id
+    GPS_tracks_values$heart_rate <- as.numeric(GPS_tracks_values$heart_rate)
+    GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y/%m/%d %H:%M:%OS")
+    GPS_tracks_values$the_geom <- NA
+    head(GPS_tracks_values)
+  } else if(type=="GPX"){
+    gpx_file=gps_file
+    track_points <- NULL
+    track_points <- readOGR(dsn = gpx_file, layer="track_points")
+    # dbWriteSpatial(con_Reef_database, track_points, schemaname="public", tablename="pays", replace=T,srid=4326)
+    slotNames(track_points)
+    GPS_tracks_values <- NULL
+    GPS_tracks_values <- dplyr::select(track_points@data,ele,time,track_fid)
+    GPS_tracks_values$latitude <- coordinates(track_points)[,2]
+    GPS_tracks_values$longitude <- coordinates(track_points)[,1]
+    GPS_tracks_values$the_geom <- NA
+    GPS_tracks_values$session_id <- session_id
+    GPS_tracks_values$time <- as.POSIXct(track_points@data$time, "%Y/%m/%d %H:%M:%S", tz="UTC")
+    GPS_tracks_values= dplyr::rename(GPS_tracks_values, session_id=session_id, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, time=time, the_geom=the_geom)
+    GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
+    GPS_tracks_values <- GPS_tracks_values[,c(8,7,4,5,1,2,3,6)]
+  } else if (type=="TCX"){
+    tcx_file=gps_file
+    runDF <- NULL
+    runDF <- readTCX(file=tcx_file) # runDF <- readTCX(file=file, timezone = "GMT")
+    runDF$fid <-c(1:nrow(runDF))
+    runDF$session <- session_id
+    runDF$time <- as.POSIXct(runDF$time, "%Y:%m:%d %H:%M:%S", tz="UTC")
+    select_columns = subset(runDF, select = c(fid,session,latitude,longitude,altitude,time,heart.rate))
+    GPS_tracks_values = dplyr::rename(select_columns, fid=fid, session_id=session, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart.rate, time=time)
+    names(GPS_tracks_values)
+    GPS_tracks_values$the_geom <- NA
+  }
+  
+  if(load_in_database==TRUE){load_gps_tracks_in_database(con_Reef_database, codes_directory, GPS_tracks_table, create_table=FALSE)}
+  
+  return(GPS_tracks_values)
+  
+}
+
+#############################################################################################################
+############################ read GPX file ###################################################
+#############################################################################################################
+return_dataframe_gpx_files <- function(wd, gps_file, type="TCX",load_in_database=FALSE){
+  
+}
+#############################################################################################################
+############################ RETRIEVE TCX FILES ###################################################
+#############################################################################################################
+return_dataframe_tcx_files <- function(wd){
+  setwd(wd)
+  dataframe_tcx_files <- NULL
+  dataframe_tcx_files <- data.frame(session=character(), path=character(), file_name=character())
+  sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
+  sub_directories  
+  for (i in sub_directories){
+    if (substr(i, nchar(i)-3, nchar(i))=="/GPS"){
+      setwd(i)
+      cat(i)
+      cat("\n Name session\n")
+      name_session <-gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
+      cat(name_session)
+      cat("\n List tcx \n")
+      files <- list.files(pattern = "*.tcx")
+      tcx_files <- files
+      cat(tcx_files)
+      if(length(tcx_files)>1){cat("\n FUCK \n")}
+      cat("\n Le vecteur \n")
+      cat(c(name_session,i,tcx_files))
+      newRow <- data.frame(session=name_session,path=i,file_name=tcx_files)
+      dataframe_tcx_files <- rbind(dataframe_tcx_files,newRow)
+    }
+    else {
+      # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
+      # cat("nada \n")
+      # cat(substr(i, nchar(i)-2, nchar(i)))
+    }
+  }
+  return(dataframe_tcx_files)
+}
+#############################################################################################################
 ############################ infer_photo_location_from_gps_tracks ###################################################
 #############################################################################################################
 
@@ -337,12 +399,4 @@ infer_photo_location_from_gps_tracks <- function(con, codes_directory, session_i
   } else {
     execute_query <- dbGetQuery(con,query_create_table)
   }
-}
-
-#############################################################################################################
-############################ read_rtk ###################################################
-#############################################################################################################
-read_rtk <- function(file_rtk){
-  gps_tracks <- read.csv(file_rtk,stringsAsFactors = FALSE)
-  return(gps_tracks)
 }
