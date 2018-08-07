@@ -268,7 +268,7 @@ load_exif_metadata_in_database <- function(con, codes_directory, exif_metadata, 
     query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_directory,"SQL/create_exif_core_metadata_table.sql")), collapse=" ")
     create_exif_core_metadata_table <- dbGetQuery(con,query_create_exif_core_metadata_table)
     dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=TRUE, append=TRUE)
-  } else {dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=TRUE, append=TRUE)}
+  } else {dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=FALSE, append=TRUE)}
   # dbWriteTable(con, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
 }
 
@@ -299,16 +299,16 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   if(type=="RTK"){
     gpx_file=rtk_file
     gps_tracks <- read.csv(rtk_file,stringsAsFactors = FALSE)
+    gps_tracks$fid <-c(1:nrow(gps_tracks))
+    gps_tracks$session_id <- session_id
     head(gps_tracks)
     sapply(gps_tracks,class)
-    select_columns = subset(gps_tracks, select = c(ratio,latitude,longitude,height,GPST,age))
+    select_columns = subset(gps_tracks, select = c(fid,session_id,latitude,longitude,height,GPST,age))
     head(select_columns)
-    GPS_tracks_values = dplyr::rename(select_columns, session_id=ratio, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
+    GPS_tracks_values = dplyr::rename(select_columns, fid=fid,session_id=session_id, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
     head(GPS_tracks_values)
     names(GPS_tracks_values)
     sapply(GPS_tracks_values,class)
-    GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
-    GPS_tracks_values$session_id <- session_id
     GPS_tracks_values$heart_rate <- as.numeric(GPS_tracks_values$heart_rate)
     GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y/%m/%d %H:%M:%OS")
     GPS_tracks_values$the_geom <- NA
