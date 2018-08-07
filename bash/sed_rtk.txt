@@ -1,0 +1,11 @@
+## Change CSV header
+echo 'GPST;latitude_deg;longitude_deg;height_m;Q;ns;sdn_m;sde_m;sdu_m;sdne_m;sdeu_m;sdun_m;age_m;ratio' > header.csv 
+header=$(head -1 header.csv)
+cp test.pos test.csv
+sed -i -e 1,23d test.csv
+sed -i "1i\\$header" test.csv
+sed -i -e 's/  -/;-/g' test.csv
+sed -i -e 's/   /;/g' test.csv
+sed -i -e 's/; /;/g' test.csv
+
+head test.csv
