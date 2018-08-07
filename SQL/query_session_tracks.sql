@@ -1,0 +1,1 @@
+SELECT session_id, array_agg(gps_tracks.fid) AS list_gps_points, array_agg(gps_tracks.time) AS time, min(gps_tracks.time) AS start_date,max(gps_tracks.time) AS end_date, ST_AsEWKT(ST_MakeLine(the_geom)) AS WKT, ST_MakeLine(the_geom) AS track from gps_tracks  where session_id='session_2018_03_31_kite_Le_Morne' GROUP by session_id;
