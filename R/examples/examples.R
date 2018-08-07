@@ -6,32 +6,25 @@ codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
 
 setwd(codes_directory)
-source(paste0(codes_directory,"R/credentials_databases.R"))
 source(paste0(codes_directory,"R/functions.R"))
+images_directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_31_kite_Le_Morne"
+session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
+source(paste0(codes_directory,"R/credentials_databases.R"))
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
-
 
 Session_metadata_table <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
 Datasets <- as.data.frame(gsheet::gsheet2tbl(Session_metadata_table))
-
-images_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne"
-session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
-
 session_metadata <-filter(Datasets, Identifier==session_id)
 session_metadata$Photo_for_GPS_Time_Correlation
-photo_time <- as.POSIXct(session_metadata$Photo_time, tz="Indian/Mauritius")
-GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="UTC")
+  photo_time <- as.POSIXct(session_metadata$Photo_time, tz="Indian/Mauritius")
+GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="Indian/Mauritius")
 offset <-difftime(photo_time, GPS_time, units="secs")
 offset
-
 
 #SELECT "DateTimeOriginal" FROM photos_exif_core_metadata WHERE "FileName"='G0020045.JPG'
 # photo_time <- as.POSIXct("2015-01-01 05:23:30+01") 
 # photo_time <- "2015-01-01 05:23:30" 
 # exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
-
-
-
 ############################################################################################
 ###################### EXTRACT CSV METADATA ##################################
 ############################################################################################
@@ -41,17 +34,12 @@ template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.c
 last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory, template_df, load_metadata_in_database=FALSE)
 head(last_metadata_pictures)
 sapply(last_metadata_pictures,class)
-class(last_metadata_pictures$LightValue)
-last_metadata_pictures$DateTimeOriginal
-last_metadata_pictures$GPSDateTime
-# SUR CSV ALL METADATA
-
+# A TESTER SUR CSV ALL METADATA
 # CSV_total$PreviewImage[1] 
 # CSV_total$PreviewImage[1] 
 # CSV_total$ThumbnailImage[1] 
 # CSV_total$ThumbnailOffset[1]
 # CSV_total$ThumbnailLength[1]
-
 
 exif_core_metadata_elements <- list.files(path = paste0(images_directory,"/METADATA/exif"), pattern = "Core_Exif_metadata_")
 photos_metadata <- readRDS(exif_core_metadata_elements)
