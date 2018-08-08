@@ -7,6 +7,20 @@ library(data.table)
 library(dplyr)
 library(trackeR)
 #############################################################################################################
+###################################### Calculate offset ############################################################
+#############################################################################################################
+return_offset <- function(con, session_metadata){
+  
+  photo_time <- as.POSIXct(session_metadata$Photo_time)
+  GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="UTC")
+  photo_time_database <- dbGetQuery(con, paste0("select \"DateTimeOriginal\" from photos_exif_core_metadata where \"FileName\"='",session_metadata$Photo_for_calibration,"' AND session_id='",session_metadata$Identifier,"';"))
+  photo_time <- as.POSIXct(photo_time_database[,1])
+  
+  
+  offset <-difftime(photo_time, GPS_time, units="secs")
+  return(offset)
+  }
+
 ###################################### LOAD SESSION METADATA ############################################################
 #############################################################################################################
 sessions_metadata_dataframe <- function(Dublin_Core_metadata){
@@ -134,7 +148,7 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
   
   name_file_csv<-paste("All_Exif_metadata_",session_id,".csv",sep="")
   # write.csv(CSV_total, name_file_csv,row.names = F)
-  saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,".RDS",sep=""))
+  # saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,".RDS",sep=""))
   
   # add condition exists before susbet ?
   metadata_pictures <- select(CSV_total,
@@ -155,7 +169,7 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
   )
   
   name_file_csv<-paste("Core_Exif_metadata_",session_id,".csv",sep="")
-  write.csv(metadata_pictures, name_file_csv,row.names = F)
+  # write.csv(metadata_pictures, name_file_csv,row.names = F)
   saveRDS(metadata_pictures, paste("Core_Exif_metadata_",session_id,".RDS",sep=""))
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
@@ -264,8 +278,15 @@ load_exif_metadata_in_database <- function(con, codes_directory, exif_metadata, 
   if(create_table==TRUE){
     query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_directory,"SQL/create_exif_core_metadata_table.sql")), collapse=" ")
     create_exif_core_metadata_table <- dbGetQuery(con,query_create_exif_core_metadata_table)
-    dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=TRUE, append=TRUE)
-  } else {dbWriteTable(con, "photos_exif_core_metadata", photos_metadata, row.names=FALSE, append=TRUE)}
+    dbWriteTable(con, "photos_exif_core_metadata", exif_metadata, row.names=TRUE, append=TRUE)
+  } else {
+    ogc_fid_min <- dbGetQuery(con, paste0("SELECT max(ogc_fid) FROM photos_exif_core_metadata;"))+1
+    ogc_fid_max <- max(ogc_fid_min)+nrow(exif_metadata)-1
+    exif_metadata$ogc_fid <-c(max(ogc_fid_min):ogc_fid_max)
+    names(exif_metadata)
+    exif_metadata <- exif_metadata[,c(15,1,2,3,4,5,6,7,8,9,10,11,12,13,14)]
+    dbWriteTable(con, "photos_exif_core_metadata", exif_metadata, row.names=FALSE, append=TRUE)
+    }
   # dbWriteTable(con, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
 }
 
@@ -278,7 +299,7 @@ load_gps_tracks_in_database <- function(con, codes_directory, gps_tracks, create
   if(create_table==TRUE){
     query_create_table <- paste(readLines(paste0(codes_directory,"SQL/create_tables_GPS_tracks.sql")), collapse=" ")
     create_Table <- dbGetQuery(con,query_create_table)
-    dbWriteTable(con, "gps_tracks", gps_tracks, row.names=TRUE, append=TRUE)
+    dbWriteTable(con, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
   } else {
     dbWriteTable(con, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
   }
