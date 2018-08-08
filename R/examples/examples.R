@@ -10,7 +10,6 @@ source(paste0(codes_directory,"R/credentials_databases.R"))
 source(paste0(codes_directory,"R/functions.R"))
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
 
-
 Session_metadata_table <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
 Datasets <- as.data.frame(gsheet::gsheet2tbl(Session_metadata_table))
 
@@ -157,6 +156,8 @@ nrow(dataframe_gps_file)
 load_gps_tracks_in_database(con_Reef_database, codes_directory, dataframe_gps_file, create_table=FALSE)
 
 
+
+ogr2ogr -f GPX points.gpx PG:'host=reef-db.d4science.org user=Reef_admin password=4b0a6dd24ac7b79 dbname=Reef_database' -sql "select * from gps_tracks where session_id='session_2018_03_31_kite_Le_Morne' LIMIT 100"
 
 
 dsn <- paste0("PG:dbname='",Dbname,"' host='",Host,"' port='5432' user='",User,"' password='",Password," ' \" ")
