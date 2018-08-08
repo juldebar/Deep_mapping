@@ -17,9 +17,9 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
     # metadata <- Dublin_Core_metadata[i,]
     metadata <- NULL
     
-    metadata$id_session  <- Dublin_Core_metadata$Identifier[i]# if(is.na(metadata$Identifier)){metadata$Identifier="TITLE AND DATASET NAME TO BE FILLED !!"}
+    metadata$session_id  <- Dublin_Core_metadata$Identifier[i]# if(is.na(metadata$Identifier)){metadata$Identifier="TITLE AND DATASET NAME TO BE FILLED !!"}
     metadata$persistent_identifier <- Dublin_Core_metadata$Identifier[i]
-    metadata$related_sql_query <- "SELECT TOTO..;"
+    metadata$related_sql_query <- paste0("select * from gps_tracks where session_id='",Dublin_Core_metadata$Identifier[i],"';")
     metadata$related_view_name <- paste("view_", Dublin_Core_metadata$Identifier[i], sep="")
     metadata$identifier <- Dublin_Core_metadata$Identifier[i]
     metadata$title  <- Dublin_Core_metadata$Title[i]
@@ -27,18 +27,16 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
     metadata$subject  <- Dublin_Core_metadata$Subject[i]
     metadata$description <- Dublin_Core_metadata$Description[i]
     metadata$date  <- Dublin_Core_metadata$Date[i]
-    metadata$dataset_type  <- Dublin_Core_metadata$Type[i]
+    metadata$type  <- Dublin_Core_metadata$Type[i]
     metadata$format  <- Dublin_Core_metadata$Format[i]
     metadata$language  <- Dublin_Core_metadata$Language[i] #resource_language <- "eng"
-    metadata$relation  <- NA
+    metadata$relation  <- Dublin_Core_metadata$Relation[i] 
     metadata$spatial_coverage  <-  Dublin_Core_metadata$Spatial_Coverage[i]
     metadata$temporal_coverage  <-  Dublin_Core_metadata$Temporal_Coverage[i]
     metadata$rights  <- Dublin_Core_metadata$Rights[i] #UseLimitation <- "intellectualPropertyRights"
     metadata$source  <- "TO BE DONE"
-    metadata$provenance  <- Dublin_Core_metadata$Lineage[i]
-    metadata$supplemental_information  <- "TO BE DONE"
-    metadata$database_table_name  <- "TABLE NAME"
-    metadata$time_offset = Dublin_Core_metadata$Offset[i]
+    metadata$provenance  <- Dublin_Core_metadata$Provenance[i]
+    metadata$time_offset = as.numeric(Dublin_Core_metadata$Offset[i])
     metadata$geometry_session <- NA
     
     Dublin_Core_metadata$GPS_time[i]
@@ -46,7 +44,6 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
     
     all_metadata <- bind_rows(all_metadata, metadata)
     # all_metadata <- rbind(all_metadata, metadata)
-    
     
     #complex metadata elements
     #     Creator 
@@ -309,7 +306,7 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
     sapply(GPS_tracks_values,class)
     GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
     GPS_tracks_values$session_id <- session_id
-    GPS_tracks_values$heart_rate <- as.numeric(GPS_tracks_values$heart_rate)
+    GPS_tracks_values$heart_rate <- c(1:nrow(GPS_tracks_values))
     GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y/%m/%d %H:%M:%OS")
     GPS_tracks_values$the_geom <- NA
     head(GPS_tracks_values)
