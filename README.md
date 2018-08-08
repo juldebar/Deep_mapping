@@ -53,31 +53,47 @@ The file [functions.R](https://raw.githubusercontent.com/juldebar/Deep_mapping/m
 
 ~~~~
 ###################################### LOAD SESSION METADATA ############################################################
-source("https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R")
-source("/home/julien/Bureau/CODES/credentials_databases.R")
-# source("/home/julien/Bureau/CODES/Deep_mapping/R/credentials_postgres.R")
-~~~~
 
+source("https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R")
+codes_directory <-"~/Bureau/CODES/Deep_mapping/"
+setwd(codes_directory)
+source(paste0(codes_directory,"R/functions.R"))
+con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
+source(paste0(codes_directory,"R/credentials_databases.R"))
+Session_metadata_table <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
+Datasets <- as.data.frame(gsheet::gsheet2tbl(Session_metadata_table))
+Datasets %>% filter(Checked=='YES')
+  
+images_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne"
+session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
+
+session_metadata <-filter(Datasets, Identifier==session_id)
+session_metadata$Photo_for_GPS_Time_Correlation
+photo_time <- as.POSIXct(session_metadata$Photo_time, tz="Indian/Mauritius")
+GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="UTC")
+offset <-difftime(photo_time, GPS_time, units="secs")
+offset
+~~~~
  
 ## Create "metadata" table (to describe sessions) in the Postgres/ Postgis database and fill it with metadata stored in a google spreadsheet
 
 ~~~~
 ###################################### LOAD SESSION METADATA ############################################################
 con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
-query_create_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_session_metadata_table.sql"), collapse=" ")
-create_Table <- dbGetQuery(con_Reef_database,query_create_table)
+sql_query_create_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_session_metadata_table.sql"), collapse=" ")
+create_Table <- dbGetQuery(con_Reef_database,sql_query_create_table)
 
 Metadata_sessions <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
 sessions <- as.data.frame(gsheet::gsheet2tbl(Metadata_sessions))
 names(sessions)
-
 session_metadata <- sessions_metadata_dataframe(sessions)
-names(session_metadata)
 head(session_metadata)
 
-dbWriteTable(con_Reef_database, "metadata", session_metadata, row.names=TRUE, append=TRUE)
-dbDisconnect(con_Reef_database)
+load_metadata_table <- WriteTable(con_Reef_database, "metadata", session_metadata, row.names=TRUE, append=TRUE)
+sql_query_update_metadata_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/update_spatial_column_table_metadata.sql"), collapse=" ")
+metadata_table_updated <- dbGetQuery(con_Reef_database,sql_query_update_metadata_table)
 
+dbDisconnect(con_Reef_database)
 ~~~~
 
 ## TRANSFORM TCF AND CSV FILES IN A DATAFRAME
@@ -97,11 +113,21 @@ setwd(current_wd)
 
 ~~~~
 ###################################### LOAD GPS TRACKS DATA ############################################################
-con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
 query_create_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_tables_GPS_tracks.sql"), collapse=" ")
 query_update_table_spatial_column <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/add_spatial_column.sql"), collapse=" ")
 create_Table <- dbGetQuery(con_Reef_database,query_create_table)
-# dbWriteTable(con_Reef_database, "gps_tracks", GPS_tracks_values, row.names=FALSE, append=TRUE)
+
+###################################### LOAD GPS TRACKS OF A SINGLE SESSION ############################################################
+
+dataframe_tcx_files <- return_dataframe_tcx_files(images_directory)
+tcx_file <- paste(dataframe_tcx_files$path,dataframe_tcx_files$file_name,sep="/")
+type<-"TCX"
+dataframe_gps_file <-return_dataframe_gps_file(codes_directory, tcx_file, type, session_id,load_in_database=FALSE)
+head(dataframe_gps_file)
+load_gps_tracks_in_database(con_Reef_database, codes_directory, dataframe_gps_file, create_table=FALSE)
+
+
+###################################### LOAD ALL GPS TRACKS AT ONCE ############################################################
 wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
 dataframe_tcx_files <- return_dataframe_tcx_files(wd)
 
@@ -137,6 +163,8 @@ update_Table <- dbGetQuery(con_Reef_database,query_update_table_spatial_column)
 
 Extract exif metadata from photos and store them in CSV files
 
+
+
 ~~~~
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
@@ -148,9 +176,16 @@ for (i in 1:number_sub_directories){
 }
 
 ############################ READ Exif metadata in CSV FILES ###################################################
-
 template_df <- read.csv("/media/julien/Julien_2To/data_deep_mapping/done/session_2017_11_04_kite_Le_Morne/exif/All_Exif_metadata_template.csv",stringsAsFactors = FALSE)
 timsetamp_DateTimeOriginal = as.POSIXct(unlist(template_df$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+
+############################ READ Exif metadata in CSV FILES ###################################################
+
+template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),stringsAsFactors = FALSE)
+last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory, template_df, load_metadata_in_database=FALSE)
+exif_core_metadata_elements <- list.files(path = paste0(images_directory,"/METADATA/exif"), pattern = "Core_Exif_metadata_")
+photos_metadata <- readRDS(exif_core_metadata_elements)
+load_exif_metadata_in_database(con_Reef_database, codes_directory, photos_metadata, create_table=FALSE)
 ~~~~
 
 ### 3.2 Merge all EXIF metadata (extracted before in CSV FILES) in a single data frame and load them in the Postgres / Pöstgis database
@@ -168,7 +203,7 @@ Copy all CSV files in a single directory (TO BE DONE)
 
 Merge all CSV files gathered in a single directory
 ~~~~
-###################################### LOAD PHOTOS EXIF CORE METADATA ############################################################
+###################################### LOAD PHOTOS EXIF CORE METADATA FROM ALL SESSSIONS ############################################################
 setwd("/tmp/csv")
 filenames <- list.files(full.names=TRUE)
 All <- lapply(filenames,function(i){
@@ -194,6 +229,7 @@ OR
 
 ~~~~
 ###################################### LOAD PHOTOS EXIF CORE METADATA ############################################################
+
 current_wd<-getwd()
 directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2"
 dataframe_csv_files <- return_dataframe_csv_exif_metadata_files(directory)
