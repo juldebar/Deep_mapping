@@ -64,7 +64,7 @@ Session_metadata_table <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5
 Datasets <- as.data.frame(gsheet::gsheet2tbl(Session_metadata_table))
 Datasets %>% filter(Checked=='YES')
   
-images_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne"
+images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_01_kite_Le_Morne"
 session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
 
 session_metadata <-filter(Datasets, Identifier==session_id)
@@ -112,21 +112,18 @@ setwd(current_wd)
 
 
 ~~~~
-###################################### LOAD GPS TRACKS DATA ############################################################
+###################################### CREATE GPS TRACKS TABLE ############################################################
 query_create_table <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_tables_GPS_tracks.sql"), collapse=" ")
-query_update_table_spatial_column <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/add_spatial_column.sql"), collapse=" ")
 create_Table <- dbGetQuery(con_Reef_database,query_create_table)
-
-###################################### LOAD GPS TRACKS OF A SINGLE SESSION ############################################################
-
+###################################### LOAD GPS TRACKS FOR A SINGLE SESSION ############################################################
+#---------------------------------------------------------------------------------------------------------------------------
 dataframe_tcx_files <- return_dataframe_tcx_files(images_directory)
 tcx_file <- paste(dataframe_tcx_files$path,dataframe_tcx_files$file_name,sep="/")
 type<-"TCX"
 dataframe_gps_file <-return_dataframe_gps_file(codes_directory, tcx_file, type, session_id,load_in_database=FALSE)
 head(dataframe_gps_file)
 load_gps_tracks_in_database(con_Reef_database, codes_directory, dataframe_gps_file, create_table=FALSE)
-
-
+#---------------------------------------------------------------------------------------------------------------------------
 ###################################### LOAD ALL GPS TRACKS AT ONCE ############################################################
 wd <- "/media/julien/Julien_2To/data_deep_mapping/good_stuff"
 dataframe_tcx_files <- return_dataframe_tcx_files(wd)

@@ -5,6 +5,23 @@ library(trackeR)
 library(dplyr)
 library(exifr)
 library(data.table)
+
+############################################################
+################### Set directory #######################
+############################################################
+con_Reef_database <- dbConnect(DRV, user=User, password=Password, dbname=Dbname, host=Host)
+template_query_create_view <- paste(readLines("/home/julien/Bureau/CODES/Deep_mapping/SQL/create_view_session_template.sql"), collapse=" ")
+query_metadata <- "SELECT * FROM metadata"
+get_metadata  <- dbGetQuery(con_Reef_database,query_metadata)
+number_row<-nrow(get_metadata)
+for (i in 1:number_row) {
+  query_create_view<- gsub("view_session_2018_03_31_kite_Le_Morne",get_metadata$related_view_name[i],template_query_create_view)
+  query_create_view<- gsub("session_2018_03_31_kite_Le_Morne",get_metadata$identifier[i],template_query_create_view)
+  create_view  <- dbGetQuery(con_Reef_database,query_create_view)
+}
+
+
+
 ############################################################
 ################### Set directory #######################
 ############################################################
