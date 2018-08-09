@@ -3,6 +3,7 @@
 ########################################################################################################
 library(exifr)
 library(RPostgreSQL)
+library(rgdal)
 library(data.table)
 library(dplyr)
 library(trackeR)
@@ -16,10 +17,9 @@ return_offset <- function(con, session_metadata){
   photo_time_database <- dbGetQuery(con, paste0("select \"DateTimeOriginal\" from photos_exif_core_metadata where \"FileName\"='",session_metadata$Photo_for_calibration,"' AND session_id='",session_metadata$Identifier,"';"))
   photo_time <- as.POSIXct(photo_time_database[,1])
   
-  
   offset <-difftime(photo_time, GPS_time, units="secs")
   return(offset)
-  }
+}
 
 ###################################### LOAD SESSION METADATA ############################################################
 #############################################################################################################
@@ -177,7 +177,14 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
 }
 
 
-extract_exif_metadata_in_this_directory <- function(images_directory,this_directory,template_df, mime_type = "*.JPG"){
+# ELEMENTS A TESTER SUR CSV ALL METADATA
+# CSV_total$PreviewImage[1] 
+# CSV_total$PreviewImage[1] 
+# CSV_total$ThumbnailImage[1] 
+# CSV_total$ThumbnailOffset[1]
+# CSV_total$ThumbnailLength[1]
+
+extract_exif_metadata_in_this_directory <- function(images_directory,this_directory,template_df, mime_type = "*.JPG", time_zone="Indian/Mauritius"){
   setwd(this_directory)
   
   log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
@@ -208,7 +215,9 @@ extract_exif_metadata_in_this_directory <- function(images_directory,this_direct
   }
   # change default data types
   exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ", tz="UTC")
-  exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+  exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz=time_zone)
+  exif_metadata$DateTimeOriginal <- format(exif_metadata$DateTimeOriginal, tz="UTC",usetz=TRUE)
+  attr(exif_metadata$DateTimeOriginal,"tzone")
   # exif_metadata$GPSLatitude = as.numeric(exif_metadata$GPSLatitude)
   # exif_metadata$GPSLongitude = as.numeric(exif_metadata$GPSLongitude)
   exif_metadata$geometry_postgis <- NA
@@ -286,7 +295,7 @@ load_exif_metadata_in_database <- function(con, codes_directory, exif_metadata, 
     names(exif_metadata)
     exif_metadata <- exif_metadata[,c(15,1,2,3,4,5,6,7,8,9,10,11,12,13,14)]
     dbWriteTable(con, "photos_exif_core_metadata", exif_metadata, row.names=FALSE, append=TRUE)
-    }
+  }
   # dbWriteTable(con, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
 }
 
@@ -315,7 +324,7 @@ load_gps_tracks_in_database <- function(con, codes_directory, gps_tracks, create
 return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_in_database=FALSE){
   setwd(wd)
   if(type=="RTK"){
-    gpx_file=rtk_file
+    rtk_file=gps_file
     gps_tracks <- read.csv(rtk_file,stringsAsFactors = FALSE)
     gps_tracks$fid <-c(1:nrow(gps_tracks))
     gps_tracks$session_id <- session_id
@@ -336,26 +345,29 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   } else if(type=="GPX"){
     gpx_file=gps_file
     track_points <- NULL
-    track_points <- readOGR(dsn = gpx_file, layer="track_points")
+    track_points <- rgdal::readOGR(dsn = gpx_file, layer="track_points",stringsAsFactors = FALSE)
     # dbWriteSpatial(con_Reef_database, track_points, schemaname="public", tablename="pays", replace=T,srid=4326)
     slotNames(track_points)
+    sapply(track_points@data,class)
     GPS_tracks_values <- NULL
     GPS_tracks_values <- dplyr::select(track_points@data,ele,time,track_fid)
     GPS_tracks_values$latitude <- coordinates(track_points)[,2]
     GPS_tracks_values$longitude <- coordinates(track_points)[,1]
     GPS_tracks_values$the_geom <- NA
     GPS_tracks_values$session_id <- session_id
-    GPS_tracks_values$time <- as.POSIXct(track_points@data$time, "%Y/%m/%d %H:%M:%S", tz="UTC")
+    GPS_tracks_values$time <- as.POSIXlt(track_points@data$time, tz="UTC")-14400
+    class(GPS_tracks_values$time)
+    attr(GPS_tracks_values$time,"tzone")
     GPS_tracks_values= dplyr::rename(GPS_tracks_values, session_id=session_id, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, time=time, the_geom=the_geom)
     GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
     GPS_tracks_values <- GPS_tracks_values[,c(8,7,4,5,1,2,3,6)]
   } else if (type=="TCX"){
+    # https://cran.r-project.org/web/packages/trackeR/vignettes/TourDetrackeR.html => duplicates are removed ?
     tcx_file=gps_file
     runDF <- NULL
-    runDF <- readTCX(file=tcx_file) # runDF <- readTCX(file=file, timezone = "GMT")
+    runDF <- readTCX(file=tcx_file, timezone = "UTC")
     runDF$fid <-c(1:nrow(runDF))
     runDF$session <- session_id
-    runDF$time <- as.POSIXct(runDF$time, "%Y:%m:%d %H:%M:%S", tz="UTC")
     select_columns = subset(runDF, select = c(fid,session,latitude,longitude,altitude,time,heart.rate))
     GPS_tracks_values = dplyr::rename(select_columns, fid=fid, session_id=session, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart.rate, time=time)
     names(GPS_tracks_values)
@@ -369,9 +381,18 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
 }
 
 #############################################################################################################
-############################ read GPX file ###################################################
+############################ plot map TCX file ###################################################
 #############################################################################################################
-return_dataframe_gpx_files <- function(wd, gps_file, type="TCX",load_in_database=FALSE){
+plot_tcx <- function(tcx_file,directory){
+  # https://cran.r-project.org/web/packages/trackeR/vignettes/TourDetrackeR.html
+  original_directory <- getwd()
+  setwd(paste0(directory,"/METADATA"))
+  runTr1 <- readContainer(tcx_file, type = "tcx", timezone = "GMT")
+  # plot(runTr1)
+  jpeg('rplot.jpg')
+  plotRoute(runTr1, zoom = 13, source = "google")
+  dev.off()
+  setwd(original_directory)
   
 }
 #############################################################################################################
