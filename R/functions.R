@@ -383,7 +383,13 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
 #############################################################################################################
 ############################ read GPX file ###################################################
 #############################################################################################################
-return_dataframe_gpx_files <- function(wd, gps_file, type="TCX",load_in_database=FALSE){
+plot_tcx <- function(tcx_file){
+  # https://cran.r-project.org/web/packages/trackeR/vignettes/TourDetrackeR.html
+  runDF <- readTCX(file=tcx_file, timezone = "UTC")
+  runTr0 <- trackeRdata(runDF)
+  runTr1 <- readContainer(tcx_file, type = "tcx", timezone = "GMT")
+  plot(runTr1)
+  plotRoute(runTr1, zoom = 13, source = "google")
   
 }
 #############################################################################################################
