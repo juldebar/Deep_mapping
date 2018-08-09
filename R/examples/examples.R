@@ -2,21 +2,25 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
+images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_03_17_kite_Anse_La_Raie"
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
-
 setwd(codes_directory)
 source(paste0(codes_directory,"R/functions.R"))
-images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/GO_PRO1/session_2017_11_05_kite_Le_Morne"
-session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
 source(paste0(codes_directory,"R/credentials_databases.R"))
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
+session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
 
 Session_metadata_table <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
 Datasets <- as.data.frame(gsheet::gsheet2tbl(Session_metadata_table))
 session_metadata <-filter(Datasets, Identifier==session_id)
-offset <-return_offset(con=con_Reef_database,session_metadata)
-offset
+photo_time <- as.POSIXct(session_metadata$Photo_time, format="%Y-%m-%d %H:%M:%S", tz="Indian/Mauritius")
+GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="UTC")
+attr(photo_time,"tzone")
+offset_gsheet <-difftime(photo_time, GPS_time, units="secs")
+offset_gsheet
+
+# photo_time <- as.POSIXct(session_metadata$Photo_time, format="%Y-%m-%d %H:%M:%S %z", tz="Indian/Mauritius")
 #SELECT "DateTimeOriginal" FROM photos_exif_core_metadata WHERE "FileName"='G0020045.JPG'
 # photo_time <- as.POSIXct("2015-01-01 05:23:30+01") 
 # photo_time <- "2015-01-01 05:23:30" 
@@ -28,12 +32,6 @@ template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.c
 # sapply(template_df,class)
 # head(template_df)
 last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory, template_df, load_metadata_in_database=FALSE)
-# A TESTER SUR CSV ALL METADATA
-# CSV_total$PreviewImage[1] 
-# CSV_total$PreviewImage[1] 
-# CSV_total$ThumbnailImage[1] 
-# CSV_total$ThumbnailOffset[1]
-# CSV_total$ThumbnailLength[1]
 
 exif_core_metadata_elements <- list.files(path = paste0(images_directory,"/METADATA/exif"), pattern = "Core_Exif_metadata_")
 photos_metadata <-NULL
@@ -56,6 +54,7 @@ nrow(dataframe_gps_file)-nrow(duplicates)
 
 load_gps_tracks_in_database(con_Reef_database, codes_directory, dataframe_gps_file, create_table=TRUE)
 
+plot_tcx(tcx_file,images_directory)
 
 
 
@@ -85,6 +84,8 @@ for (t in 1:number_row){
 ############################################################################################
 ###################### INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP  ########
 ############################################################################################ 
+# offset <- return_offset(con_Reef_database, session_metadata)-3600
+offset <- return_offset(con_Reef_database, session_metadata) +3600
 query <- NULL
 query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS.sql")), collapse=" ")
 query <- gsub("session_2018_03_24_kite_Le_Morne",session_id,query)
@@ -93,14 +94,14 @@ if(offset < 0){
   query <- gsub("41",abs(offset)-1,query)
   query <- gsub("42",abs(offset),query)
 }else{
-query <- gsub("41",abs(offset)-1,query)
-query <- gsub("42",abs(offset),query)
+  query <- gsub("41",abs(offset)-1,query)
+  query <- gsub("42",abs(offset),query)
 }
 writeLines(query)
 infer_location <- dbGetQuery(con_Reef_database, query)
 head(infer_location)
 write.csv(infer_location, "/tmp/photos_location.csv",row.names = F)
-
+infer_location
 # infer_photo_location_from_gps_tracks(con_Reef_database, codes_directory, session_id=session)
 
 
@@ -141,7 +142,7 @@ write.csv(metadata_pictures, "exif_metadata.csv",row.names = F)
 
 tcx_file <-"./R/examples/11597621537.tcx"
 type<-"TCX"
-gpx_file <-"./R/examples/11597621537.gpx"
+gpx_file <-"/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/GO_PRO1/session_2017_11_05_kite_Le_Morne/GPS/10763408047.gpx"
 type<-"GPX"
 rtk_file <-"/home/julien/Téléchargements/raw_201707111046-4.csv"
 type="RTK"
