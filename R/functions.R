@@ -3,6 +3,7 @@
 ########################################################################################################
 library(exifr)
 library(RPostgreSQL)
+library(rgdal)
 library(data.table)
 library(dplyr)
 library(trackeR)
@@ -15,7 +16,6 @@ return_offset <- function(con, session_metadata){
   GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="UTC")
   photo_time_database <- dbGetQuery(con, paste0("select \"DateTimeOriginal\" from photos_exif_core_metadata where \"FileName\"='",session_metadata$Photo_for_calibration,"' AND session_id='",session_metadata$Identifier,"';"))
   photo_time <- as.POSIXct(photo_time_database[,1])
-  
   
   offset <-difftime(photo_time, GPS_time, units="secs")
   return(offset)
@@ -177,7 +177,14 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
 }
 
 
-extract_exif_metadata_in_this_directory <- function(images_directory,this_directory,template_df, mime_type = "*.JPG"){
+# ELEMENTS A TESTER SUR CSV ALL METADATA
+# CSV_total$PreviewImage[1] 
+# CSV_total$PreviewImage[1] 
+# CSV_total$ThumbnailImage[1] 
+# CSV_total$ThumbnailOffset[1]
+# CSV_total$ThumbnailLength[1]
+
+extract_exif_metadata_in_this_directory <- function(images_directory,this_directory,template_df, mime_type = "*.JPG", time_zone="Indian/Mauritius"){
   setwd(this_directory)
   
   log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
@@ -208,7 +215,9 @@ extract_exif_metadata_in_this_directory <- function(images_directory,this_direct
   }
   # change default data types
   exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ", tz="UTC")
-  exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz="Indian/Mauritius")
+  exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz=time_zone)
+  exif_metadata$DateTimeOriginal <- format(exif_metadata$DateTimeOriginal, tz="UTC",usetz=TRUE)
+  attr(exif_metadata$DateTimeOriginal,"tzone")
   # exif_metadata$GPSLatitude = as.numeric(exif_metadata$GPSLatitude)
   # exif_metadata$GPSLongitude = as.numeric(exif_metadata$GPSLongitude)
   exif_metadata$geometry_postgis <- NA
@@ -336,16 +345,19 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   } else if(type=="GPX"){
     gpx_file=gps_file
     track_points <- NULL
-    track_points <- readOGR(dsn = gpx_file, layer="track_points")
+    track_points <- rgdal::readOGR(dsn = gpx_file, layer="track_points",stringsAsFactors = FALSE)
     # dbWriteSpatial(con_Reef_database, track_points, schemaname="public", tablename="pays", replace=T,srid=4326)
     slotNames(track_points)
+    sapply(track_points@data,class)
     GPS_tracks_values <- NULL
     GPS_tracks_values <- dplyr::select(track_points@data,ele,time,track_fid)
     GPS_tracks_values$latitude <- coordinates(track_points)[,2]
     GPS_tracks_values$longitude <- coordinates(track_points)[,1]
     GPS_tracks_values$the_geom <- NA
     GPS_tracks_values$session_id <- session_id
-    GPS_tracks_values$time <- as.POSIXct(track_points@data$time, "%Y/%m/%d %H:%M:%S", tz="UTC")
+    GPS_tracks_values$time <- as.POSIXlt(track_points@data$time, tz="UTC")-14400
+    class(GPS_tracks_values$time)
+    attr(GPS_tracks_values$time,"tzone")
     GPS_tracks_values= dplyr::rename(GPS_tracks_values, session_id=session_id, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, time=time, the_geom=the_geom)
     GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
     GPS_tracks_values <- GPS_tracks_values[,c(8,7,4,5,1,2,3,6)]
