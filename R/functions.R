@@ -315,7 +315,7 @@ load_gps_tracks_in_database <- function(con, codes_directory, gps_tracks, create
 return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_in_database=FALSE){
   setwd(wd)
   if(type=="RTK"){
-    gpx_file=rtk_file
+    rtk_file=gps_file
     gps_tracks <- read.csv(rtk_file,stringsAsFactors = FALSE)
     gps_tracks$fid <-c(1:nrow(gps_tracks))
     gps_tracks$session_id <- session_id
@@ -350,12 +350,12 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
     GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
     GPS_tracks_values <- GPS_tracks_values[,c(8,7,4,5,1,2,3,6)]
   } else if (type=="TCX"){
+    # https://cran.r-project.org/web/packages/trackeR/vignettes/TourDetrackeR.html => duplicates are removed ?
     tcx_file=gps_file
     runDF <- NULL
-    runDF <- readTCX(file=tcx_file) # runDF <- readTCX(file=file, timezone = "GMT")
+    runDF <- readTCX(file=tcx_file, timezone = "UTC")
     runDF$fid <-c(1:nrow(runDF))
     runDF$session <- session_id
-    runDF$time <- as.POSIXct(runDF$time, "%Y:%m:%d %H:%M:%S", tz="UTC")
     select_columns = subset(runDF, select = c(fid,session,latitude,longitude,altitude,time,heart.rate))
     GPS_tracks_values = dplyr::rename(select_columns, fid=fid, session_id=session, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart.rate, time=time)
     names(GPS_tracks_values)
