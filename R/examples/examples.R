@@ -2,7 +2,7 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_02_kite_Le_Morne"
+images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_03_18_kite_Pointe_Esny"
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
 setwd(codes_directory)
@@ -83,7 +83,8 @@ for (t in 1:number_row){
 ############################################################################################
 ###################### INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP  ########
 ############################################################################################ 
-offset <- return_offset(con_Reef_database, session_metadata)
+# offset <- return_offset(con_Reef_database, session_metadata)-3600
+offset <- return_offset(con_Reef_database, session_metadata) +3600
 query <- NULL
 query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS.sql")), collapse=" ")
 query <- gsub("session_2018_03_24_kite_Le_Morne",session_id,query)
@@ -99,7 +100,7 @@ writeLines(query)
 infer_location <- dbGetQuery(con_Reef_database, query)
 head(infer_location)
 write.csv(infer_location, "/tmp/photos_location.csv",row.names = F)
-
+infer_location
 # infer_photo_location_from_gps_tracks(con_Reef_database, codes_directory, session_id=session)
 
 
