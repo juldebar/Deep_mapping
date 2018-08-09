@@ -2,7 +2,7 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_03_18_kite_Pointe_Esny"
+images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_03_17_kite_Anse_La_Raie"
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
 setwd(codes_directory)
@@ -54,6 +54,7 @@ nrow(dataframe_gps_file)-nrow(duplicates)
 
 load_gps_tracks_in_database(con_Reef_database, codes_directory, dataframe_gps_file, create_table=TRUE)
 
+plot_tcx(tcx_file,images_directory)
 
 
 
