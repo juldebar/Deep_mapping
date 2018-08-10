@@ -2,7 +2,7 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-images_directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_11_kite_Le_Morne"
+images_directory <- "/media/julien/Iomega HDD/go_pro/session_2018_03_10_kite_Le_Morne"
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
 setwd(codes_directory)
@@ -87,14 +87,14 @@ for (t in 1:number_row){
 # offset <- return_offset(con_Reef_database, session_metadata)-3600
 offset <- return_offset(con_Reef_database, session_metadata) +3600
 query <- NULL
-query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS.sql")), collapse=" ")
+query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
 query <- gsub("session_2018_03_24_kite_Le_Morne",session_id,query)
 if(offset < 0){
   query <- gsub("- interval","+ interval",query)
-  query <- gsub("41",abs(offset)-1,query)
+  # query <- gsub("41",abs(offset)-1,query)
   query <- gsub("42",abs(offset),query)
 }else{
-  query <- gsub("41",abs(offset)-1,query)
+  # query <- gsub("41",abs(offset)-1,query)
   query <- gsub("42",abs(offset),query)
 }
 writeLines(query)
