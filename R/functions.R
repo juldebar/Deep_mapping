@@ -287,7 +287,7 @@ load_exif_metadata_in_database <- function(con, codes_directory, exif_metadata, 
   if(create_table==TRUE){
     query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_directory,"SQL/create_exif_core_metadata_table.sql")), collapse=" ")
     create_exif_core_metadata_table <- dbGetQuery(con,query_create_exif_core_metadata_table)
-    dbWriteTable(con, "photos_exif_core_metadata", exif_metadata, row.names=TRUE, append=TRUE)
+    dbWriteTable(con, "photos_exif_core_metadata", exif_metadata, row.names=FALSE, append=TRUE)
   } else {
     ogc_fid_min <- dbGetQuery(con, paste0("SELECT max(ogc_fid) FROM photos_exif_core_metadata;"))+1
     ogc_fid_max <- max(ogc_fid_min)+nrow(exif_metadata)-1
