@@ -2,7 +2,7 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-images_directory <- "/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_03_17_kite_Anse_La_Raie"
+images_directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_11_kite_Le_Morne"
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
 setwd(codes_directory)
