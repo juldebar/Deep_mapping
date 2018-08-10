@@ -1,0 +1,14 @@
+/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_02_kite_Le_Morne/GPS/11599156792.gpx
+/media/julien/39160875-fe18-4080-aab7-c3c3150a630d/julien/go_pro_all/session_2018_01_02_kite_Le_Morne/GPS/11599156792.tcx
+
+=> 2018-01-02T17:22:07 il manque des points GPS 
+2018-01-02T17:21:27
+ => Du coup il faut chercher les point les plus proches et pas les ceux à une seconde d'écart...
+
+
+Faire une fonction de check => nb photos / nb photos géoréférencées / nb points GPS / Nb points GPS avec écart 1s / hors écarts une seconde..
+
+Calculer la longueur cumulée des transects à partir des positions déduites des photos
+
+
+Sur la nouvelle requête, ajouter une contrainte d'écart de temps en lien avec la fréquence d'acquisition
