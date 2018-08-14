@@ -12,3 +12,5 @@ Calculer la longueur cumulée des transects à partir des positions déduites de
 
 
 Sur la nouvelle requête, ajouter une contrainte d'écart de temps en lien avec la fréquence d'acquisition
+
+Requête pour nettoyer les vues ?
