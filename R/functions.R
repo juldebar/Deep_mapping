@@ -440,6 +440,7 @@ return_dataframe_tcx_files <- function(wd){
 #############################################################################################################
 
 infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_directory, session_id, offset){
+  original_directory <- getwd()
   setwd(images_directory)
   query <- NULL
   query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
