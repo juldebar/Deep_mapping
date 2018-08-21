@@ -287,9 +287,10 @@ load_exif_metadata_in_database <- function(con, codes_directory, exif_metadata, 
   if(create_table==TRUE){
     query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_directory,"SQL/create_exif_core_metadata_table.sql")), collapse=" ")
     create_exif_core_metadata_table <- dbGetQuery(con,query_create_exif_core_metadata_table)
-    dbWriteTable(con, "photos_exif_core_metadata", exif_metadata, row.names=TRUE, append=TRUE)
+    dbWriteTable(con, "photos_exif_core_metadata", exif_metadata, row.names=FALSE, append=TRUE)
   } else {
     ogc_fid_min <- dbGetQuery(con, paste0("SELECT max(ogc_fid) FROM photos_exif_core_metadata;"))+1
+    if(is.na(ogc_fid_min)){ogc_fid_min=0}
     ogc_fid_max <- max(ogc_fid_min)+nrow(exif_metadata)-1
     exif_metadata$ogc_fid <-c(max(ogc_fid_min):ogc_fid_max)
     names(exif_metadata)
@@ -366,12 +367,18 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
     tcx_file=gps_file
     runDF <- NULL
     runDF <- readTCX(file=tcx_file, timezone = "UTC")
-    runDF$fid <-c(1:nrow(runDF))
+    existing_rows <- dbGetQuery(con_Reef_database, paste0("SELECT COUNT(*) FROM gps_tracks WHERE session_id='",session_id,"';"))
+    if(is.na(existing_rows)){existing_rows=0}
+    start <- as.integer(existing_rows+1)
+    end <- as.integer(existing_rows+nrow(runDF))
+    runDF$fid <-c(start:end)
     runDF$session <- session_id
     select_columns = subset(runDF, select = c(fid,session,latitude,longitude,altitude,time,heart.rate))
     GPS_tracks_values = dplyr::rename(select_columns, fid=fid, session_id=session, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart.rate, time=time)
     names(GPS_tracks_values)
     GPS_tracks_values$the_geom <- NA
+    class(GPS_tracks_values$time)
+    attr(GPS_tracks_values$time,"tzone")
   }
   
   if(load_in_database==TRUE){load_gps_tracks_in_database(con_Reef_database, codes_directory, GPS_tracks_table, create_table=FALSE)}
@@ -387,13 +394,12 @@ plot_tcx <- function(tcx_file,directory){
   # https://cran.r-project.org/web/packages/trackeR/vignettes/TourDetrackeR.html
   original_directory <- getwd()
   setwd(paste0(directory,"/METADATA"))
-  runTr1 <- readContainer(tcx_file, type = "tcx", timezone = "GMT")
+  this_session_gps_tracks <- readContainer(tcx_file, type = "tcx", timezone = "GMT")
   # plot(runTr1)
-  jpeg('rplot.jpg')
-  plotRoute(runTr1, zoom = 13, source = "google")
+  jpeg(paste0(plot_tcx,"rplot.jpg"))
+  plotRoute(this_session_gps_tracks, zoom = 13, source = "google")
   dev.off()
   setwd(original_directory)
-  
 }
 #############################################################################################################
 ############################ RETRIEVE TCX FILES ###################################################
@@ -433,11 +439,26 @@ return_dataframe_tcx_files <- function(wd){
 ############################ infer_photo_location_from_gps_tracks ###################################################
 #############################################################################################################
 
-infer_photo_location_from_gps_tracks <- function(con, codes_directory, session_id="all"){
-  if(session_id=="all"){
-    query <- paste(readLines(paste0(codes_directory,"SQL/interpolation_between_closest_GPS_POINTS.sql")), collapse=" ")
-    execute_query <- dbGetQuery(con,query_create_table)
-  } else {
-    execute_query <- dbGetQuery(con,query_create_table)
+infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_directory, session_id, offset){
+  setwd(images_directory)
+  query <- NULL
+  query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
+  query <- gsub("session_2018_03_24_kite_Le_Morne",session_id,query)
+  if(offset < 0){
+    query <- gsub("- interval","+ interval",query)
+    # query <- gsub("41",abs(offset)-1,query)
+    query <- gsub("42",abs(offset),query)
+  }else{
+    query <- gsub("41",abs(offset)-1,query)
+    query <- gsub("42",abs(offset),query)
   }
+  writeLines(query)
+  
+  inferred_location <- dbGetQuery(con, query)
+  head(inferred_location)
+  setwd(paste0(images_directory,"/GPS"))
+  write.csv(inferred_location, "photos_location.csv",row.names = F)
+  setwd(original_directory)
+  
+  return(inferred_location)
 }
