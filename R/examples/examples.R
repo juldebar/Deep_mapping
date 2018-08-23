@@ -2,7 +2,7 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-images_directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro2/session_2018_03_10_kite_Le_Morne"
+images_directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro1/checked/session_2017_11_19_paddle_Black_Rocks"
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
 setwd(codes_directory)
@@ -19,6 +19,7 @@ GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="UTC")
 attr(photo_time,"tzone")
 offset_gsheet <-difftime(photo_time, GPS_time, units="secs")
 offset_gsheet
+# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC'")
 
 # photo_time <- as.POSIXct(session_metadata$Photo_time, format="%Y-%m-%d %H:%M:%S %z", tz="Indian/Mauritius")
 #SELECT "DateTimeOriginal" FROM photos_exif_core_metadata WHERE "FileName"='G0020045.JPG'
@@ -102,8 +103,13 @@ offset <-difftime(photo_time, GPS_time, units="secs")
 offset
 # offset <- return_offset(con_Reef_database, session_metadata)-3600
 offset <- return_offset(con_Reef_database, session_metadata) +3600
+offset <- return_offset(con_Reef_database, session_metadata)
 infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory, session_id, offset)
-infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory, session_id, offset_gsheet)
+infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory, session_id, offset_gsheet, create_view=TRUE)
+
+test_offset <- offset_gsheet-14400
+# test_offset <- 89674846
+infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory, session_id, test_offset, create_view=TRUE)
 
 # OLD
 # query <- NULL

@@ -439,7 +439,7 @@ return_dataframe_tcx_files <- function(wd){
 ############################ infer_photo_location_from_gps_tracks ###################################################
 #############################################################################################################
 
-infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_directory, session_id, offset){
+infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_directory, session_id, offset, create_view=FALSE){
   original_directory <- getwd()
   setwd(images_directory)
   query <- NULL
@@ -460,6 +460,10 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
   setwd(paste0(images_directory,"/GPS"))
   write.csv(inferred_location, "photos_location.csv",row.names = F)
   setwd(original_directory)
+  
+  if(create_view==FALSE){
+    drop_view <- dbGetQuery(con_Reef_database, paste0('DROP VIEW IF EXISTS view_',session_id,';'))
+  }
   
   return(inferred_location)
 }
