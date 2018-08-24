@@ -405,10 +405,10 @@ plot_tcx <- function(tcx_file,directory){
 #############################################################################################################
 ############################ RETRIEVE TCX FILES ###################################################
 #############################################################################################################
-return_dataframe_tcx_files <- function(wd){
+return_dataframe_gps_files <- function(wd,type="TCX"){
   setwd(wd)
-  dataframe_tcx_files <- NULL
-  dataframe_tcx_files <- data.frame(session=character(), path=character(), file_name=character())
+  dataframe_gps_files <- NULL
+  dataframe_gps_files <- data.frame(session=character(), path=character(), file_name=character())
   sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
   sub_directories  
   for (i in sub_directories){
@@ -419,14 +419,15 @@ return_dataframe_tcx_files <- function(wd){
       name_session <-gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
       cat(name_session)
       cat("\n List tcx \n")
-      files <- list.files(pattern = "*.tcx")
-      tcx_files <- files
-      cat(tcx_files)
-      if(length(tcx_files)>1){cat("\n FUCK \n")}
+      if (type=="TCX"){pattern = "*.tcx"} else if (type=="GPX"){pattern = "*.gpx"} else if (type=="RTK"){pattern = "*.rtk"}
+      files <- list.files(pattern = pattern)
+      gps_files <- files
+      cat(gps_files)
+      if(length(gps_files)>1){cat("\n ERROR! \n")}
       cat("\n Le vecteur \n")
-      cat(c(name_session,i,tcx_files))
-      newRow <- data.frame(session=name_session,path=i,file_name=tcx_files)
-      dataframe_tcx_files <- rbind(dataframe_tcx_files,newRow)
+      cat(c(name_session,i,gps_files))
+      newRow <- data.frame(session=name_session,path=i,file_name=gps_files)
+      dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
     }
     else {
       # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
@@ -434,7 +435,7 @@ return_dataframe_tcx_files <- function(wd){
       # cat(substr(i, nchar(i)-2, nchar(i)))
     }
   }
-  return(dataframe_tcx_files)
+  return(dataframe_gps_files)
 }
 #############################################################################################################
 ############################ infer_photo_location_from_gps_tracks ###################################################
