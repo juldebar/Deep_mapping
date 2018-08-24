@@ -2,7 +2,7 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-images_directory <- "/media/julien/ab29186c-4812-4fa3-bf4d-583f3f5ce311/julien/gopro1/checked/session_2017_11_19_paddle_Black_Rocks"
+images_directory <- "/media/julien/Julien_2To/data_deep_mapping/done/session_2018_05_12_snorkelling_Balacava"
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
 setwd(codes_directory)
@@ -19,7 +19,6 @@ GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="UTC")
 attr(photo_time,"tzone")
 offset_gsheet <-difftime(photo_time, GPS_time, units="secs")
 offset_gsheet
-# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC'")
 
 # photo_time <- as.POSIXct(session_metadata$Photo_time, format="%Y-%m-%d %H:%M:%S %z", tz="Indian/Mauritius")
 #SELECT "DateTimeOriginal" FROM photos_exif_core_metadata WHERE "FileName"='G0020045.JPG'
@@ -45,13 +44,12 @@ load_exif_metadata_in_database(con_Reef_database, codes_directory, photos_metada
 # check_database <- dbSendQuery(con_Reef_database, paste0("SELECT * FROM gps_tracks WHERE session_id='",session_id,"' LIMIT 10"))
 check_database <- dbGetQuery(con_Reef_database, paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 10"))
 check_database
-set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC'")
-
-
-
 ############################################################################################
 ###################### EXTRACT GPS TRACKS DATA AND LOAD THEM INTO POSTGRES DATABASE ########
 ############################################################################################ 
+
+set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC'")
+
 # check the number of tcx files for the session (sometimes more than one: battery issue..)
 dataframe_tcx_files <- return_dataframe_tcx_files(images_directory)
 number_row<-nrow(dataframe_tcx_files)
@@ -90,23 +88,22 @@ if(number_row>1){
 ############################################################################################
 ###################### INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP  ########
 ############################################################################################ 
+offset <- return_offset(con_Reef_database, session_metadata)
+infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory, session_id, offset)
+dbDisconnect(con_Reef_database)
+
+
 GPS_time <- as.POSIXct("2018-08-19 10:37:00", tz="UTC")
 photo_time <- as.POSIXct("2018-08-19 14:40:19", tz="Indian/Mauritius")
 GPS_time <- as.POSIXct("2018-06-30 12:13:00", tz="UTC")
 photo_time <- as.POSIXct("2018-06-30 12:15:21", tz="UTC")
-
 GPS_time <- as.POSIXct("2018-03-24 13:44:00", tz="UTC")
 photo_time <- as.POSIXct("2018-03-24 13:44:42", tz="UTC")
-
-
 offset <-difftime(photo_time, GPS_time, units="secs")
 offset
 # offset <- return_offset(con_Reef_database, session_metadata)-3600
 offset <- return_offset(con_Reef_database, session_metadata) +3600
-offset <- return_offset(con_Reef_database, session_metadata)
-infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory, session_id, offset)
 infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory, session_id, offset_gsheet, create_view=TRUE)
-
 test_offset <- offset_gsheet-14400
 # test_offset <- 89674846
 infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory, session_id, test_offset, create_view=TRUE)
@@ -182,8 +179,6 @@ dataframe_gps_file <- switch(type,
 head(dataframe_gps_file)
 nrow(dataframe_gps_file)
 load_gps_tracks_in_database(con_Reef_database, codes_directory, dataframe_gps_file, create_table=FALSE)
-
-
 
 # ogr2ogr -f GPX points.gpx PG:'host=reef-db.d4science.org user=Reef_admin password=4b0a6dd24ac7b79 dbname=Reef_database' -sql "select * from gps_tracks where session_id='session_2018_03_31_kite_Le_Morne' LIMIT 100"
 # dsn <- paste0("PG:dbname='",Dbname,"' host='",Host,"' port='5432' user='",User,"' password='",Password," ' \" ")
