@@ -115,8 +115,9 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
     setwd(images_directory)
     this_directory <- sub_directories[i]
     
-    if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
-      # this_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne/DCIM/101GOPRO"
+    # if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
+    if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE){
+        # this_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne/DCIM/101GOPRO"
       exif_metadata <- extract_exif_metadata_in_this_directory(images_directory,this_directory,template_df)
       # new_exif_metadata <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
       # new_exif_metadata <- rbind(template_df, dat)
@@ -453,17 +454,20 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
     query <- gsub("41",abs(offset)-1,query)
     query <- gsub("42",abs(offset),query)
   }
-  writeLines(query)
+  fileConn<-file(paste0('DROP VIEW IF EXISTS view_',session_id,'.SQL'))
+  writeLines(query, fileConn)
+  close(fileConn)
   
   inferred_location <- dbGetQuery(con, query)
-  head(inferred_location)
-  setwd(paste0(images_directory,"/GPS"))
-  write.csv(inferred_location, "photos_location.csv",row.names = F)
-  setwd(original_directory)
   
   if(create_view==FALSE){
     drop_view <- dbGetQuery(con_Reef_database, paste0('DROP VIEW IF EXISTS view_',session_id,';'))
   }
+  create_csv_from_view <- dbGetQuery(con_Reef_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
+  # head(create_csv_from_view)
+  setwd(paste0(images_directory,"/GPS"))
+  write.csv(create_csv_from_view, "photos_location.csv",row.names = F)
+  setwd(original_directory)
   
-  return(inferred_location)
+  return(create_csv_from_view)
 }
