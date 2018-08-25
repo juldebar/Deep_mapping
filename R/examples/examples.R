@@ -2,7 +2,7 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-images_directory <- "/media/julien/8765-4321/session_2018_08_24_Zanzibar_snorkelling"
+images_directory <- "/media/julien/3465-3131/session_2018_08_25_Zanzibar_Snorkelling"
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
 setwd(codes_directory)
@@ -31,7 +31,7 @@ offset_gsheet
 template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),stringsAsFactors = FALSE)
 # sapply(template_df,class)
 # head(template_df)
-last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory, template_df, load_metadata_in_database=FALSE)
+last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory, template_df, load_metadata_in_database=FALSE,time_zone="UTC")
 attr(last_metadata_pictures$DateTimeOriginal,"tzone")
 
 exif_core_metadata_elements <- list.files(path = paste0(images_directory,"/METADATA/exif"), pattern = "Core_Exif_metadata_")
@@ -49,9 +49,10 @@ check_database
 ############################################################################################ 
 
 set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC'")
-# check the number of tcx files for the session (sometimes more than one: battery issue..)
-type<-"GPX"
-dataframe_gps_files <- return_dataframe_gps_files(images_directory,type="GPX") #type<-"TCX" type<-"GPX" type<-"RTK"
+# check the number of GPS files for the session (sometimes more than one: battery issue..)
+file_type<-"GPX"
+#file_type<-"TCX" file_type<-"GPX" file_type<-"RTK"
+dataframe_gps_files <- return_dataframe_gps_files(images_directory,type=file_type)
 number_row<-nrow(dataframe_gps_files)
 number_row
 # if only one GPS file
@@ -120,14 +121,17 @@ test_offset <- offset_gsheet-14400
 infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory, session_id, test_offset, create_view=TRUE)
 
 
-GPS_time <- as.POSIXct("2018-08-19 10:37:00", tz="UTC")
-photo_time <- as.POSIXct("2018-08-19 14:40:19", tz="Indian/Mauritius")
+GPS_time <- as.POSIXct("2018-08-24 09:24:08", tz="UTC")
+photo_time <- as.POSIXct("2018-08-08 14:57:07", tz="Indian/Mauritius")
 GPS_time <- as.POSIXct("2018-06-30 12:13:00", tz="UTC")
 photo_time <- as.POSIXct("2018-06-30 12:15:21", tz="UTC")
 GPS_time <- as.POSIXct("2018-03-24 13:44:00", tz="UTC")
 photo_time <- as.POSIXct("2018-03-24 13:44:42", tz="UTC")
 offset <-difftime(photo_time, GPS_time, units="secs")
 offset
+
+
+	
 
 # OLD
 # query <- NULL
