@@ -97,7 +97,7 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
 #############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
-extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metadata_in_database=FALSE){
+extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metadata_in_database=FALSE,time_zone="Indian/Mauritius"){
   setwd(images_directory)
   session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
   dir.create(file.path(images_directory, "METADATA"))
@@ -118,7 +118,7 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
     # if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
     if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE){
         # this_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne/DCIM/101GOPRO"
-      exif_metadata <- extract_exif_metadata_in_this_directory(images_directory,this_directory,template_df)
+      exif_metadata <- extract_exif_metadata_in_this_directory(images_directory,this_directory,template_df,time_zone=time_zone)
       # new_exif_metadata <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
       # new_exif_metadata <- rbind(template_df, dat)
       new_exif_metadata <- bind_rows(template_df, exif_metadata)
@@ -357,7 +357,7 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
     GPS_tracks_values$longitude <- coordinates(track_points)[,1]
     GPS_tracks_values$the_geom <- NA
     GPS_tracks_values$session_id <- session_id
-    GPS_tracks_values$time <- as.POSIXlt(track_points@data$time, tz="UTC")-14400
+    GPS_tracks_values$time <- as.POSIXlt(track_points@data$time, tz="UTC")
     class(GPS_tracks_values$time)
     attr(GPS_tracks_values$time,"tzone")
     GPS_tracks_values= dplyr::rename(GPS_tracks_values, session_id=session_id, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, time=time, the_geom=the_geom)
@@ -423,11 +423,10 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
       files <- list.files(pattern = pattern)
       gps_files <- files
       cat(gps_files)
-      if(length(gps_files)>1){cat("\n ERROR! \n")}
-      cat("\n Le vecteur \n")
-      cat(c(name_session,i,gps_files))
-      newRow <- data.frame(session=name_session,path=i,file_name=gps_files)
-      dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
+      # if(length(gps_files)>1){cat("\n ERROR! \n")}
+      # cat(c(name_session,i,gps_files))
+      # newRow <- data.frame(session=name_session,path=i,file_name=gps_files)
+      # dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
     }
     else {
       # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
@@ -455,14 +454,14 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
     query <- gsub("41",abs(offset)-1,query)
     query <- gsub("42",abs(offset),query)
   }
-  fileConn<-file(paste0('DROP VIEW IF EXISTS view_',session_id,'.SQL'))
+  fileConn<-file(paste0('view_',session_id,'.SQL'))
   writeLines(query, fileConn)
   close(fileConn)
   
   inferred_location <- dbGetQuery(con, query)
   
   if(create_view==FALSE){
-    drop_view <- dbGetQuery(con_Reef_database, paste0('DROP VIEW IF EXISTS view_',session_id,';'))
+    drop_view <- dbGetQuery(con_Reef_database, paste0('DROP MATERIALIZED VIEW IF EXISTS \"view_',session_id,'\";'))
   }
   create_csv_from_view <- dbGetQuery(con_Reef_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
   # head(create_csv_from_view)
