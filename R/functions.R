@@ -425,8 +425,8 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
       cat(gps_files)
       # if(length(gps_files)>1){cat("\n ERROR! \n")}
       # cat(c(name_session,i,gps_files))
-      # newRow <- data.frame(session=name_session,path=i,file_name=gps_files)
-      # dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
+      newRow <- data.frame(session=name_session,path=i,file_name=gps_files)
+      dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
     }
     else {
       # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
@@ -448,7 +448,8 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
   query <- gsub("session_2018_03_24_kite_Le_Morne",session_id,query)
   if(offset < 0){
     query <- gsub("- interval","+ interval",query)
-    # query <- gsub("41",abs(offset)-1,query)
+    query <- gsub("41",abs(offset)+1,query)
+    # query <- gsub("41",abs(offset)+2,query)
     query <- gsub("42",abs(offset),query)
   }else{
     query <- gsub("41",abs(offset)-1,query)
@@ -460,9 +461,9 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
   
   inferred_location <- dbGetQuery(con, query)
   
-  if(create_view==FALSE){
-    drop_view <- dbGetQuery(con_Reef_database, paste0('DROP MATERIALIZED VIEW IF EXISTS \"view_',session_id,'\";'))
-  }
+  # if(create_view==FALSE){
+  #   drop_view <- dbGetQuery(con_Reef_database, paste0('DROP MATERIALIZED VIEW IF EXISTS \"view_',session_id,'\";'))
+  # }
   create_csv_from_view <- dbGetQuery(con_Reef_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
   # head(create_csv_from_view)
   setwd(paste0(images_directory,"/GPS"))
