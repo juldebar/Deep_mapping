@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg height="383" version="1.1" width="1350" xmlns="http://www.w3.org/2000/svg">
+<rect fill="#ffffff" height="66" stroke="#ffffff" stroke-width="1" width="123" x="494" y="142"/>
+<rect fill="none" height="66" stroke="#000000" stroke-width="1" width="123" x="494" y="142"/>
+<text font-family="Dialog" font-size="12" x="540" y="155">
+coral</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="123" x="494" y="165"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="123" x="494" y="186"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="75" x="910" y="134"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="75" x="910" y="134"/>
+<text font-family="Dialog" font-size="12" x="915" y="147">
+sea_grass</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="75" x="910" y="157"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="75" x="910" y="178"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="1014" y="134"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="1014" y="134"/>
+<text font-family="Dialog" font-size="12" x="1031" y="147">
+sand</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="1014" y="157"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="1014" y="178"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="79" x="422" y="246"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="79" x="422" y="246"/>
+<text font-family="Dialog" font-size="12" x="427" y="259">
+dead_coral</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="79" x="422" y="269"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="79" x="422" y="290"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="67" x="534" y="246"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="67" x="534" y="246"/>
+<text font-family="Dialog" font-size="12" x="539" y="259">
+acropore</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="67" x="534" y="269"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="67" x="534" y="290"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="142" y="142"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="142" y="142"/>
+<text font-family="Dialog" font-size="12" x="164" y="155">
+fish</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="142" y="165"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="142" y="186"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="14" y="302"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="14" y="302"/>
+<text font-family="Dialog" font-size="12" x="37" y="315">
+ray</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="14" y="325"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="14" y="346"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="30" y="142"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="30" y="142"/>
+<text font-family="Dialog" font-size="12" x="46" y="155">
+turtle</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="30" y="165"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="30" y="186"/>
+<rect fill="#ffffff" height="69" stroke="#ffffff" stroke-width="1" width="136" x="230" y="143"/>
+<rect fill="none" height="69" stroke="#000000" stroke-width="1" width="136" x="230" y="143"/>
+<text font-family="Dialog" font-size="12" x="270" y="156">
+holoturie</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="136" x="230" y="166"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="136" x="230" y="190"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="77" x="94" y="302"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="77" x="94" y="302"/>
+<text font-family="Dialog" font-size="12" x="99" y="315">
+demoiselle</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="77" x="94" y="325"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="77" x="94" y="346"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="190" y="302"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="190" y="302"/>
+<text font-family="Dialog" font-size="12" x="202" y="315">
+baliste</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="190" y="325"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="190" y="346"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="278" y="302"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="278" y="302"/>
+<text font-family="Dialog" font-size="12" x="293" y="315">
+corne</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="278" y="325"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="278" y="346"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="1270" y="262"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="1270" y="262"/>
+<text font-family="Dialog" font-size="12" x="1287" y="275">
+sillon</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="1270" y="285"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="1270" y="306"/>
+<polyline fill="none" points="158,302 158,208" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="158,208 165,220 151,220" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="158,208 165,220 151,220" stroke="#000000" stroke-width="1"/>
+<polyline fill="none" points="207,302 207,208" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="207,208 214,220 200,220" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="207,208 214,220 200,220" stroke="#000000" stroke-width="1"/>
+<polyline fill="none" points="278,302 207,208" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="207,208 219,213 208,221" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="207,208 219,213 208,221" stroke="#000000" stroke-width="1"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="158" y="22"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="158" y="22"/>
+<text font-family="Dialog" font-size="12" x="170" y="35">
+animal</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="158" y="45"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="158" y="66"/>
+<polyline fill="none" points="182,142 182,88" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="182,88 189,100 175,100" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="182,88 189,100 175,100" stroke="#000000" stroke-width="1"/>
+<polyline fill="none" points="230,143 223,88" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="223,88 231,99 217,100" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="223,88 231,99 217,100" stroke="#000000" stroke-width="1"/>
+<polyline fill="none" points="95,142 158,88" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="158,88 153,101 144,90" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="158,88 153,101 144,90" stroke="#000000" stroke-width="1"/>
+<polyline fill="none" points="494,142 223,88" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="223,88 236,83 233,97" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="223,88 236,83 233,97" stroke="#000000" stroke-width="1"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="806" y="134"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="806" y="134"/>
+<text font-family="Dialog" font-size="12" x="821" y="147">
+algae</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="806" y="157"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="806" y="178"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="123" x="1206" y="142"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="123" x="1206" y="142"/>
+<text font-family="Dialog" font-size="12" x="1211" y="155">
+coral_reef_habitat</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="123" x="1206" y="165"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="123" x="1206" y="186"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="66" x="902" y="14"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="66" x="902" y="14"/>
+<text font-family="Dialog" font-size="12" x="912" y="27">
+vegetal</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="902" y="37"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="66" x="902" y="58"/>
+<polyline fill="none" points="871,134 902,80" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="902,80 902,93 889,86" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="902,80 902,93 889,86" stroke="#000000" stroke-width="1"/>
+<polyline fill="none" points="934,134 934,80" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="934,80 941,92 927,92" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="934,80 941,92 927,92" stroke="#000000" stroke-width="1"/>
+<polyline fill="none" points="1014,134 967,80" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="967,80 980,84 969,93" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="967,80 980,84 969,93" stroke="#000000" stroke-width="1"/>
+<rect fill="#ffffff" height="67" stroke="#ffffff" stroke-width="1" width="101" x="1134" y="278"/>
+<rect fill="none" height="67" stroke="#000000" stroke-width="1" width="101" x="1134" y="278"/>
+<text font-family="Dialog" font-size="12" x="1139" y="291">
+external_slope</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="101" x="1134" y="301"/>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="101" x="1134" y="322"/>
+</svg>
