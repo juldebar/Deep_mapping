@@ -2,7 +2,7 @@
 
 This is a repository providing R codes to manage exif metadata of photos and infer their spatial location from GPS tracks (from other devices: smartphone, watch..). The repository provides R codes to extract exif metadata and store them in a Postgres / Postgis database along with spatial data (from GPS tracker).
 
-The project has been presented at FOSS4G 2018 conference held in Dar Es Salaam: see [Slides](https://docs.google.com/presentation/d/1MdYl-AsnHPwe-fCCfOb4c2fpHSmGKWIaz5mPehIHt_o/edit?usp=sharing).
+The project has been presented at FOSS4G 2018 conference held in Dar Es Salaam: see [Slides](https://docs.google.com/presentation/d/1MdYl-AsnHPwe-fCCfOb4c2fpHSmGKWIaz5mPehIHt_o).
 
 # R packages
 
@@ -41,7 +41,7 @@ The main steps of the workflow are :
  - **extract** data from GPS tracks (txc or gpx files) and load them them in a dedicated table of the database
  - correlation of GPS timestamps and photos timestamps to infer photos locations (done with a SQL query / trigger in Postgis)
  
-## Main functiosn (R)
+## Main functions (R)
  
 The file [functions.R](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) contains the following functions:
  - [sessions_metadata_dataframe](https://raw.githubusercontent.com/juldebar/Deep_mapping/master/R/functions.R) : this script load the metadata describing all sessions in a data frame (from a google spreadsheet) and load them in the "metadata" table of the Postgres / Postgis database.
@@ -154,7 +154,7 @@ update_Table <- dbGetQuery(con_Reef_database,query_update_table_spatial_column)
 ~~~~
 
 
-##  3. Merge all exif metadata and load them in the Postgres / Pöstgis datbase
+##  3. Merge all exif metadata and load them in the Postgres / Postgis datbase
 
 
 ### 3.1 Extract EXIF metadata from each photo and store them in CSV FILES (one per session)
@@ -186,7 +186,7 @@ photos_metadata <- readRDS(exif_core_metadata_elements)
 load_exif_metadata_in_database(con_Reef_database, codes_directory, photos_metadata, create_table=FALSE)
 ~~~~
 
-### 3.2 Merge all EXIF metadata (extracted before in CSV FILES) in a single data frame and load them in the Postgres / Pöstgis database
+### 3.2 Merge all EXIF metadata (extracted before in CSV FILES) in a single data frame and load them in the Postgres / Postgis database
 
 Find all CSV files and return the list in a dataframe
 
