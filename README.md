@@ -2,6 +2,7 @@
 
 This is a repository providing R codes to manage exif metadata of photos and infer their spatial location from GPS tracks (from other devices: smartphone, watch..). The repository provides R codes to extract exif metadata and store them in a Postgres / Postgis database along with spatial data (from GPS tracker).
 
+The project has been presented at FOSS4G 2018 conference held in Dar Es Salaam: see [Slides](https://docs.google.com/presentation/d/1MdYl-AsnHPwe-fCCfOb4c2fpHSmGKWIaz5mPehIHt_o/edit?usp=sharing).
 
 # R packages
 
