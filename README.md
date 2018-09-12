@@ -100,7 +100,7 @@ dbDisconnect(con_Reef_database)
 ## TRANSFORM TCF AND CSV FILES IN A DATAFRAME
 
 
-##  2. Merge GPS tracks data and load them in the Postgres / Postgis datbase
+##  2. Merge GPS tracks data and load them in the Postgres / Postgis database
 
 
 ~~~~
@@ -154,7 +154,7 @@ update_Table <- dbGetQuery(con_Reef_database,query_update_table_spatial_column)
 ~~~~
 
 
-##  3. Merge all exif metadata and load them in the Postgres / Postgis datbase
+##  3. Merge all exif metadata and load them in the Postgres / Postgis database
 
 
 ### 3.1 Extract EXIF metadata from each photo and store them in CSV FILES (one per session)
