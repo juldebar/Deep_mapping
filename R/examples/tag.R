@@ -25,22 +25,17 @@ return_dataframe_tag_txt <- function(wd){
           fileName <-  paste0("/tmp/",name_session,"_",gsub(".txt",".csv",f))
           system(paste0("cp ",paste0(i,"/",f)," ", fileName))
           tx2  <- readChar(fileName, file.info(fileName)$size)
-          
           tx2  <- gsub(pattern = "[\r\n]+", replace = "\n", x = tx2)
-          tx2  <- gsub(pattern = "\\n", replace = paste0("\n",i,";"), x = tx2)
-          tx2
+          # tx2  <- gsub(pattern = "\\n", replace = paste0("\n",i,";"), x = tx2)
           tx2  <- gsub(pattern = "=>", replace = ";", x = tx2)
           tx2  <- gsub(pattern = "  ", replace = " ", x = tx2)
           tx2  <- gsub(pattern = " ; ", replace = ";", x = tx2)
           tx2  <- gsub(pattern = " , ", replace = ";", x = tx2)
-          tx2
           # writeChar(tx2, con=paste0("/tmp/",name_session,"_tags_bis.csv"))
           fileName_bis <-  gsub(pattern = ".csv", replace = "_bis.csv", x = fileName)
           writeLines(tx2, con=fileName_bis)
           fileName_ter <-  gsub(pattern = ".csv", replace = "_ter.csv", x = fileName)
-          
           writeLines(gsub(pattern = '.*\\/DCIM', replace = paste0(name_session,"/DCIM"), readLines(con <- file(fileName_bis))),con=fileName_ter)
-          
         }
         
     } else {
