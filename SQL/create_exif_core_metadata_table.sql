@@ -13,6 +13,9 @@ ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "DateTimeOriginal" t
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "LightValue" NUMERIC(24,15);
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "ImageSize" VARCHAR(254);
 ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "Model" VARCHAR(254);
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "ThumbnailImage" TEXT;
+ALTER TABLE "public"."photos_exif_core_metadata" ADD COLUMN "PreviewImage" TEXT;
+
 
 SELECT AddGeometryColumn('public','photos_exif_core_metadata','geometry_postgis',4326,'POINT',2);
 SELECT AddGeometryColumn('public','photos_exif_core_metadata','geometry_gps_correlate',4326,'POINT',2);
@@ -21,5 +24,8 @@ CREATE INDEX "photos_exif_core_metadata_geometry_postgis_geom_idx" ON "public"."
 CREATE INDEX "photos_exif_core_metadata_geometry_gps_correlate_geom_idx" ON "public"."photos_exif_core_metadata" USING GIST ("geometry_gps_correlate");
 CREATE INDEX "photos_exif_core_metadata_geometry_native_geom_idx" ON "public"."photos_exif_core_metadata" USING GIST ("geometry_native");
 
+SET TIME ZONE 'UTC';
 -- add foreign key constraint
+
+--show timezone;
 

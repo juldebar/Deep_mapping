@@ -7,6 +7,11 @@ library(rgdal)
 library(data.table)
 library(dplyr)
 library(trackeR)
+library(lubridate)
+# library(maps)
+# library(reshape)  
+# library(geosphere)
+# library(leaflet)
 #############################################################################################################
 ###################################### Calculate offset ############################################################
 #############################################################################################################
@@ -134,8 +139,8 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
       cat(message_done)
       
       setwd(metadata_directory)
-      # csv_file_name <- paste("all_exif_metadata_in_",this_directory,".csv",sep="")
-      # write.csv(dat, csv_file_name,row.names = F)
+      csv_file_name <- paste("all_exif_metadata_in_",this_directory,".csv",sep="")
+      # write.csv(new_exif_metadata, csv_file_name,row.names = F)
       
       #############################################################################################################    
       #############################################MERGE WITH TAGS##############################################   
@@ -149,7 +154,9 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
   
   name_file_csv<-paste("All_Exif_metadata_",session_id,".csv",sep="")
   # write.csv(CSV_total, name_file_csv,row.names = F)
-  # saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,".RDS",sep=""))
+  saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,".RDS",sep=""))
+  write.csv(CSV_total,  paste("All_Exif_metadata_",session_id,".csv"),row.names = F)
+  
   
   # add condition exists before susbet ?
   metadata_pictures <- select(CSV_total,
@@ -161,16 +168,20 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
                               GPSLongitude,
                               GPSDateTime,
                               DateTimeOriginal,
+                              # Raw_Time_Julien,
                               LightValue,
                               ImageSize,
                               Model,
                               geometry_postgis,
                               geometry_gps_correlate,
-                              geometry_native                              
+                              geometry_native,
+                              ThumbnailImage,
+                              PreviewImage                             
+                              
   )
   
   name_file_csv<-paste("Core_Exif_metadata_",session_id,".csv",sep="")
-  # write.csv(metadata_pictures, name_file_csv,row.names = F)
+  write.csv(metadata_pictures, name_file_csv,row.names = F)
   saveRDS(metadata_pictures, paste("Core_Exif_metadata_",session_id,".RDS",sep=""))
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
@@ -216,8 +227,9 @@ extract_exif_metadata_in_this_directory <- function(images_directory,this_direct
   }
   # change default data types
   exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ", tz="UTC")
-  exif_metadata$DateTimeOriginal = as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz=time_zone)
-  exif_metadata$DateTimeOriginal <- format(exif_metadata$DateTimeOriginal, tz="UTC",usetz=TRUE)
+  # exif_metadata$Raw_Time_Julien = exif_metadata$DateTimeOriginal
+  exif_metadata$DateTimeOriginal = with_tz(as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz=time_zone), "UTC")
+  # exif_metadata$DateTimeOriginal <- format(exif_metadata$DateTimeOriginal, tz="UTC",usetz=TRUE)
   attr(exif_metadata$DateTimeOriginal,"tzone")
   # exif_metadata$GPSLatitude = as.numeric(exif_metadata$GPSLatitude)
   # exif_metadata$GPSLongitude = as.numeric(exif_metadata$GPSLongitude)
@@ -344,6 +356,8 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
     GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y/%m/%d %H:%M:%OS")
     GPS_tracks_values$the_geom <- NA
     head(GPS_tracks_values)
+    # write.csv(GPS_tracks_values, paste0(gsub(pattern = ".rtk",""_rtk.csv",rtk_file)"),row.names = F)
+    
   } else if(type=="GPX"){
     gpx_file=gps_file
     track_points <- NULL
@@ -363,6 +377,8 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
     GPS_tracks_values= dplyr::rename(GPS_tracks_values, session_id=session_id, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, time=time, the_geom=the_geom)
     GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
     GPS_tracks_values <- GPS_tracks_values[,c(8,7,4,5,1,2,3,6)]
+    write.csv(GPS_tracks_values, gsub(".gpx","_gpx.csv",gpx_file),sep = ";",row.names = F)
+    
   } else if (type=="TCX"){
     # https://cran.r-project.org/web/packages/trackeR/vignettes/TourDetrackeR.html => duplicates are removed ?
     tcx_file=gps_file
@@ -380,9 +396,11 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
     GPS_tracks_values$the_geom <- NA
     class(GPS_tracks_values$time)
     attr(GPS_tracks_values$time,"tzone")
+    write.csv(GPS_tracks_values, gsub(".tcx","_tcx.csv",tcx_file),sep = ";",row.names = F)
+    
   }
   
-  if(load_in_database==TRUE){load_gps_tracks_in_database(con_Reef_database, codes_directory, GPS_tracks_table, create_table=FALSE)}
+  if(load_in_database==TRUE){load_gps_tracks_in_database(con_Reef_database, codes_directory, GPS_tracks_values, create_table=FALSE)}
   
   return(GPS_tracks_values)
   
@@ -398,7 +416,8 @@ plot_tcx <- function(tcx_file,directory){
   this_session_gps_tracks <- readContainer(tcx_file, type = "tcx", timezone = "GMT")
   # plot(runTr1)
   jpeg(paste0(plot_tcx,"rplot.jpg"))
-  plotRoute(this_session_gps_tracks, zoom = 13, source = "google")
+  # plotRoute(this_session_gps_tracks, zoom = 13, source = "google")
+  plotRoute(this_session_gps_tracks, zoom = 13, source = "stamen")
   dev.off()
   setwd(original_directory)
 }
@@ -445,6 +464,7 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
   setwd(images_directory)
   query <- NULL
   query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
+  query <- gsub(" CREATE MATERIALIZED VIEW IF NOT EXISTS","CREATE MATERIALIZED VIEW IF NOT EXISTS",query)
   query <- gsub("session_2018_03_24_kite_Le_Morne",session_id,query)
   if(offset < 0){
     query <- gsub("- interval","+ interval",query)

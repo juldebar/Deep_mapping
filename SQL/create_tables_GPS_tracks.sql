@@ -10,3 +10,4 @@ CREATE TABLE "public"."gps_tracks"(
     the_geom geometry(Point,4326),
     CONSTRAINT activities_pk PRIMARY KEY (fid,session_id)
 );
+SET TIME ZONE 'UTC';
