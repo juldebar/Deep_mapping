@@ -1,6 +1,9 @@
 DROP VIEW IF EXISTS "view_session_2018_03_31_kite_Le_Morne";
 
 CREATE OR REPLACE VIEW "view_session_2018_03_31_kite_Le_Morne" AS 
+
+
+
  SELECT 
     row_number() OVER () AS OID,
     gps_tracks.session_id,
@@ -14,6 +17,10 @@ CREATE OR REPLACE VIEW "view_session_2018_03_31_kite_Le_Morne" AS
    FROM gps_tracks
   WHERE gps_tracks.session_id::text = 'session_2018_03_31_kite_Le_Morne'::text
   GROUP BY gps_tracks.session_id;
+
+
+
+
 
 ALTER TABLE "view_session_2018_03_31_kite_Le_Morne"
   OWNER TO "Reef_admin";
