@@ -72,7 +72,7 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
     #     Spatial_Coverage
     #     Temporal_Coverage
     #     view_name
-    #     GPS_tcx_file  # runDF <- readTCX(file=file, timezone = "GMT")
+    #     GPS_tcx_file  # track_points <- readTCX(file=file, timezone = "GMT")
     #     GPS_gpx_file
     #     Photo_for_GPS_Time_Correlation
     #     Photo_for_calibration
@@ -86,7 +86,7 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
     #     Number.of.Pictures
     
     
-    # select_columns = subset(runDF, select = c(session,latitude,longitude,altitude,time,heart.rate))
+    # select_columns = subset(track_points, select = c(session,latitude,longitude,altitude,time,heart.rate))
     #   extended_df$session_photo_number <-c(1:nrow(extended_df))
     #   extended_df$relative_path <-"next time"
     #   extended_df <- extended_df[,c(9,10,11,1,2,3,4,5,6,7,8)]
@@ -328,79 +328,70 @@ load_gps_tracks_in_database <- function(con, codes_directory, gps_tracks, create
   }
   query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column.sql")), collapse=" ")
   update_Table <- dbGetQuery(con,query_update_table_spatial_column)
-  
+  return (cat("GPS data succesfully loaded in Postgis !"))
 }
-
 
 #############################################################################################################
 ############################ read_rtk ###################################################
 #############################################################################################################
 return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_in_database=FALSE){
   setwd(wd)
-  if(type=="RTK"){
-    rtk_file=gps_file
-    gps_tracks <- read.csv(rtk_file,stringsAsFactors = FALSE)
-    gps_tracks$fid <-c(1:nrow(gps_tracks))
-    gps_tracks$session_id <- session_id
-    head(gps_tracks)
-    sapply(gps_tracks,class)
-    select_columns = subset(gps_tracks, select = c(fid,session_id,latitude,longitude,height,GPST,age))
-    head(select_columns)
-    GPS_tracks_values = dplyr::rename(select_columns, fid=fid,session_id=session_id, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
-    head(GPS_tracks_values)
-    names(GPS_tracks_values)
+  track_points <- NULL
+  track_points=switch(type,
+         "RTK" = read.csv(gps_file,stringsAsFactors = FALSE),
+         "GPX" = rgdal::readOGR(dsn = gps_file, layer="track_points",stringsAsFactors = FALSE),
+         "TCX" = readTCX(file=gps_file, timezone = "UTC")
+  )
+  head(track_points)
+  # sapply(track_points,class)
+  slotNames(track_points)
+  
+  existing_rows <- dbGetQuery(con_Reef_database, paste0("SELECT COUNT(*) FROM gps_tracks WHERE session_id='",session_id,"';"))
+  if(is.null(existing_rows)){
+    existing_rows=0
+    track_points$fid <-c(1:nrow(track_points))
+  }else{
+    start <- as.integer(existing_rows+1)
+    end <- as.integer(existing_rows+nrow(track_points))
+    track_points$fid <-c(start:end)
+  }
+  track_points$session <- session_id
+  head(track_points)
+  if(type=="GPX"){track_points$time <- as.POSIXct(track_points@data$time, tz="UTC")}
+  class(track_points$time)
+  attr(track_points$time,"tzone")
+  track_points$the_geom <- NA
+  
+  GPS_tracks_values <- NULL
+  
+    if(type=="RTK"){
+    select_columns = subset(track_points, select = c(fid,session,latitude,longitude,height,GPST,age,the_geom))
+    GPS_tracks_values = dplyr::rename(select_columns, fid=fid,session_id=session, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
     sapply(GPS_tracks_values,class)
-    GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
-    GPS_tracks_values$session_id <- session_id
     GPS_tracks_values$heart_rate <- c(1:nrow(GPS_tracks_values))
     GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y/%m/%d %H:%M:%OS")
-    GPS_tracks_values$the_geom <- NA
     head(GPS_tracks_values)
-    # write.csv(GPS_tracks_values, paste0(gsub(pattern = ".rtk",""_rtk.csv",rtk_file)"),row.names = F)
+    # write.csv(GPS_tracks_values, paste0(gsub(pattern = ".rtk",""_rtk.csv",gps_file)"),row.names = F)
     
   } else if(type=="GPX"){
-    gpx_file=gps_file
-    track_points <- NULL
-    track_points <- rgdal::readOGR(dsn = gpx_file, layer="track_points",stringsAsFactors = FALSE)
-    # dbWriteSpatial(con_Reef_database, track_points, schemaname="public", tablename="pays", replace=T,srid=4326)
-    slotNames(track_points)
     sapply(track_points@data,class)
-    GPS_tracks_values <- NULL
-    GPS_tracks_values <- dplyr::select(track_points@data,ele,time,track_fid)
-    GPS_tracks_values$latitude <- coordinates(track_points)[,2]
-    GPS_tracks_values$longitude <- coordinates(track_points)[,1]
-    GPS_tracks_values$the_geom <- NA
-    GPS_tracks_values$session_id <- session_id
-    GPS_tracks_values$time <- as.POSIXlt(track_points@data$time, tz="UTC")
-    class(GPS_tracks_values$time)
-    attr(GPS_tracks_values$time,"tzone")
-    GPS_tracks_values= dplyr::rename(GPS_tracks_values, session_id=session_id, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, time=time, the_geom=the_geom)
-    GPS_tracks_values$fid <-c(1:nrow(GPS_tracks_values))
-    GPS_tracks_values <- GPS_tracks_values[,c(8,7,4,5,1,2,3,6)]
-    write.csv(GPS_tracks_values, gsub(".gpx","_gpx.csv",gpx_file),sep = ";",row.names = F)
+    
+    GPS_tracks_values <- dplyr::select(track_points@data,fid,session,time,ele,track_fid,the_geom) %>% mutate(latitude = track_points@coords[,2]) %>% mutate(longitude = track_points@coords[,1])
+    GPS_tracks_values= dplyr::rename(GPS_tracks_values, fid=fid, session_id=session, time=time, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, the_geom=the_geom)
+    GPS_tracks_values <- GPS_tracks_values[,c(1,2,3,7,8,4,5,6)]
+    write.csv(GPS_tracks_values, gsub(".gpx","_gpx.csv",gps_file),sep = ";",row.names = F)
     
   } else if (type=="TCX"){
     # https://cran.r-project.org/web/packages/trackeR/vignettes/TourDetrackeR.html => duplicates are removed ?
-    tcx_file=gps_file
-    runDF <- NULL
-    runDF <- readTCX(file=tcx_file, timezone = "UTC")
-    existing_rows <- dbGetQuery(con_Reef_database, paste0("SELECT COUNT(*) FROM gps_tracks WHERE session_id='",session_id,"';"))
-    if(is.na(existing_rows)){existing_rows=0}
-    start <- as.integer(existing_rows+1)
-    end <- as.integer(existing_rows+nrow(runDF))
-    runDF$fid <-c(start:end)
-    runDF$session <- session_id
-    select_columns = subset(runDF, select = c(fid,session,latitude,longitude,altitude,time,heart.rate))
-    GPS_tracks_values = dplyr::rename(select_columns, fid=fid, session_id=session, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart.rate, time=time)
-    names(GPS_tracks_values)
-    GPS_tracks_values$the_geom <- NA
-    class(GPS_tracks_values$time)
-    attr(GPS_tracks_values$time,"tzone")
-    write.csv(GPS_tracks_values, gsub(".tcx","_tcx.csv",tcx_file),sep = ";",row.names = F)
-    
+    # select_columns = subset(track_points, select = c(fid,session,latitude,longitude,altitude,time,heart.rate))
+    GPS_tracks_values <- dplyr::select(track_points,fid,session, time, latitude,longitude,altitude,heart.rate,the_geom)
+    GPS_tracks_values = dplyr::rename(GPS_tracks_values, fid=fid, session_id=session,  time=time, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart.rate,the_geom=the_geom)
+    write.csv(GPS_tracks_values, gsub(".tcx","_tcx.csv",gps_file),sep = ";",row.names = F)
   }
   
+  head(GPS_tracks_values)
   if(load_in_database==TRUE){load_gps_tracks_in_database(con_Reef_database, codes_directory, GPS_tracks_values, create_table=FALSE)}
+  # dbWriteSpatial(con_Reef_database, track_points, schemaname="public", tablename="pays", replace=T,srid=4326)
   
   return(GPS_tracks_values)
   
@@ -487,7 +478,7 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
   create_csv_from_view <- dbGetQuery(con_Reef_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
   # head(create_csv_from_view)
   setwd(paste0(images_directory,"/GPS"))
-  write.csv(create_csv_from_view, "photos_location.csv",row.names = F)
+  write.csv(create_csv_from_view, paste0("photos_location_",session_id,".csv"),row.names = F)
   setwd(original_directory)
   
   return(create_csv_from_view)
