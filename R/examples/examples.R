@@ -100,4 +100,4 @@ infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_
 ################################################################################################# 
 dbDisconnect(con_Reef_database)
 # --select COUNT(*) FROM gps_tracks WHERE session_id='session_2019_02_16_kite_Le_Morne_la_Pointe' ORDER BY fid LIMIT 10 
-# SELECT  COUNT(*) FROM photos_exif_core_metadata WHERE session_id='session_2019_02_16_kite_Le_Morne_la_Pointe' ORDER BY ogc_fid LIMIT 10 
+# SELECT  COUNT(*) FROM photos_exif_core_metadata WHERE session_id='session_2019_02_16_kite_Le_Morne_la_Pointe' ORDER BY ogc_fid LIMIT 10
