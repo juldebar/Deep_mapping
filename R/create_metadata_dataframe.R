@@ -14,14 +14,14 @@ codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
 ############################################################
 ################### Set directory #######################
 ############################################################
-# working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
-working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
+working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
+# working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
 setwd(working_directory)
 
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
 number_sub_directories <-length(sub_directories)
 
-metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), TemporalCoverage=character(),Relation=character(), Rights=character(), Provenance=character(), Data=character(), Number_of_Pictures=integer())
+metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), TemporalCoverage=character(),Relation=character(), Rights=character(), Provenance=character(), Data=character(), Number_of_Pictures=integer(), GPS_timestamp=character(),  Photo_GPS_timestamp=character())
 
 for (i in 1:number_sub_directories){
   this_directory <- sub_directories[i]
@@ -51,6 +51,8 @@ emmanuel.blondel1@gmail.com,
 julien.barde@ird.fr,
 wilfried.heintz@inra.fr"
   data <-"identifier:layer1\nsource:D://geoflow-sandbox/shapefile1.zip;\nsourceName:shapefile1;\ntype:shp;\nupload:true;"
+  GPS_timestamp <- NULL
+  Photo_GPS_timestamp <- NULL
   
   ############################################################
   ################### Number of Photos #######################
@@ -106,12 +108,14 @@ wilfried.heintz@inra.fr"
     (cat("No GPS file when looking for TCX or GPX or RTK files"))
     gps_file <- "No GPS file"
     spatial_extent <- "No GPS file"
-    }
+  }
+  GPS_timestamp <- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+  GPS_timestamp <- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
   
   ############################################################
   ################### CREATE DATAFRAME #######################
   ############################################################
-  newRow <- data.frame(Identifier=session_id,Date=date,path=this_directory,gps_file_name=gps_file,SpatialCoverage=spatial_extent, TemporalCoverage=temporal_extent, Relation=relation,Rights=data, Provenance=data, Data=data, Number_of_Pictures=Number_of_Pictures)
+  newRow <- data.frame(Identifier=session_id,Date=date,path=this_directory,gps_file_name=gps_file,SpatialCoverage=spatial_extent, TemporalCoverage=temporal_extent, Relation=relation,Rights=data, Provenance=data, Data=data, Number_of_Pictures=Number_of_Pictures, GPS_timestamp=GPS_timestamp, Photo_GPS_timestamp=Photo_GPS_timestamp)
   metadata_sessions <- rbind(metadata_sessions,newRow)
 }
 
@@ -124,7 +128,7 @@ metadata_sessions$Language <- "eng"
 
 names(metadata_sessions)
 head(metadata_sessions)
-metadata_sessions <- metadata_sessions[,c(1,12,13,14,15,2,16,17,5,6,7,8,9,10,3,4,11)]
+metadata_sessions <- metadata_sessions[,c(1,14,15,16,17,2,16,17,5,6,7,8,9,10,3,4,11,12,13)]
 
 setwd(working_directory)
 write.csv(metadata_sessions,file = "metadata_sessions.csv",row.names = F)
