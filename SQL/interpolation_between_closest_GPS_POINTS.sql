@@ -31,7 +31,7 @@ FROM
         ORDER BY  session_id, list_gps_points
         ) AS final_query
 WHERE 
-    photos_in_segment > 1 AND photos_in_segment < 3 
+    photos_in_segment = 1 AND photos_in_segment = 2 
     AND 
     list_photos @> ARRAY[photos_exif_core_metadata."FileName"]
 LIMIT 800
