@@ -12,7 +12,7 @@ con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,pas
 create_table_gps_tracks=TRUE
 if(create_table_gps_tracks==TRUE){
   query_create_table_gps_tracks <- paste(readLines(paste0(codes_directory,"SQL/create_tables_GPS_tracks.sql")), collapse=" ")
-  create_table <- dbGetQuery(con,query_create_table_gps_tracks)
+  create_table <- dbGetQuery(con_Reef_database,query_create_table_gps_tracks)
 } 
 
 Session_metadata_table <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
@@ -20,22 +20,22 @@ Datasets <- as.data.frame(gsheet::gsheet2tbl(Session_metadata_table))
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-images_directory <- "/media/juldebar/Deep_Mapping_one1/data_deep_mapping/new/session_2019_05_23_surf_ilot_sancho"
+images_directory <- "/media/juldebar/Deep_Mapping_one1/data_deep_mapping/2019/to_do/session_2019_01_26_kite_Le_Morne_Ambulante_Nord"
 session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
 session_metadata <-filter(Datasets, Identifier==session_id)
-
-# photo_time <- as.POSIXct(session_metadata$Photo_time, format="%Y-%m-%d %H:%M:%S", tz="UTC")
-photo_time <- as.POSIXct(session_metadata$Photo_time, format="%Y-%m-%d %H:%M:%S",tz="UTC+04:00")
-GPS_time <- as.POSIXct(session_metadata$GPS_time, tz="UTC")
+photo_time <- "2019-01-26 09:28:54"
+photo_time_gsheet <- as.POSIXct(session_metadata$Photo_time, format="%Y-%m-%d %H:%M:%S",tz="UTC+04:00")
 attr(photo_time,"tzone")
-offset_gsheet <-difftime(photo_time, GPS_time, units="secs")
+GPS_time <- "2019-01-26 09:18:00"
+GPS_time_gsheet <- as.POSIXct(session_metadata$GPS_time,format="%Y-%m-%d %H:%M:%S",tz="UTC")
+offset_gsheet <-difftime(photo_time_gsheet, GPS_time_gsheet, units="secs")
 offset_gsheet
-#file:///media/juldebar/Deep_Mapping_one1/data_deep_mapping/new/session_2019_05_21_snorkelling_Prairie/DCIM/177GOPRO/G0015277.JPG
-offset <-difftime("2019-05-22 09:57:34","2019-05-22 09:52:00", units="secs")
+offset <-difftime(photo_time, GPS_time, units="secs")
 offset
-
+# file:///media/julien/disk/DCIM/175GOPRO/G0014747.JPG => heure 13:56:00, photo dim. 24 mars 2019, 13:55:58
 # offset <- return_offset(con_Reef_database, session_metadata)
 # offset[[1]]
+
 ########################################################################################################################################################################################
 ###################### EXTRACT exif metadata elements & store them in a CSV file & LOAD THEM INTO POSTGRES DATABASE  #########
 ########################################################################################################################################################################################
@@ -51,8 +51,6 @@ photos_metadata <-NULL
 for (f in exif_core_metadata_elements){
   if(grepl(".RDS",f)){photos_metadata <- readRDS(paste0(images_directory,"/METADATA/exif/",f))}
 }
-attr(photos_metadata$DateTimeOriginal,"tzone")
-head(photos_metadata)
 
 # load the exif metadata in the SQL database
 load_exif_metadata_in_database(con_Reef_database, codes_directory, photos_metadata, create_table=TRUE)
@@ -80,9 +78,6 @@ if(number_row>0){
     # Use "dataframe_gps_file" to turn the gps file into a data frame
     dataframe_gps_file <-NULL
     dataframe_gps_file <- return_dataframe_gps_file(wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id)
-    head(dataframe_gps_file)
-    nrow(dataframe_gps_file)
-    attr(dataframe_gps_file$time,"tzone")
     duplicates <- distinct(dataframe_gps_file, time)
     duplicates_number <- nrow(dataframe_gps_file)-nrow(duplicates)
     paste0("the file has :", duplicates_number," duplicates")
@@ -95,6 +90,9 @@ if(number_row>0){
 ###################### INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP  ########
 ############################################################################################ 
 infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory,session_id , offset=offset,create_view=TRUE)
+nrow(photos_metadata)
+nrow(dataframe_gps_file)
+nrow(dataframe_gps_file)
 #################################################################################################
 ###################### SMAKE A SUMMMARY OF TABLES CONTENT AND CLOSE DATABASE CONNEXION  ########
 ################################################################################################# 
