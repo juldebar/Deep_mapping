@@ -14,13 +14,13 @@ codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
 ################### Set directory #######################
 ############################################################
 working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
-working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
+# working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
 setwd(working_directory)
 
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
 number_sub_directories <-length(sub_directories)
 
-metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), Data=character(), Number_of_Pictures=integer(),TemporalCoverage=character())
+metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), TemporalCoverage=character(),Relation=character(), Rights=character(), Provenance=character(), Data=character(), Number_of_Pictures=integer())
 
 for (i in 1:number_sub_directories){
   this_directory <- sub_directories[i]
@@ -31,6 +31,24 @@ for (i in 1:number_sub_directories){
   spatial_extent <- NULL
   temporal_extent <- NULL
   Number_of_Pictures <- NULL
+  relation <-"parent:my-parent-metadata-identifier@http://catalogue/my-parent-metadata-identifier;
+http:website@http://somelink/website"
+  rights <-"use:terms1;
+use:citation1;
+use:disclaimer1;
+useConstraint:copyright;
+useConstraint:license;
+accessConstraint:copyright;
+otherConstraint:web use;"
+  provenance <-"statement:My data management workflow;
+process:
+rationale1[description1],
+rationale2[description2],
+rationale3[description3]
+processor:
+emmanuel.blondel1@gmail.com,
+julien.barde@ird.fr,
+wilfried.heintz@inra.fr"
   data <-"identifier:layer1\nsource:D://geoflow-sandbox/shapefile1.zip;\nsourceName:shapefile1;\ntype:shp;\nupload:true;"
   
   ############################################################
@@ -92,7 +110,7 @@ for (i in 1:number_sub_directories){
   ############################################################
   ################### CREATE DATAFRAME #######################
   ############################################################
-  newRow <- data.frame(Identifier=session_id,Date=date,path=this_directory,gps_file_name=gps_file,SpatialCoverage=spatial_extent, TemporalCoverage=temporal_extent, Number_of_Pictures=Number_of_Pictures,Data=data)
+  newRow <- data.frame(Identifier=session_id,Date=date,path=this_directory,gps_file_name=gps_file,SpatialCoverage=spatial_extent, TemporalCoverage=temporal_extent, Relation=relation,Rights=data, Provenance=data, Data=data, Number_of_Pictures=Number_of_Pictures)
   metadata_sessions <- rbind(metadata_sessions,newRow)
 }
 
@@ -100,9 +118,13 @@ metadata_sessions$Title <- "Session Title"
 metadata_sessions$Description <- "Session Summary"
 metadata_sessions$Subject <- "GENERAL=Mauritius, coral reef, photos, deep learning, kite surfing, coral reef habitats"
 metadata_sessions$Creator <- "owner:emmanuel.blondel1@gmail.com;\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr;"
+metadata_sessions$Type <- "dataset"
+metadata_sessions$Language <- "eng"
 
-
+names(metadata_sessions)
 head(metadata_sessions)
+# GPS_tracks_values <- GPS_tracks_values[,c(1,9,10,11,12,2,13,14,5,6)]
+
 setwd(working_directory)
 write.csv(metadata_sessions,file = "metadata_sessions.csv",row.names = F)
 nrow(metadata_sessions)
