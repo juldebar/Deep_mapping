@@ -1,6 +1,7 @@
 # geoflow_entities
 # https://docs.google.com/spreadsheets/d/1iG7i3CE0W9zVM3QxWfCjoYbqj1dQvKsMnER6kqwDiqM/edit#gid=0
-# Data Structure => Identifier	Title	Description	Subject	Creator	Date	Type	Language	SpatialCoverage	TemporalCoverage	Relation	Rights	Provenance	Data													
+# Geoflow entities Data Structure => Identifier	Title	Description	Subject	Creator	Date	Type	Language	SpatialCoverage	TemporalCoverage	Relation	Rights	Provenance	Data		
+# This Data Structure => Identifier	Title	Description	Subject	Creator	Date	Type	Language	SpatialCoverage	TemporalCoverage	Relation	Rights	Provenance	Data	path	gps_file_name	Number_of_Pictures									
 ############################################################
 ################### Packages #######################
 ############################################################
@@ -13,8 +14,8 @@ codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
 ############################################################
 ################### Set directory #######################
 ############################################################
-working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
-# working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
+# working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
+working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
 setwd(working_directory)
 
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
@@ -123,7 +124,7 @@ metadata_sessions$Language <- "eng"
 
 names(metadata_sessions)
 head(metadata_sessions)
-# GPS_tracks_values <- GPS_tracks_values[,c(1,9,10,11,12,2,13,14,5,6)]
+metadata_sessions <- metadata_sessions[,c(1,12,13,14,15,2,16,17,5,6,7,8,9,10,3,4,11)]
 
 setwd(working_directory)
 write.csv(metadata_sessions,file = "metadata_sessions.csv",row.names = F)
