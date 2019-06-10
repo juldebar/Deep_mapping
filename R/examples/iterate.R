@@ -84,7 +84,9 @@ etl_workflow <- function(images_directory,photo_path,photo_time,GPS_time, mime_t
   
 }
 
-Session_metadata_table <- "https://docs.google.com/spreadsheets/d/1MLemH3IC8ezn5T1a1AYa5Wfa1s7h6Wz_ACpFY3NvyrM/edit?usp=sharing"
+session_id <- "session_2019_01_20_kite_ile_benitier"
+
+Session_metadata_table <- "https://docs.google.com/spreadsheets/d/1GXubjmB0dnIZSpH8gZ8Gc9yBRMfw2_Ng6jnXDp9xcHM/edit?usp=sharing"
 Datasets <- as.data.frame(gsheet::gsheet2tbl(Session_metadata_table))
 session_metadata <-filter(Datasets, Identifier==session_id)
 photo_time_gsheet <- session_metadata$Photo_time
