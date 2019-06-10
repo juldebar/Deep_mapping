@@ -1,3 +1,6 @@
+# geoflow_entities
+# https://docs.google.com/spreadsheets/d/1iG7i3CE0W9zVM3QxWfCjoYbqj1dQvKsMnER6kqwDiqM/edit#gid=0
+# Data Structure => Identifier	Title	Description	Subject	Creator	Date	Type	Language	SpatialCoverage	TemporalCoverage	Relation	Rights	Provenance	Data													
 ############################################################
 ################### Packages #######################
 ############################################################
@@ -11,20 +14,22 @@ codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
 ################### Set directory #######################
 ############################################################
 working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
+working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
 setwd(working_directory)
 
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
 number_sub_directories <-length(sub_directories)
 
-metadata_pictures <- data.frame(session_id=character(), path=character(), gps_file_name=character(), spatial_extent=character(), temporal_extent=character(), Number_of_Pictures=integer())
+metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), TemporalCoverage=character(), Number_of_Pictures=integer())
 
 for (i in 1:number_sub_directories){
   this_directory <- sub_directories[i]
   setwd(this_directory)
   session_id <- gsub(paste0(dirname(this_directory),"/"),"",this_directory)
+  date <- gsub("_","-",substr(session_id,9,18))
   gps_file <- NULL
+  spatial_extent <- NULL
   temporal_extent <- NULL
-  bounding_box <- NULL
   Number_of_Pictures <- NULL
   
   ############################################################
@@ -37,10 +42,12 @@ for (i in 1:number_sub_directories){
     ############################################################
     ################### TEMPORAL COVERAGE ######################
     ############################################################
+    # geoflow entities data structure => 2007-03-01T13:00:00Z/2008-05-11T15:30:00Z
     first_picture_metadata <- read_exif(paste(this_directory,"DCIM", files[1],sep="/"))
     start_date<- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
     end_date<- as.POSIXct(read_exif(paste(this_directory,"DCIM",files[Number_of_Pictures],sep="/"))$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
-    temporal_extent <- paste0("start=", start_date,";end=",end_date)
+    # temporal_extent <- paste0("start=", start_date,";end=",end_date)
+    temporal_extent <- paste0(start_date,"/",end_date)
     ############################################################
     ################### Offset #######################
     ############################################################
@@ -73,27 +80,32 @@ for (i in 1:number_sub_directories){
       xmax <- max(dataframe_gps_file$longitude)
       ymin <- min(dataframe_gps_file$latitude)
       ymax <- max(dataframe_gps_file$latitude)
-      bounding_box <- WKT <- paste("POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
+      spatial_extent <- WKT <- paste("POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
     }
   }else{
     (cat("No GPS file when looking for TCX or GPX or RTK files"))
     gps_file <- "No GPS file"
-    bounding_box <- "No GPS file"
+    spatial_extent <- "No GPS file"
     }
   
   ############################################################
   ################### CREATE DATAFRAME #######################
   ############################################################
-  newRow <- data.frame(session_id=session_id,path=this_directory,gps_file_name=gps_file,spatial_extent=bounding_box, temporal_extent=temporal_extent, Number_of_Pictures=Number_of_Pictures)
-  metadata_pictures <- rbind(metadata_pictures,newRow)
+  newRow <- data.frame(Identifier=session_id,Date=date,path=this_directory,gps_file_name=gps_file,SpatialCoverage=spatial_extent, TemporalCoverage=temporal_extent, Number_of_Pictures=Number_of_Pictures)
+  metadata_sessions <- rbind(metadata_sessions,newRow)
 }
 
+metadata_sessions$Title <- "Session Title"
+metadata_sessions$Description <- "Session Title"
+metadata_sessions$Subject <- "GENERAL=Mauritius, coral reef, photos, deep learning, kite surfing, coral reef habitats"
+metadata_sessions$Creator <- "owner:emmanuel.blondel1@gmail.com;\n pointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr;"
 
-head(metadata_pictures)
+
+head(metadata_sessions)
 setwd(working_directory)
-write.csv(metadata_pictures,file = "metadata_sessions.csv",row.names = F)
-nrow(metadata_pictures)
-sum(metadata_pictures$Number_of_Pictures)
+write.csv(metadata_sessions,file = "metadata_sessions.csv",row.names = F)
+nrow(metadata_sessions)
+sum(metadata_sessions$Number_of_Pictures)
 
 
 ########################################################################################################################
