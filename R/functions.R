@@ -86,7 +86,7 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
     #     Number.of.Pictures
     
     
-    # select_columns = subset(track_points, select = c(session,latitude,longitude,altitude,time,heart.rate))
+    # select_columns = subset(track_points, select = c(session,latitude,longitude,altitude,time,heart_rate))
     #   extended_df$session_photo_number <-c(1:nrow(extended_df))
     #   extended_df$relative_path <-"next time"
     #   extended_df <- extended_df[,c(9,10,11,1,2,3,4,5,6,7,8)]
@@ -332,7 +332,7 @@ load_gps_tracks_in_database <- function(con, codes_directory, gps_tracks, create
 }
 
 #############################################################################################################
-############################ read_rtk ###################################################
+############################ READ the file storing GPS data ###################################################
 #############################################################################################################
 return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_in_database=FALSE){
   setwd(wd)
@@ -345,8 +345,10 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   head(track_points)
   # sapply(track_points,class)
   slotNames(track_points)
-  
+  existing_rows <-NULL
+  if(load_in_database==TRUE){
   existing_rows <- dbGetQuery(con_Reef_database, paste0("SELECT COUNT(*) FROM gps_tracks WHERE session_id='",session_id,"';"))
+  }
   if(is.null(existing_rows)){
     existing_rows=0
     track_points$fid <-c(1:nrow(track_points))
@@ -355,7 +357,7 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
     end <- as.integer(existing_rows+nrow(track_points))
     track_points$fid <-c(start:end)
   }
-  track_points$session <- session_id
+  track_points$session_id <- session_id
   head(track_points)
   if(type=="GPX"){track_points$time <- as.POSIXct(track_points@data$time, tz="UTC")}
   class(track_points$time)
@@ -365,8 +367,8 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   GPS_tracks_values <- NULL
   
     if(type=="RTK"){
-    select_columns = subset(track_points, select = c(fid,session,latitude,longitude,height,GPST,age,the_geom))
-    GPS_tracks_values = dplyr::rename(select_columns, fid=fid,session_id=session, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
+    select_columns = subset(track_points, select = c(fid,session_id,latitude,longitude,height,GPST,age,the_geom))
+    GPS_tracks_values = dplyr::rename(select_columns, fid=fid,session_id=session_id, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
     sapply(GPS_tracks_values,class)
     GPS_tracks_values$heart_rate <- c(1:nrow(GPS_tracks_values))
     GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y/%m/%d %H:%M:%OS")
@@ -376,17 +378,17 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   } else if(type=="GPX"){
     sapply(track_points@data,class)
     
-    GPS_tracks_values <- dplyr::select(track_points@data,fid,session,time,ele,track_fid,the_geom) %>% mutate(latitude = track_points@coords[,2]) %>% mutate(longitude = track_points@coords[,1])
-    GPS_tracks_values= dplyr::rename(GPS_tracks_values, fid=fid, session_id=session, time=time, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, the_geom=the_geom)
+    GPS_tracks_values <- dplyr::select(track_points@data,fid,session_id,time,ele,track_fid,the_geom) %>% mutate(latitude = track_points@coords[,2]) %>% mutate(longitude = track_points@coords[,1])
+    GPS_tracks_values= dplyr::rename(GPS_tracks_values, fid=fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, the_geom=the_geom)
     GPS_tracks_values <- GPS_tracks_values[,c(1,2,3,7,8,4,5,6)]
-    write.csv(GPS_tracks_values, gsub(".gpx","_gpx.csv",gps_file),sep = ";",row.names = F)
+    write.csv(GPS_tracks_values, gsub(".gpx","_gpx.csv",gps_file),row.names = F)
     
   } else if (type=="TCX"){
     # https://cran.r-project.org/web/packages/trackeR/vignettes/TourDetrackeR.html => duplicates are removed ?
-    # select_columns = subset(track_points, select = c(fid,session,latitude,longitude,altitude,time,heart.rate))
-    GPS_tracks_values <- dplyr::select(track_points,fid,session, time, latitude,longitude,altitude,heart.rate,the_geom)
-    GPS_tracks_values = dplyr::rename(GPS_tracks_values, fid=fid, session_id=session,  time=time, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart.rate,the_geom=the_geom)
-    write.csv(GPS_tracks_values, gsub(".tcx","_tcx.csv",gps_file),sep = ";",row.names = F)
+    # select_columns = subset(track_points, select = c(fid,session_id,latitude,longitude,altitude,time,heart_rate))
+    GPS_tracks_values <- dplyr::select(track_points,fid,session_id, time, latitude,longitude,altitude,heart_rate,the_geom)
+    # GPS_tracks_values = dplyr::rename(GPS_tracks_values, fid=fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart_rate,the_geom=the_geom)
+    write.csv(GPS_tracks_values, gsub(".tcx","_tcx.csv",gps_file),row.names = F)
   }
   
   head(GPS_tracks_values)
@@ -429,14 +431,18 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
       name_session <-gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
       cat(name_session)
       cat("\n List tcx \n")
-      if (type=="TCX"){pattern = "*.tcx"} else if (type=="GPX"){pattern = "*.gpx"} else if (type=="RTK"){pattern = "*.rtk"}
-      files <- list.files(pattern = pattern)
+      if (type=="TCX"){pattern = "\\.tcx$"} else if (type=="GPX"){pattern = "\\.gpx$"} else if (type=="RTK"){pattern = "\\.rtk$"}
+      files <- list.files(pattern = pattern,ignore.case=TRUE)
       gps_files <- files
       cat(gps_files)
       # if(length(gps_files)>1){cat("\n ERROR! \n")}
       # cat(c(name_session,i,gps_files))
-      newRow <- data.frame(session=name_session,path=i,file_name=gps_files)
-      dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
+      if(length(gps_files)>0){
+        newRow <- data.frame(session=name_session,path=i,file_name=gps_files)
+        dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
+      }else{
+        dataframe_gps_files <-NULL
+        }
     }
     else {
       # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
