@@ -20,7 +20,7 @@ setwd(working_directory)
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
 number_sub_directories <-length(sub_directories)
 
-metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), TemporalCoverage=character(), Number_of_Pictures=integer())
+metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), Data=character(), Number_of_Pictures=integer(),TemporalCoverage=character())
 
 for (i in 1:number_sub_directories){
   this_directory <- sub_directories[i]
@@ -31,6 +31,7 @@ for (i in 1:number_sub_directories){
   spatial_extent <- NULL
   temporal_extent <- NULL
   Number_of_Pictures <- NULL
+  data <-"identifier:layer1\nsource:D://geoflow-sandbox/shapefile1.zip;\nsourceName:shapefile1;\ntype:shp;\nupload:true;"
   
   ############################################################
   ################### Number of Photos #######################
@@ -91,14 +92,14 @@ for (i in 1:number_sub_directories){
   ############################################################
   ################### CREATE DATAFRAME #######################
   ############################################################
-  newRow <- data.frame(Identifier=session_id,Date=date,path=this_directory,gps_file_name=gps_file,SpatialCoverage=spatial_extent, TemporalCoverage=temporal_extent, Number_of_Pictures=Number_of_Pictures)
+  newRow <- data.frame(Identifier=session_id,Date=date,path=this_directory,gps_file_name=gps_file,SpatialCoverage=spatial_extent, TemporalCoverage=temporal_extent, Number_of_Pictures=Number_of_Pictures,Data=data)
   metadata_sessions <- rbind(metadata_sessions,newRow)
 }
 
 metadata_sessions$Title <- "Session Title"
-metadata_sessions$Description <- "Session Title"
+metadata_sessions$Description <- "Session Summary"
 metadata_sessions$Subject <- "GENERAL=Mauritius, coral reef, photos, deep learning, kite surfing, coral reef habitats"
-metadata_sessions$Creator <- "owner:emmanuel.blondel1@gmail.com;\n pointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr;"
+metadata_sessions$Creator <- "owner:emmanuel.blondel1@gmail.com;\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr;"
 
 
 head(metadata_sessions)
