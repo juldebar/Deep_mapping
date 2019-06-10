@@ -7,6 +7,10 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS  "view_session_2018_03_24_kite_Le_Morne" 
 			      photos_exif_core_metadata.session_id,
 			      photos_exif_core_metadata."FileName",
 			      relative_path,
+			      photos_exif_core_metadata."DateTimeOriginal",
+			      (photos_exif_core_metadata."DateTimeOriginal" AT TIME ZONE 'UTC' - interval '42 second') AS estimated_time,
+
+
 			      CASE
 				WHEN (photos_exif_core_metadata."FileName" LIKE list_photos[1] AND photos_in_segment=1)  THEN ST_X(ST_LineInterpolatePoint(segment, 0.5))
 				WHEN (photos_exif_core_metadata."FileName" LIKE list_photos[1] AND photos_in_segment=2)  THEN ST_X(ST_LineInterpolatePoint(segment, 0.16))
