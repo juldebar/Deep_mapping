@@ -10,12 +10,14 @@ library(dplyr)
 library(exifr)
 library(data.table)
 codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
-
+setwd(codes_directory)
+source(paste0(codes_directory,"R/functions.R"))
 ############################################################
 ################### Set directory #######################
 ############################################################
 working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
 # working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
+working_directory <-"/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A/done"
 setwd(working_directory)
 
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
@@ -109,12 +111,26 @@ wilfried.heintz@inra.fr"
     gps_file <- "No GPS file"
     spatial_extent <- "No GPS file"
   }
-  GPS_timestamp <- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
-  GPS_timestamp <- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+  
+  files <- NULL
+  con <- file(paste(this_directory,"LABEL","tag.txt",sep="/"),"r")
+  first_line <- readLines(con,n=1)
+  close(con)
+  
+  first_line <- sub('.*session', 'session', first_line)
+  photo_calibration_metadata <- read_exif(paste(gsub(session_id,"",this_directory), sub(' => .*', '', first_line),sep="/"))
+  Photo_GPS_timestamp<- as.POSIXct(photo_calibration_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+  
+  GPS_timestamp <- sub('.* => ', '', first_line)
+  GPS_timestamp <- sub('secs\").*', 'secs\")', GPS_timestamp)
+  Photo_GPS_timestamp <- first_line
+  offset <- GPS_timestamp
+  
   
   ############################################################
   ################### CREATE DATAFRAME #######################
   ############################################################
+  # metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), TemporalCoverage=character(),Relation=character(), Rights=character(), Provenance=character(), Data=character(), Number_of_Pictures=integer(), GPS_timestamp=character(),  Photo_GPS_timestamp=character())
   newRow <- data.frame(Identifier=session_id,Date=date,path=this_directory,gps_file_name=gps_file,SpatialCoverage=spatial_extent, TemporalCoverage=temporal_extent, Relation=relation,Rights=data, Provenance=data, Data=data, Number_of_Pictures=Number_of_Pictures, GPS_timestamp=GPS_timestamp, Photo_GPS_timestamp=Photo_GPS_timestamp)
   metadata_sessions <- rbind(metadata_sessions,newRow)
 }
