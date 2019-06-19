@@ -489,3 +489,55 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
   
   return(create_csv_from_view)
 }
+
+
+
+########################################################################################################################
+################### Run SF to turn a CSV into a shapefile #######################
+########################################################################################################################
+# # https://r-spatial.github.io/sf/reference/st_as_sf.html
+# setwd("/tmp/")
+# file_name <-"photos_location"
+# write_shp_from_csv(file_name)
+
+write_shp_from_csv <- function(file_name){
+csv_file <- paste0 (file_name,".csv")
+df <- read.csv(csv_file)
+plot_locations <- st_as_sf(df, coords = c("longitude", "latitude"),crs = 4326)
+shape_file <- paste0 (file_name,".shp")
+st_write(plot_locations, shape_file)
+
+return(shape_file)
+
+}
+
+
+########################################################################################################################
+################### Write Qgis project #######################
+########################################################################################################################
+# qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_csv.qgs"
+
+write_qgis_project <- function(session_id,qgs_template,file_path,xmin,xmax,ymin,ymax){
+
+  qgis_project <- readLines(qgs_template,encoding="UTF-8")
+  qgis_project <- gsub("template_file_name", file_path,qgis_project)
+  qgis_project <- gsub("/path/","",qgis_project)
+  qgis_project <- gsub("template_xmin",xmin,qgis_project)
+  qgis_project <- gsub("template_xmax",xmax,qgis_project)
+  qgis_project <- gsub("template_ymin",ymin,qgis_project)
+  qgis_project <- gsub("template_ymax",ymax,qgis_project)
+  
+  qgis_project_file <- paste0(session_id,".qgs")
+  write(qgis_project, file = qgis_project_file,ncolumns=1)
+  cat("qgis project created")
+  
+  # return(xx)
+  
+}
+
+ 
+
+
+######################################################################
+##### WRITE QGIS PROJECT TO GENERATE A MAP TO OVERLAY / DISPLAY PREVIOUS SHAPEFILES ##########
+######################################################################
