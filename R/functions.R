@@ -532,12 +532,13 @@ write_qgis_project <- function(session_id,qgs_template,file_path,xmin,xmax,ymin,
   cat("qgis project created")
   
   # return(xx)
-  
-}
 
- 
-
-
+##### Send file in google drive and get URL ##########
 ######################################################################
-##### WRITE QGIS PROJECT TO GENERATE A MAP TO OVERLAY / DISPLAY PREVIOUS SHAPEFILES ##########
-######################################################################
+# https://googledrive.tidyverse.org/
+# install.packages("googledrive")    
+library("googledrive")    
+drive_find(n_max = 30)    
+drive_find(pattern = "thumbnail",n_max = 30)
+drive_find(pattern = "session", type = "folder")
+    
