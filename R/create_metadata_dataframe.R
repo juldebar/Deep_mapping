@@ -16,6 +16,7 @@ library(sf)
 library(pdftools)
 library(RgoogleMaps)
 library(rosm)
+library(prettymapr)
 
 
 ################### Set directories #######################
@@ -30,6 +31,11 @@ setwd(working_directory)
 
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
 number_sub_directories <-length(sub_directories)
+
+google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
+
+################### Create a geoflow data frame and fill it with metadata #######################
+
 
 metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), TemporalCoverage=character(),Relation=character(), Rights=character(), Provenance=character(), Data=character(), Number_of_Pictures=integer(), GPS_timestamp=character(),  Photo_GPS_timestamp=character())
 
@@ -139,7 +145,17 @@ http:website@http://somelink/website"
       dev.off()
       
       # https://cran.r-project.org/web/packages/pdftools/pdftools.pdf
-      pdf_convert(paste0(session_id,".pdf"),format = "jpeg",dpi = 600)
+      pdf_convert(paste0(session_id,".pdf"), pages = NULL,format = "jpeg",dpi = 600,filenames=paste0(session_id,".jpeg"))
+      
+      file_name <-paste0(session_id,".jpeg")
+      google_drive_file <- upload_google_drive(google_drive_path,file_name)
+      google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
+      google_drive_file %>% drive_reveal("permissions")
+      google_drive_file %>% drive_reveal("published")
+      google_drive_file <- google_drive_file %>% drive_share(role = "reader", type = "anyone")
+      google_drive_file %>% drive_reveal("published")
+      # google_drive_file <- drive_publish(as_id(google_drive_file$id))
+      
       
       file_name <- gsub("\\.","_",dataframe_gps_files$file_name[t])
       # file_name <- gsub("x","x.csv",file_name)
@@ -198,9 +214,20 @@ head(metadata_sessions)
 metadata_sessions <- metadata_sessions[,c(1,2,3,16,17,4,18,19,7,8,9,10,11,12,5,6,13,14,15)]
 
 setwd(working_directory)
-write.csv(metadata_sessions,file = "metadata_sessions.csv",row.names = F)
+local_file_path <-paste0(session_id,".jpeg")
+local_file_path <-"metadata_sessions.csv"
+file_name <-"metadata_sessions.csv"
+write.csv(metadata_sessions,file = file_name,row.names = F)
 nrow(metadata_sessions)
 sum(metadata_sessions$Number_of_Pictures)
+
+metadata_sessions_google_drive_file <- upload_google_drive(google_drive_path,file_name)
+metadata_sessions_google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
+google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
+google_drive_file %>% drive_reveal("permissions")
+google_drive_file %>% drive_reveal("published")
+google_drive_file <- google_drive_file %>% drive_share(role = "reader", type = "anyone")
+google_drive_file %>% drive_reveal("published")
 
 ########################################################################################################################
 ################### Run geoflow #######################
