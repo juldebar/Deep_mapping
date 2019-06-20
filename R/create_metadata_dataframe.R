@@ -48,8 +48,6 @@ for (i in 1:number_sub_directories){
   spatial_extent <- NULL
   temporal_extent <- NULL
   Number_of_Pictures <- NULL
-  relation <-"parent:my-parent-metadata-identifier@http://catalogue/my-parent-metadata-identifier;
-http:website@http://somelink/website"
   rights <-""
 #   rights <-"use:terms1;
 #   use:citation1;
@@ -189,6 +187,8 @@ http:website@http://somelink/website"
   title <- gsub("_"," ",session_id)
   title <- gsub("201"," of the 201",title)
   description <- paste0("abstract:This dataset is made of ",Number_of_Pictures," pictures which have been collected during the ", title)
+  download_google_drive_file_url <- gsub("open\\?id","uc?id",google_drive_file_url)
+  relation <-paste0("thumbnail:",session_id,"@",download_google_drive_file_url)
   
   # data <-paste0("identifier:",session_id,";\nsource:",gps_file,";\nsourceName:",session_id,";\ntype:dataset;\nupload:true;")
   # data <-paste0("source:file:///tmp/dessin.pdf;\nsourceName:",session_id,";\ntype:other;\nupload:true;")
@@ -233,7 +233,7 @@ google_drive_file %>% drive_reveal("published")
 ################### Run geoflow #######################
 ########################################################################################################################
 setwd(paste0(codes_directory,"R/geoflow"))
-executeWorkflow(file = "worflow_zenodo_step1.json")
+executeWorkflow(file = "Deep_mappping_worflow.json")
 ########################################################################################################################
 ################### Create a view for each session with the track of the survey as a polyline #######################
 ########################################################################################################################
