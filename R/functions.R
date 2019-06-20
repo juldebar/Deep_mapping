@@ -532,13 +532,36 @@ write_qgis_project <- function(session_id,qgs_template,file_path,xmin,xmax,ymin,
   cat("qgis project created")
   
   # return(xx)
-
+  
+}
+########################################################################################################################
 ##### Send file in google drive and get URL ##########
-######################################################################
+########################################################################################################################
 # https://googledrive.tidyverse.org/
 # install.packages("googledrive")    
-library("googledrive")    
-drive_find(n_max = 30)    
-drive_find(pattern = "thumbnail",n_max = 30)
-drive_find(pattern = "session", type = "folder")
+
+upload_google_drive <- function(google_drive_path,file_name){
+  google_drive_file <- drive_upload(media=file_name, path = google_drive_path,name=file_name)
+  # If to update the content or metadata of an existing Drive file, use drive_update()
+  return(google_drive_file)
+}
+
+# library("googledrive")    
+# drive_find(n_max = 30)    
+# drive_find(pattern = "test_metadata", type = "folder")
+# drive_find(pattern = "thumbnail",n_max = 30)
+# drive_find(pattern = "session", type = "folder")
+# file_name <-"/home/julien/Téléchargements/FAIR.pdf"
+# google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
+# google_drive_file <- upload_google_drive(google_drive_path,file_name)
+# google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
+# google_drive_file_url
+# google_drive_file %>% drive_reveal("permissions")
+# google_drive_file %>% drive_reveal("published")
+# google_drive_file <- google_drive_file %>% drive_share(role = "reader", type = "anyone")
+# google_drive_file %>% drive_reveal("published")
+# google_drive_file <- drive_publish(as_id(google_drive_file$id))
+# drive_rm(google_drive_file)
+
+
     
