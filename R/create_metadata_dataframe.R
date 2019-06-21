@@ -111,7 +111,14 @@ for (i in 1:number_sub_directories){
     }
   number_row<-nrow(dataframe_gps_files)
   if(number_row>0){
+    
+    xmin <- NULL
+    xmax <- NULL
+    ymin <- NULL
+    ymax <- NULL
+    
     for (t in 1:number_row){
+      
       gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
       dataframe_gps_file <-NULL
       dataframe_gps_file <- return_dataframe_gps_file(wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id)
