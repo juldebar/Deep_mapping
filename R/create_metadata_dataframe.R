@@ -7,6 +7,7 @@
 ############################################################
 rm(list=ls())
 
+library(googledrive)
 library(trackeR)
 library(dplyr)
 library(exifr)
@@ -25,8 +26,8 @@ setwd(codes_directory)
 source(paste0(codes_directory,"R/functions.R"))
 # working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A/pending/"
 # working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
-# working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
-working_directory <-"/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A/done"
+working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
+# working_directory <-"/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A/done"
 setwd(working_directory)
 
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
