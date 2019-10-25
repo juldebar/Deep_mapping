@@ -2,7 +2,7 @@ rm(list=ls())
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
+codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 # codes_directory <-"~/Deep_mapping-master/"
 setwd(codes_directory)
 source(paste0(codes_directory,"R/functions.R"))
@@ -20,28 +20,41 @@ Datasets <- as.data.frame(gsheet::gsheet2tbl(Session_metadata_table))
 ############################################################################################
 ######################SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE##################################
 ############################################################################################
-images_directory <- "/media/juldebar/Deep_Mapping_one1/data_deep_mapping/2019/to_do/session_2019_01_26_kite_Le_Morne_Ambulante_Nord"
+images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/session_2019_09_11_kite_Le_Morne"
 session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
-session_metadata <-filter(Datasets, Identifier==session_id)
-photo_time <- "2019-01-26 09:28:54"
-photo_time_gsheet <- as.POSIXct(session_metadata$Photo_time, format="%Y-%m-%d %H:%M:%S",tz="UTC+04:00")
-attr(photo_time,"tzone")
-GPS_time <- "2019-01-26 09:18:00"
-GPS_time_gsheet <- as.POSIXct(session_metadata$GPS_time,format="%Y-%m-%d %H:%M:%S",tz="UTC")
-offset_gsheet <-difftime(photo_time_gsheet, GPS_time_gsheet, units="secs")
-offset_gsheet
-offset <-difftime(photo_time, GPS_time, units="secs")
+time_zone <- "Indian/Mauritius"
+
+con <- file(paste0(images_directory,"/LABEL/tag.txt"),"r")
+first_line <- readLines(con,n=1)
+close(con)
+offset <- eval(parse(text = sub(".*=> ","",first_line)))
 offset
-# file:///media/julien/disk/DCIM/175GOPRO/G0014747.JPG => heure 13:56:00, photo dim. 24 mars 2019, 13:55:58
-# offset <- return_offset(con_Reef_database, session_metadata)
-# offset[[1]]
+
+# strsplit(sub(".*=> difftime\\(","",first_line),",")[[1]][1]
+# GPS_time <- strsplit(sub(".*=> difftime\\(","",first_line),",")[[1]][2]
+# 
+# session_metadata <-filter(Datasets, Identifier==session_id)
+# photo_time <- "2019-09-23 14:18:10"
+# photo_time_gsheet <- as.POSIXct(session_metadata$Photo_time, format="%Y-%m-%d %H:%M:%S",tz="UTC+04:00")
+# attr(photo_time,"tzone")
+# GPS_time <- "2019-09-23 14:18:00"
+# GPS_time_gsheet <- as.POSIXct(session_metadata$GPS_time,format="%Y-%m-%d %H:%M:%S",tz="UTC")
+# offset_gsheet <-difftime(photo_time_gsheet, GPS_time_gsheet, units="secs")
+# offset_gsheet
+# offset <-difftime(photo_time, GPS_time, units="secs")
+# offset
+# # file:///media/julien/disk/DCIM/175GOPRO/G0014747.JPG => heure 13:56:00, photo dim. 24 mars 2019, 13:55:58
+# # offset <- return_offset(con_Reef_database, session_metadata)
+# # offset[[1]]
+
+
 
 ########################################################################################################################################################################################
 ###################### EXTRACT exif metadata elements & store them in a CSV file & LOAD THEM INTO POSTGRES DATABASE  #########
 ########################################################################################################################################################################################
 # extract exif metadata and store it into a CSV or RDS file
 template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),stringsAsFactors = FALSE)
-last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory, template_df, load_metadata_in_database=FALSE,time_zone="Indian/Mauritius")
+last_metadata_pictures <- extract_exif_metadata_in_csv(images_directory=images_directory, template_df, load_metadata_in_database=FALSE,time_zone=time_zone)
 attr(last_metadata_pictures$GPSDateTime,"tzone")
 attr(last_metadata_pictures$DateTimeOriginal,"tzone")
 
@@ -58,10 +71,17 @@ load_exif_metadata_in_database(con_Reef_database, codes_directory, photos_metada
 #  Check that the SQL database was properly loaded
 check_database <- dbGetQuery(con_Reef_database, paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 10"))
 check_database
+check_database$DateTimeOriginal
+
+# sql_query <- paste0('select ("GPSDateTime" - "DateTimeOriginal") AS offset, * FROM photos_exif_core_metadata WHERE "GPSDateTime" IS NOT NULL AND session_id =\"',session_id,'\" LIMIT 10')
+sql_query <- paste0('select ("GPSDateTime" - "DateTimeOriginal") AS offset, * FROM photos_exif_core_metadata WHERE "GPSDateTime" IS NOT NULL LIMIT 10')
+offset_db <-NULL
+check_offset_from_pictures <- dbGetQuery(con_Reef_database,sql_query)
+offset_db <-difftime(check_offset_from_pictures$GPSDateTime, check_offset_from_pictures$DateTimeOriginal, units="secs")
+offset_db
 ############################################################################################
 ###################### EXTRACT GPS TRACKS DATA AND LOAD THEM INTO POSTGRES DATABASE ########
 ############################################################################################ 
-
 # define expected mime type for the search
 file_type<-"TCX" #  "GPX"  "TCX" "RTK"
 
@@ -86,12 +106,17 @@ if(number_row>0){
     # plot_tcx(gps_file,images_directory)
   }
 }else(cat("No GPS file when looking for TCX or GOX or RTK files"))
+
 ############################################################################################
 ###################### INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP  ########
 ############################################################################################ 
-infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory,session_id , offset=offset,create_view=TRUE)
-nrow(photos_metadata)
-nrow(dataframe_gps_file)
+offset=offset
+# offset=offset_db
+photo_location <- infer_photo_location_from_gps_tracks(con_Reef_database, images_directory, codes_directory,session_id , offset=offset,create_view=TRUE)
+head(photo_location,n = 50)
+paste0("For a total of ",nrow(photos_metadata), " photos")
+paste0(nrow(photo_location), " photos have been located from GPS tracks")
+ratio = nrow(photos_metadata) / nrow(photo_location)
 nrow(dataframe_gps_file)
 #################################################################################################
 ###################### SMAKE A SUMMMARY OF TABLES CONTENT AND CLOSE DATABASE CONNEXION  ########
