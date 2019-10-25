@@ -105,11 +105,21 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
 extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metadata_in_database=FALSE,time_zone="Indian/Mauritius"){
   setwd(images_directory)
   session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
-  dir.create(file.path(images_directory, "METADATA"))
+  #create directories if they don't exist
+  
+  if(!dir.exists(file.path(images_directory, "METADATA"))){
+    cat("Create Metadata directory")
+    dir.create(file.path(images_directory, "METADATA"))
+  }
   setwd(file.path(images_directory, "METADATA"))
-  dir.create(file.path(getwd(), "exif"))
+  
   metadata_directory <- file.path(getwd(), "exif")
+  if(!dir.exists(metadata_directory)){
+    cat("Create exif directory")
+    dir.create(metadata_directory)
+  }
   setwd(images_directory)
+  
   sub_directories <- list.dirs(path=getwd(),full.names = TRUE, recursive = TRUE)
   number_sub_directories <-length(sub_directories)
   CSV_total <-NULL
@@ -121,7 +131,8 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
     this_directory <- sub_directories[i]
     
     # if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
-    if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE){
+    # if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("META",this_directory)==FALSE& grepl("LABEL",this_directory)==FALSE){
+      if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE){
         # this_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne/DCIM/101GOPRO"
       exif_metadata <- extract_exif_metadata_in_this_directory(images_directory,this_directory,template_df,time_zone=time_zone)
       # new_exif_metadata <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
@@ -135,12 +146,12 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
       
       CSV_total <- rbind(CSV_total, new_exif_metadata)
       
-      message_done <- paste("References for photos in ", this_directory, " are extracted !\n", sep=" ")
+      message_done <- paste("References for photos in ", this_directory, " have been extracted !\n", sep=" ")
       cat(message_done)
       
       setwd(metadata_directory)
-      csv_file_name <- paste("all_exif_metadata_in_",this_directory,".csv",sep="")
-      # write.csv(new_exif_metadata, csv_file_name,row.names = F)
+      csv_file_name <- paste("all_exif_metadata_in_",session_id,".csv",sep="")
+      write.csv(new_exif_metadata, csv_file_name,row.names = F)
       
       #############################################################################################################    
       #############################################MERGE WITH TAGS##############################################   
@@ -155,7 +166,7 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
   name_file_csv<-paste("All_Exif_metadata_",session_id,".csv",sep="")
   # write.csv(CSV_total, name_file_csv,row.names = F)
   saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,".RDS",sep=""))
-  write.csv(CSV_total,  paste("All_Exif_metadata_",session_id,".csv"),row.names = F)
+  # write.csv(CSV_total,  paste("All_Exif_metadata_",session_id,".csv"),row.names = F)
   
   
   # add condition exists before susbet ?
@@ -181,7 +192,7 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
   )
   
   name_file_csv<-paste("Core_Exif_metadata_",session_id,".csv",sep="")
-  write.csv(metadata_pictures, name_file_csv,row.names = F)
+  # write.csv(metadata_pictures, name_file_csv,row.names = F)
   saveRDS(metadata_pictures, paste("Core_Exif_metadata_",session_id,".RDS",sep=""))
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
@@ -329,6 +340,7 @@ load_gps_tracks_in_database <- function(con, codes_directory, gps_tracks, create
   query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column.sql")), collapse=" ")
   update_Table <- dbGetQuery(con,query_update_table_spatial_column)
   return (cat("GPS data succesfully loaded in Postgis !"))
+  # return (update_Table)
 }
 
 #############################################################################################################
@@ -459,24 +471,47 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
 infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_directory, session_id, offset, create_view=FALSE){
   original_directory <- getwd()
   setwd(images_directory)
+  # query <- NULL
+  # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
+  # query <- gsub(" CREATE MATERIALIZED VIEW IF NOT EXISTS","CREATE MATERIALIZED VIEW IF NOT EXISTS",query)
+  # query <- gsub("session_2018_03_24_kite_Le_Morne",session_id,query)
+  # if(offset < 0){
+  #   query <- gsub("- interval","+ interval",query)
+  #   query <- gsub("41",abs(offset)+1,query)
+  #   # query <- gsub("41",abs(offset)+2,query)
+  #   query <- gsub("42",abs(offset),query)
+  # }else{
+  #   query <- gsub("41",abs(offset)-1,query)
+  #   query <- gsub("42",abs(offset),query)
+  # }
+  # fileConn<-file(paste0('view_',session_id,'.SQL'))
+  # writeLines(query, fileConn)
+  # close(fileConn)
+  # inferred_location <- dbGetQuery(con, query)
+  # 
+  
+  ###########################################################
+  ###########################################################
   query <- NULL
-  query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
-  query <- gsub(" CREATE MATERIALIZED VIEW IF NOT EXISTS","CREATE MATERIALIZED VIEW IF NOT EXISTS",query)
-  query <- gsub("session_2018_03_24_kite_Le_Morne",session_id,query)
+  query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
+  query <- paste0('CREATE MATERIALIZED VIEW IF NOT EXISTS "view_',session_id,'" AS ',query)
+  query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
   if(offset < 0){
     query <- gsub("- interval","+ interval",query)
-    query <- gsub("41",abs(offset)+1,query)
-    # query <- gsub("41",abs(offset)+2,query)
-    query <- gsub("42",abs(offset),query)
+    query <- gsub("13848",abs(offset)+1,query)
   }else{
-    query <- gsub("41",abs(offset)-1,query)
-    query <- gsub("42",abs(offset),query)
+    query <- gsub("13848",abs(offset)-1,query)
   }
+  query <- paste0(query," WITH DATA")
+  
   fileConn<-file(paste0('view_',session_id,'.SQL'))
   writeLines(query, fileConn)
   close(fileConn)
+  dbGetQuery(con, query)
   
-  inferred_location <- dbGetQuery(con, query)
+  ###########################################################
+  ###########################################################
+  
   
   # if(create_view==FALSE){
   #   drop_view <- dbGetQuery(con_Reef_database, paste0('DROP MATERIALIZED VIEW IF EXISTS \"view_',session_id,'\";'))
@@ -533,7 +568,7 @@ write_qgis_project <- function(session_id,qgs_template,file_path,xmin,xmax,ymin,
   
   # return(xx)
   
-}
+} 
 ########################################################################################################################
 ##### Send file in google drive and get URL ##########
 ########################################################################################################################
