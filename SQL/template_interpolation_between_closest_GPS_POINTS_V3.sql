@@ -6,10 +6,12 @@ SELECT
 	photos_in_segments.list_photos, 
 	unnest(array_positions(list_photos, photos_exif_core_metadata."FileName")) AS cell_number, 
 	photos_in_segments.list_time_photos, 
-	photos_in_segments count_photos, 
+	photos_in_segments.count_photos, 
 	(unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric) AS ratio, 
+	ST_AsEWKT(segments) as segments,
 	ST_AsEWKT(ST_LineInterpolatePoint(segments, ((unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric)))), 
-	ST_AsEWKT(segments) as segments 
+	ST_LineInterpolatePoint(segments, ((unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric))) as the_geom,
+	photos_exif_core_metadata."PreviewImage"
 FROM 
 	photos_exif_core_metadata, 
 	(
