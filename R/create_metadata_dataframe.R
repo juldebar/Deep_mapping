@@ -5,7 +5,7 @@
 ############################################################
 ################### Packages #######################
 ############################################################
-rm(list=ls())
+# rm(list=ls())
 
 library(googledrive)
 library(trackeR)
@@ -21,13 +21,15 @@ library(prettymapr)
 
 
 ################### Set directories #######################
-codes_directory <-"/home/julien/Bureau/CODES/Deep_mapping/"
+codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 setwd(codes_directory)
 source(paste0(codes_directory,"R/functions.R"))
+source(paste0(codes_directory,"R/gpx_to_wkt.R"))
+
 # working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A/pending/"
 # working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
-working_directory <- "/media/julien/Deep_Mapping_4To/data_deep_mapping/2018/A"
-# working_directory <-"/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A/done"
+working_directory <- "/media/juldebar/disk/session_2019_07_10_Le_Morne_ti_reefBastien"
+working_directory <-"/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/test"
 setwd(working_directory)
 
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
@@ -50,23 +52,23 @@ for (i in 1:number_sub_directories){
   temporal_extent <- NULL
   Number_of_Pictures <- NULL
   rights <-""
-#   rights <-"use:terms1;
-#   use:citation1;
-# use:disclaimer1;
-# useConstraint:copyright;
-# useConstraint:license;
-# accessConstraint:copyright;
-# otherConstraint:web use;"
+  #   rights <-"use:terms1;
+  #   use:citation1;
+  # use:disclaimer1;
+  # useConstraint:copyright;
+  # useConstraint:license;
+  # accessConstraint:copyright;
+  # otherConstraint:web use;"
   provenance <-""
-#   provenance <-"statement:My data management workflow;
-# process:
-# rationale1[description1],
-# rationale2[description2],
-# rationale3[description3]
-# processor:
-# emmanuel.blondel1@gmail.com,
-# julien.barde@ird.fr,
-# wilfried.heintz@inra.fr"
+  #   provenance <-"statement:My data management workflow;
+  # process:
+  # rationale1[description1],
+  # rationale2[description2],
+  # rationale3[description3]
+  # processor:
+  # emmanuel.blondel1@gmail.com,
+  # julien.barde@ird.fr,
+  # wilfried.heintz@inra.fr"
   
   GPS_timestamp <- NULL
   Photo_GPS_timestamp <- NULL
@@ -109,7 +111,7 @@ for (i in 1:number_sub_directories){
   if(is.null(dataframe_gps_files)){
     file_type<-"GPX"
     dataframe_gps_files <- return_dataframe_gps_files(this_directory,type=file_type)
-    }
+  }
   number_row<-nrow(dataframe_gps_files)
   if(number_row>0){
     
@@ -123,61 +125,70 @@ for (i in 1:number_sub_directories){
       gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
       dataframe_gps_file <-NULL
       dataframe_gps_file <- return_dataframe_gps_file(wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id)
-#       head(dataframe_gps_file)
-      xmin <- min(dataframe_gps_file$longitude)
-      xmax <- max(dataframe_gps_file$longitude)
-      ymin <- min(dataframe_gps_file$latitude)
-      ymax <- max(dataframe_gps_file$latitude)
-      spatial_extent <- WKT <- paste("SRID=4326;POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
+      # #       head(dataframe_gps_file)
+      #       xmin <- min(dataframe_gps_file$longitude)
+      #       xmax <- max(dataframe_gps_file$longitude)
+      #       ymin <- min(dataframe_gps_file$latitude)
+      #       ymax <- max(dataframe_gps_file$latitude)
+      #       spatial_extent <- paste("SRID=4326;POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
+      if(grepl(pattern = ".tcx",gps_file)){
+        spatial_extent <- tcx_to_wkt(gps_file, dTolerance = 0.00005)
+      }else{
+        spatial_extent <- gpx_to_wkt(gps_file, dTolerance = 0.00005)
+      }
+      spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
+      # class(spatial_extent_geom)
+      latitude <- as.data.frame(st_coordinates(spatial_extent_geom))$Y
+      longitude <- as.data.frame(st_coordinates(spatial_extent_geom))$X
+      # class(st_coordinates(spatial_extent_geom))
       
-#       jpeg(paste0(session_id,".jpg"))
-#       bmaps.plot(bbox, type = "Aerial",res=300,zoomin=-1,stoponlargerequest=FALSE)
-#       # prettymap(bmaps.plot(bbox, type = "Aerial",zoomin=-1,stoponlargerequest=FALSE),res=300, scale.style="ticks", scale.tick.cex=0.5)
-#       osm.points(dataframe_gps_file$longitude,dataframe_gps_file$latitude, col="yellow",pch=18, cex=0.5)
-#       dev.off()
-
+      #       jpeg(paste0(session_id,".jpg"))
+      #       bmaps.plot(bbox, type = "Aerial",res=300,zoomin=-1,stoponlargerequest=FALSE)
+      #       # prettymap(bmaps.plot(bbox, type = "Aerial",zoomin=-1,stoponlargerequest=FALSE),res=300, scale.style="ticks", scale.tick.cex=0.5)
+      #       osm.points(dataframe_gps_file$longitude,dataframe_gps_file$latitude, col="yellow",pch=18, cex=0.5)
+      #       dev.off()
+      
       this_wd <- getwd()
       setwd(as.character(dataframe_gps_files$path[t]))
       
-      gps_points <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
-      bbox <- makebbox(ymax,xmax,ymin,xmin)
-      bbox <- makebbox(ymax+0.03,xmax+0.03,ymin-0.03,xmin-0.03)
-      bbox
+      # gps_points <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
+      # bbox <- makebbox(ymax,xmax,ymin,xmin)
+      # bbox <- makebbox(ymax+0.03,xmax+0.03,ymin-0.03,xmin-0.03)
+      bbox <- st_bbox(spatial_extent_geom)
       
       pdf(paste0(session_id,".pdf"))
       bmaps.plot(bbox, type = "Aerial",res=600,zoomin=-1,stoponlargerequest=FALSE)
       # prettymap(bmaps.plot(bbox, type = "Aerial",zoomin=-1,stoponlargerequest=FALSE),res=300, scale.style="ticks", scale.tick.cex=0.5)
-      osm.points(dataframe_gps_file$longitude,dataframe_gps_file$latitude, col="yellow",pch=18, cex=0.5)
+      # osm.points(spatial_extent_geom$longitude,dataframe_gps_file$latitude, col="yellow",pch=18, cex=0.5)
+      osm.points(longitude,latitude, col="yellow",pch=18, cex=0.5)
       dev.off()
       
       # https://cran.r-project.org/web/packages/pdftools/pdftools.pdf
       pdf_convert(paste0(session_id,".pdf"), pages = NULL,format = "jpeg",dpi = 600,filenames=paste0(session_id,".jpeg"))
       
       file_name <-paste0(session_id,".jpeg")
-      google_drive_file <- upload_google_drive(google_drive_path,file_name)
-      google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
-      google_drive_file %>% drive_reveal("permissions")
-      google_drive_file %>% drive_reveal("published")
-      google_drive_file <- google_drive_file %>% drive_share(role = "reader", type = "anyone")
-      google_drive_file %>% drive_reveal("published")
-      # google_drive_file <- drive_publish(as_id(google_drive_file$id))
+      file_name
       
       
       file_name <- gsub("\\.","_",dataframe_gps_files$file_name[t])
       # file_name <- gsub("x","x.csv",file_name)
-      shape_file <- write_shp_from_csv(file_name)
+      if (!file.exists(paste0(file_name,".shp"))){
+        shape_file <- write_shp_from_csv(file_name)
+      }else{
+        paste0("\n Le fichier ", file_name,".shp  existe déjà !\n ")
+      }
       # qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_csv.qgs"
       qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_shapefile_new.qgs"
-      write_qgis_project(session_id, qgs_template,shape_file,xmin,xmax,ymin,ymax)
+      # write_qgis_project(session_id, qgs_template,shape_file,xmin,xmax,ymin,ymax)
       setwd(this_wd)
-
+      
     }
   }else{
-    (cat("No GPS file when looking for TCX or GPX or RTK files"))
+    cat("No GPS file when looking for TCX or GPX or RTK files")
+    cat(paste0("\n Pas de dossier'GPS' dans ", this_directory,"\n"))
     gps_file <- "No GPS file"
     spatial_extent <- "No GPS file"
   }
-  
   files <- NULL
   con <- file(paste(this_directory,"LABEL","tag.txt",sep="/"),"r")
   first_line <- readLines(con,n=1)
