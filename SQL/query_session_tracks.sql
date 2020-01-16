@@ -1,6 +1,6 @@
 SELECT 
 session_id, 
-array_agg(gps_tracks.fid) AS list_gps_points, 
+array_agg(gps_tracks.ogc_fid) AS list_gps_points, 
 array_agg(gps_tracks.time) AS time, 
 min(gps_tracks.time) AS start_date, 
 max(gps_tracks.time) AS end_date, 
