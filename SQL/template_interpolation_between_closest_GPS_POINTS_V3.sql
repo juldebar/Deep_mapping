@@ -1,5 +1,5 @@
 SELECT 
-	photos_exif_core_metadata.ogc_fid, 
+	photos_exif_core_metadata.photo_id, 
 	photos_exif_core_metadata.session_id, 
 	photos_exif_core_metadata.session_photo_number, 
 	CONCAT(photos_exif_core_metadata."relative_path"||'/'||photos_exif_core_metadata."FileName") AS photo_relative_file_path, 
@@ -11,12 +11,18 @@ SELECT
 	ST_AsEWKT(segments) as segments,
 	ST_AsEWKT(ST_LineInterpolatePoint(segments, ((unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric)))), 
 	ST_LineInterpolatePoint(segments, ((unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric))) as the_geom,
+	photos_exif_core_metadata."GPSDateTime",
+	photos_exif_core_metadata."DateTimeOriginal",
+	photos_exif_core_metadata."LightValue",
+	photos_exif_core_metadata."ImageSize",
+	photos_exif_core_metadata."Model",
+	photos_exif_core_metadata."ThumbnailImage",
 	photos_exif_core_metadata."PreviewImage"
 FROM 
 	photos_exif_core_metadata, 
 	(
 	SELECT 
-		row_number() OVER() AS ogc_fid, 
+		row_number() OVER() AS photo_id, 
 		session_id,
 		GPS1_fid as fid_gps,
 		array_agg("FileName") AS list_photos, 
@@ -26,8 +32,8 @@ FROM
 		FROM 
 			(
 			SELECT 
-				GPS1.fid AS GPS1_fid, 
-				GPS2.fid AS GPS2_fid, 
+				GPS1.ogc_fid AS GPS1_fid, 
+				GPS2.ogc_fid AS GPS2_fid, 
 				photos."FileName", 
 				photos."DateTimeOriginal", 
 				GPS1.session_id, 
@@ -40,17 +46,17 @@ FROM
 				gps_tracks as GPS2, 
 				photos_exif_core_metadata AS photos 
 			WHERE  
-				GPS2.fid = GPS1.fid +1
+				GPS2.ogc_fid = GPS1.ogc_fid +1
 				AND GPS1.session_id=GPS2.session_id 
 				AND GPS1.session_id=photos.session_id 
 				AND GPS1.session_id='session_2019_02_16_kite_Le_Morne_la_Pointe' 
 				AND (photos."DateTimeOriginal"  + interval '13848 second') < GPS2."time" 
 				AND (photos."DateTimeOriginal"  + interval '13848 second') >= GPS1."time" 
 
-			ORDER BY GPS1.session_id, GPS1.fid ASC
+			ORDER BY GPS1.session_id, GPS1.ogc_fid ASC
 			) AS foo
 		GROUP BY session_id, GPS1_fid, segments
-		ORDER BY ogc_fid
+		ORDER BY photo_id
 	) AS photos_in_segments
 
 WHERE 
