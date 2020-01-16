@@ -14,8 +14,8 @@ gpx_to_wkt <- function(gps_file, dTolerance = 0.00005){
   return(wkt)
 }
 
-gps_file="/home/juldebar/Téléchargements/activity_4057551218.gpx"
-wkt <- gpx_to_wkt(gps_file)
+# gps_file="/home/juldebar/Téléchargements/activity_4057551218.gpx"
+# wkt <- gpx_to_wkt(gps_file)
 
 # tcx to wkt
 tcx_to_wkt <- function(gps_file,dTolerance=0.00005){
@@ -33,6 +33,6 @@ tcx_to_wkt <- function(gps_file,dTolerance=0.00005){
   return(wkt)
 }
 
-gps_file <-"/home/juldebar/Téléchargements/22445995855.tcx"
-wkt <- tcx_to_wkt(gps_file,dTolerance = 0.00005)
-wkt
+# gps_file <-"/home/juldebar/Téléchargements/22445995855.tcx"
+# wkt <- tcx_to_wkt(gps_file,dTolerance = 0.00005)
+# wkt
