@@ -303,7 +303,54 @@ rename_exif_csv <- function(images_directory){
 
 
 #############################################################################################################
-############################ load_metadata_in_database ###################################################
+############################ create_database ###################################################
+#############################################################################################################
+
+create_database <- function(con, codes_directory){
+  
+  query_create_table_gps_tracks <- paste(readLines(paste0(codes_directory,"SQL/create_tables_GPS_tracks.sql")), collapse=" ")
+  create_table <- dbGetQuery(con_Reef_database,query_create_table_gps_tracks)
+  
+  query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_geoflow_metadata_table.sql")), collapse=" ")
+  query_create_table_metadata <- gsub("Reef_admin",User,query_create_table_metadata)
+  create_table_metadata <- dbGetQuery(con_Reef_database,query_create_table_metadata)
+  
+  query_create_table_exif_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_exif_core_metadata_table.sql")), collapse=" ")
+  query_create_table_exif_metadata <- gsub("Reef_admin",User,query_create_table_exif_metadata)
+  create_table_exif_metadata <- dbGetQuery(con_Reef_database,query_create_table_exif_metadata)
+  
+  query_create_table_label <- paste(readLines(paste0(codes_directory,"SQL/create_label_table.sql")), collapse=" ")
+  query_create_table_label <- gsub("Reef_admin",User,query_create_table_label)
+  create_table_exif_metadata <- dbGetQuery(con_Reef_database,query_create_table_label)
+  
+} 
+
+
+#############################################################################################################
+############################ load_DCMI_metadata_in_database ###################################################
+#############################################################################################################
+
+
+load_DCMI_metadata_in_database <- function(con, codes_directory, DCMI_metadata, create_table=FALSE){
+  
+  if(create_table==TRUE){
+    
+    query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_geoflow_metadata_table.sql")), collapse=" ")
+    query_create_table_metadata <- gsub("Reef_admin",User,query_create_table_metadata)
+    create_table_metadata <- dbGetQuery(con_Reef_database,query_create_table_metadata)
+    
+  }
+  
+  dbWriteTable(con, "metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
+  existing_rows <- dbGetQuery(con_Reef_database, paste0('UPDATE metadata SET geometry = ST_GeomFromText("SpatialCoverage",4326);'))
+  
+  
+}
+
+
+
+#############################################################################################################
+############################ load_exif_metadata_in_database ###################################################
 #############################################################################################################
 
 
@@ -313,7 +360,7 @@ load_exif_metadata_in_database <- function(con, codes_directory, exif_metadata, 
     create_exif_core_metadata_table <- dbGetQuery(con,query_create_exif_core_metadata_table)
     dbWriteTable(con, "photos_exif_core_metadata", exif_metadata, row.names=FALSE, append=TRUE)
   } else {
-    ogc_fid_min <- dbGetQuery(con, paste0("SELECT max(ogc_fid) FROM photos_exif_core_metadata;"))+1
+    ogc_fid_min <- dbGetQuery(con, paste0("SELECT max(photo_id) FROM photos_exif_core_metadata;"))+1
     if(is.na(ogc_fid_min)){ogc_fid_min=0}
     ogc_fid_max <- max(ogc_fid_min)+nrow(exif_metadata)-1
     exif_metadata$ogc_fid <-c(max(ogc_fid_min):ogc_fid_max)
@@ -363,11 +410,11 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   }
   if(is.null(existing_rows)){
     existing_rows=0
-    track_points$fid <-c(1:nrow(track_points))
+    track_points$ogc_fid <-c(1:nrow(track_points))
   }else{
     start <- as.integer(existing_rows+1)
     end <- as.integer(existing_rows+nrow(track_points))
-    track_points$fid <-c(start:end)
+    track_points$ogc_fid <-c(start:end)
   }
   track_points$session_id <- session_id
   head(track_points)
@@ -379,8 +426,8 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   GPS_tracks_values <- NULL
   
     if(type=="RTK"){
-    select_columns = subset(track_points, select = c(fid,session_id,latitude,longitude,height,GPST,age,the_geom))
-    GPS_tracks_values = dplyr::rename(select_columns, fid=fid,session_id=session_id, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
+    select_columns = subset(track_points, select = c(ogc_fid,session_id,latitude,longitude,height,GPST,age,the_geom))
+    GPS_tracks_values = dplyr::rename(select_columns, ogc_fid=ogc_fid,session_id=session_id, latitude=latitude,longitude=longitude, altitude=height, heart_rate=age, time=GPST)
     sapply(GPS_tracks_values,class)
     GPS_tracks_values$heart_rate <- c(1:nrow(GPS_tracks_values))
     GPS_tracks_values$time <- as.POSIXct(GPS_tracks_values$time, "%Y/%m/%d %H:%M:%OS")
@@ -390,16 +437,16 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   } else if(type=="GPX"){
     sapply(track_points@data,class)
     
-    GPS_tracks_values <- dplyr::select(track_points@data,fid,session_id,time,ele,track_fid,the_geom) %>% mutate(latitude = track_points@coords[,2]) %>% mutate(longitude = track_points@coords[,1])
-    GPS_tracks_values= dplyr::rename(GPS_tracks_values, fid=fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, the_geom=the_geom)
+    GPS_tracks_values <- dplyr::select(track_points@data,ogc_fid,session_id,time,ele,track_fid,the_geom) %>% mutate(latitude = track_points@coords[,2]) %>% mutate(longitude = track_points@coords[,1])
+    GPS_tracks_values= dplyr::rename(GPS_tracks_values, ogc_fid=ogc_fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, the_geom=the_geom)
     GPS_tracks_values <- GPS_tracks_values[,c(1,2,3,7,8,4,5,6)]
     write.csv(GPS_tracks_values, gsub(".gpx","_gpx.csv",gps_file),row.names = F)
     
   } else if (type=="TCX"){
     # https://cran.r-project.org/web/packages/trackeR/vignettes/TourDetrackeR.html => duplicates are removed ?
-    # select_columns = subset(track_points, select = c(fid,session_id,latitude,longitude,altitude,time,heart_rate))
-    GPS_tracks_values <- dplyr::select(track_points,fid,session_id, time, latitude,longitude,altitude,heart_rate,the_geom)
-    # GPS_tracks_values = dplyr::rename(GPS_tracks_values, fid=fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart_rate,the_geom=the_geom)
+    # select_columns = subset(track_points, select = c(ogc_fid,session_id,latitude,longitude,altitude,time,heart_rate))
+    GPS_tracks_values <- dplyr::select(track_points,ogc_fid,session_id, time, latitude,longitude,altitude,heart_rate,the_geom)
+    # GPS_tracks_values = dplyr::rename(GPS_tracks_values, ogc_fid=ogc_fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart_rate,the_geom=the_geom)
     write.csv(GPS_tracks_values, gsub(".tcx","_tcx.csv",gps_file),row.names = F)
   }
   
@@ -493,9 +540,13 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
   ###########################################################
   ###########################################################
   query <- NULL
+  # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
   query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
-  query <- paste0('CREATE MATERIALIZED VIEW IF NOT EXISTS "view_',session_id,'" AS ',query)
+  query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
+  query <- paste0(query_drop,'CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
+  # query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
   query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
+  
   if(offset < 0){
     query <- gsub("- interval","+ interval",query)
     query <- gsub("13848",abs(offset)+1,query)
@@ -581,10 +632,40 @@ upload_google_drive <- function(google_drive_path,file_name){
   return(google_drive_file)
 }
 
-# library("googledrive")    
-# drive_find(n_max = 30)    
+
+# google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
+# google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_path$id)
+
+upload_file_on_drive_repository <- function(google_drive_path,file_name){
+  
+  # check <- drive_find(pattern = file_name)
+  # drive_get(path = google_drive_path, id = file_name, team_drive = NULL, corpus = NULL,verbose = TRUE)
+  check <- drive_ls(path = google_drive_path, pattern = file_name, recursive = FALSE)
+  check
+  if(nrow(check)>0){
+    google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=file_name)
+    # google_drive_file <- drive_upload(media=file_name, path = google_drive_path,name=file_name)
+    
+  }else{
+    google_drive_file <- drive_upload(media=file_name, path = google_drive_path,name=file_name)
+  }
+  # If to update the content or metadata of an existing Drive file, use drive_update()
+  google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
+  google_drive_file %>% drive_reveal("permissions")
+  google_drive_file %>% drive_reveal("published")
+  google_drive_file <- google_drive_file %>% drive_share(role = "reader", type = "anyone")
+  google_drive_file %>% drive_reveal("published")
+  file_id <- google_drive_file$id
+  
+  return(file_id)
+}
+
+
+
+
+# library("googledrive")
+# drive_find(n_max = 30)
 # drive_find(pattern = "test_metadata", type = "folder")
-# drive_find(pattern = "thumbnail",n_max = 30)
 # drive_find(pattern = "session", type = "folder")
 # file_name <-"/home/julien/Téléchargements/FAIR.pdf"
 # google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
