@@ -41,7 +41,7 @@ GRANT ALL ON TABLE metadata TO Reef_admin;
 COMMENT ON TABLE metadata IS 'Table containing the metadata on all the datasets available in the database';
 COMMENT ON COLUMN metadata.session_number IS 'internal identifier for a session in this table and database';
 COMMENT ON COLUMN metadata.session_id IS 'session identifier complying with a naming convention';
-COMMENT ON COLUMN metadata.persistent_identifier IS 'when a dataset has multiple versions (eg yearly versions) the    persistent identifier is for the last version (up to date)';
+COMMENT ON COLUMN metadata.persistent_identifier IS 'when a dataset has multiple versions (eg yearly versions) the persistent identifier is for the last version (up to date)';
 COMMENT ON COLUMN metadata.related_sql_query IS 'the SQL query to be executed to get this dataset';
 COMMENT ON COLUMN metadata.related_view_name IS 'the name of the view to directly access this dataset (if it exists)';
 COMMENT ON COLUMN metadata.identifier IS 'identifier" metadata element of the metadata_sheet';
