@@ -136,47 +136,40 @@ system(command = "awk 'FNR==1 && NR!=1{next;}{print}' *ter.csv  > combined.csv")
 ########################################################################################################################################################################
 ########################################################################################################################################################################
 # Function to copy all annotated images in a single repository and/or in repositories whose name is the same as the label annotating images
-copy_images_for_training <- function(wd_copy, df_images,file_categories,crop_images=FALSE){
+copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_images=FALSE){
   current_dir <- getwd()
   setwd(wd_copy)
-  all_images <-df_images
-  # create sub-repositories
-  # dir <-1
+  # create sub-repositories for  each object / category to be identified where all images tagged with this category will be copied
   for(dir in 1:nrow(file_categories)){
-    # file_categories[dir]
+    #we filter the dataset to selectonly images tagged with the category (matching the pattern)
     mainDir <-  file_categories$RepositoryName[dir]
-
     relevant_images <- all_images %>% filter(str_detect(tag, file_categories$Pattern[dir]))
+    # if some images have been tagged with the relevant label we create the sub-reporsitory with the name of the label
     if(nrow(relevant_images)>0){
       dir.create(mainDir)
       setwd(mainDir)
       if(crop_images){dir.create(file.path(mainDir, "crop"))}
-    for(f in 1:nrow(relevant_images)){
-      cat("\n")
-      print(relevant_images$path[f])
-      # cat(paste0(mainDir,f))
-      cat("\n")
-
-# check the clause below!
-      if(length(relevant_images$path[f])>0){
-        # copy relevant images for this category in this sub-repository (crop images if asked)
-        filename <- gsub(paste0(dirname(as.character(relevant_images$path[f])),"/"),"", as.character(relevant_images$path[f]))
-        cat(filename)
-        cat("\n")
-        # cat(paste0("cp ",paste0(as.character(relevant_images$path[f])," .",gsub(dirname(as.character(relevant_images$path[f])),"", as.character(all_images$path[f])))))
-        cat(paste0("cp ",paste0(as.character(relevant_images$path[f])," .",gsub(dirname(as.character(relevant_images$path[f])),"", as.character(relevant_images$path[f])))))
-        system(paste0("cp ",paste0("/",as.character(relevant_images$path[f])," ./",relevant_images$photo_name[f])))
-        system(paste0("cp ",paste0("/",as.character(relevant_images$path[f])," ../",relevant_images$photo_name[f])))
-      }else{
-        cat(paste0("\n issue with ",relevant_images$path[f],"\n" ))
-        
+      # we copy each image in the sub-repository and in wd_copy as well if needed
+      for(f in 1:nrow(relevant_images)){
+        print(paste0("\n",relevant_images$path[f]),"\n")
+        # check the clause below!
+        if(length(relevant_images$path[f])>0){
+          # copy relevant images for this category in this sub-repository (crop images if asked)
+          filename <- gsub(paste0(dirname(as.character(relevant_images$path[f])),"/"),"", as.character(relevant_images$path[f]))
+          print(paste0(filename,"\n"))
+          cat(paste0("cp ",paste0(as.character(relevant_images$path[f])," .",gsub(dirname(as.character(relevant_images$path[f])),"", as.character(relevant_images$path[f])))))
+          system(paste0("cp ",paste0("/",as.character(relevant_images$path[f])," ./",relevant_images$photo_name[f])))
+          system(paste0("cp ",paste0("/",as.character(relevant_images$path[f])," ../",relevant_images$photo_name[f])))
+          }else{
+            cat(paste0("\n issue with ",relevant_images$path[f],"\n" ))
+          }
+        if(crop_images){crop_this_image(filename,mainDir)}
       }
-      if(crop_images){crop_this_image(filename,mainDir)}
-    }
-  }
+      }
     setwd(wd_copy)
-  }
+    }
   cat("done")
+  setwd(current_dir)
 }
 
 
@@ -186,7 +179,6 @@ wd_copy <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash"
 # We load the mapping between annotation and labels from either a csv or a google sheet
 # all_categories <- read.csv("/home/julien/Bureau/CODES/Deep_mapping/CSV/All_categories.csv",stringsAsFactors = FALSE)
 all_categories <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
-file_categories <- all_categories
 # df_images <-all_files
 df_images <-newdf
 head(df_images)
@@ -203,6 +195,7 @@ head(real)
 real  %>% distinct(LABELS)
 
 multi_labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
+label_ime <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1be6-6T2t_SIXwG6hEnC68Z6u_bSOMlRM7pk09hatwqU/edit?usp=sharing"))
 
 images <-NULL
 images <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1I_G1_GYIXOUBCJZLHD_ggKZvLVcdtd_2pcTkCiltzSU/edit?usp=sharing"))
@@ -211,23 +204,25 @@ images <- left_join(images, label_ime, by = 'file_name')
 head(images)
 images %>% distinct(tag)
 images <- images %>% unite("tag", old_tag:Labels, remove = FALSE)
+head(images)
 
 
 total <-NULL
-tag_to_label <- function(df_labels){
-  for(pattern in 1:nrow(df_labels)){
-    df <- images %>% filter(str_detect(images$tag, df_labels$Pattern[pattern]))
-# df$tag <-as.character(df_labels$Name[pattern])
-    if(nrow(df)>0){
-      df$tag <-df_labels$Name[pattern]
-      head(df)
-      total <-bind_rows(total,df)
+tag_to_label <- function(images,labels){
+  #for each category we check if some images are tagged with this category
+  for(pattern in 1:nrow(labels)){
+    images_with_labels <- images %>% filter(str_detect(images$tag, labels$Pattern[pattern]))
+    # images_with_labels$tag <-as.character(labels$Name[pattern])
+    if(nrow(images_with_labels)>0){
+      images_with_labels$tag <-labels$Name[pattern]
+      head(images_with_labels)
+      total <-bind_rows(total,images_with_labels)
       }
   }
 return(total)
 }
 
-total <- tag_to_label(multi_labels)  
+total <- tag_to_label(images,multi_labels)  
 
 head(total)
 duplicated(total)
@@ -256,3 +251,70 @@ label_ime <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadshe
 jointure <- left_join(images_tags_and_labels, label_ime, by = 'file_name')
 head(jointure)
 jointure
+
+
+x <-"/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/session_2019_10_14_kite_Le_Morne_kite_Lagoon/DCIM/101GOPRO/G0023767.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/session_2019_10_14_kite_Le_Morne_kite_Lagoon/DCIM/101GOPRO/G0023778.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/session_2019_10_14_kite_Le_Morne_kite_Lagoon/DCIM/101GOPRO/G0023780.JPG"
+x <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_01_13_kite_Le_Morne_G0016833.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_01_13_kite_Le_Morne_G0017618.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_01_13_kite_Le_Morne_G0017620.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_01_13_kite_Le_Morne_G0017641.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_01_13_kite_Le_Morne_G0017646.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_01_14_kite_Le_Morne_G0015875.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_01_14_kite_Le_Morne_G0015876.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_03_24_kite_Le_Morne_G0018507.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_03_24_kite_Le_Morne_G0018508.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_03_24_kite_Le_Morne_G0019179.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_03_24_kite_Le_Morne_G0019685.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_03_24_kite_Le_Morne_G0019686.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_03_24_kite_Le_Morne_G0019793.JPG
+/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash/A/session_2018_03_24_kite_Le_Morne_G0024206.JPG"
+content <- " et sable"
+set_images <- strsplit(x, "\n")
+df_enriched <- NULL
+df_enriched <- images_tags_and_labels
+head(df_enriched)
+df_enriched$old_tag
+df_enriched$new_tag <- "toto"
+
+for(image in 1:lengths(set_images)){
+  cat(paste0(image,"\n"))
+  file_name <-gsub(".*\\/session","session",set_images[[1]][image])
+  image_file_name <- gsub(".*_G0","G0",file_name)
+  cat(paste0(file_name,"\n"))
+  session <- gsub(paste0("_", image_file_name),"",image_file_name)
+  cat(paste0(session,"\n"))
+  image_row <- filter(df_enriched,name_session==session,file_name==image_file_name)
+  if (nrow(image_row)>1){
+    cat("Achtung")
+  }
+  df_enriched$old_tag[df_enriched$path==image_row$path] <- paste0(image_row$old_tag,content)
+  # df_enriched <- mutate(df_enriched, new_tag = which(name_session==session,file_name==image_file_name), paste0(old_tag,content))
+  # dat <- dat %>% mutate(col1 = replace(col1, which(is.na(col1) & col2 == "Tom"), 0))
+  # enriched_tag <- paste0(previous_tag$old_tag,content)
+  # image_row <- filter(df_enriched,name_session==session,file_name==image_file_name) %>% mutate(replace(new_tag == paste0(old_tag,content), NA))
+  # filter(df_enriched,name_session==session,file_name==image_file_name) %>% mutate(replace(new_tag == paste0(old_tag,content), NA))
+  # df_enriched <- df_enriched %>% mutate(name_session==session,file_name==image_file_name, new_tag = replace(new_tag = paste0(old_tag,content))) 
+  # df_enriched <- mutate(df_enriched, new_tag = ifelse(name_session==session && file_name==image_file_name),paste0(old_tag,content), old_tag))
+  
+  # cat(paste0(previous_tag$old_tag,"\n"))
+  # cat(paste0(enriched_tag,"\n"))
+  
+}
+
+head(df_enriched)
+
+wd_copy <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash"
+if(!dir.exists(wd_copy)){
+  dir.create("/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash")
+}
+all_categories <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
+df_images <-NULL
+df_images <-df_enriched
+df_images$tag <-df_images$old_tag
+head(df_images)
+crop_images=FALSE
+# we make a copy of all annotated images
+copy_images_for_training(wd_copy, df_images,all_categories,crop_images=crop_images)
+
