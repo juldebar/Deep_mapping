@@ -10,6 +10,8 @@ SELECT
 	(unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric) AS ratio, 
 	ST_AsEWKT(segments) as segments,
 	ST_AsEWKT(ST_LineInterpolatePoint(segments, ((unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric)))), 
+	ST_X(ST_LineInterpolatePoint(segments, ((unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric)))) as latitude,
+	ST_Y(ST_LineInterpolatePoint(segments, ((unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric)))) as longitude,
 	ST_LineInterpolatePoint(segments, ((unnest(array_positions(list_photos, photos_exif_core_metadata."FileName"))::numeric / (count_photos+1)::numeric))) as the_geom,
 	photos_exif_core_metadata."GPSDateTime",
 	photos_exif_core_metadata."DateTimeOriginal",
