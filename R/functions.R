@@ -102,9 +102,11 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
 #############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
-extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metadata_in_database=FALSE,time_zone="Indian/Mauritius"){
+extract_exif_metadata_in_csv <- function(images_directory,template_df,mime_type,load_metadata_in_database=FALSE,time_zone="Indian/Mauritius"){
+  
   setwd(images_directory)
-  session_id <- gsub(paste0(dirname(images_directory),"/"),"",images_directory)
+  session_id <- gsub(" ","_",gsub(paste0(dirname(images_directory),"/"),"",images_directory))
+  
   #create directories if they don't exist
   
   if(!dir.exists(file.path(images_directory, "METADATA"))){
@@ -130,35 +132,43 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
     setwd(images_directory)
     this_directory <- sub_directories[i]
     
-    # if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("done",this_directory)==FALSE){
-    # if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE & grepl("META",this_directory)==FALSE& grepl("LABEL",this_directory)==FALSE){
-      if (grepl("GOPRO",this_directory)==TRUE & grepl("not_",this_directory)==FALSE & grepl("GPS",this_directory)==FALSE){
-        # this_directory <- "/media/usb0/go_pro/backup_2To/session_2018_06_30_kite_Le_Morne/DCIM/101GOPRO"
-      exif_metadata <- extract_exif_metadata_in_this_directory(images_directory,this_directory,template_df,time_zone=time_zone)
-      # new_exif_metadata <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
-      # new_exif_metadata <- rbind(template_df, dat)
-      new_exif_metadata <- bind_rows(template_df, exif_metadata)
-      # new_exif_metadata <- full_join(template_df, dat)
-      # m = similar(dat, 0) 
+    if (endsWith(this_directory, "GOPRO")==TRUE){
       
-      # Ajouter le path de la photo ou this_directory
-      # metadata_pictures <- merge(c(this_directory),metadata_pictures))
+      setwd(this_directory)
+      files <- list.files(pattern = mime_type ,recursive = TRUE)
       
-      CSV_total <- rbind(CSV_total, new_exif_metadata)
-      
-      message_done <- paste("References for photos in ", this_directory, " have been extracted !\n", sep=" ")
-      cat(message_done)
+      if(length((files))>0){
+        
+        cat(paste("\n Metadata extraction for photos in ", this_directory, "\n", sep=" "))
+        exif_metadata <- extract_exif_metadata_in_this_directory(images_directory,this_directory,template_df, mime_type = mime_type, time_zone=time_zone)
+        # new_exif_metadata <- merge(template_df,dat,by.x="SourceFile",by.y="SourceFile", all.y=TRUE,sort = F)
+        # new_exif_metadata <- rbind(template_df, dat)
+        new_exif_metadata <- bind_rows(template_df, exif_metadata)
+        # new_exif_metadata <- full_join(template_df, dat)
+        # m = similar(dat, 0) 
+        # Ajouter le path de la photo ou this_directory
+        # metadata_pictures <- merge(c(this_directory),metadata_pictures))
+        
+        CSV_total <- rbind(CSV_total, new_exif_metadata)
+        
+        message_done <- paste("\n References for photos in ", this_directory, " have been extracted !\n", sep=" ")
+        cat(message_done)
+        
+      }else if(length(list.files(pattern = "*.MP4" ,recursive = TRUE))>0){
+        message_done <- paste("\n Only videos in ", this_directory, " !\n", sep=" ")
+        cat(message_done)
+      }else{
+        message_done <- paste("\n No files with expected mime type in ", this_directory, " !\n", sep=" ")
+        cat(message_done)
+      }
       
       setwd(metadata_directory)
-      csv_file_name <- paste("all_exif_metadata_in_",session_id,".csv",sep="")
-      write.csv(new_exif_metadata, csv_file_name,row.names = F)
-      
       #############################################################################################################    
       #############################################MERGE WITH TAGS##############################################   
       # left_join()
       # references.csv
       #############################################################################################################    
-    } else { cat(paste("Ignored / pas de photos in ", this_directory, "\n",sep=""))}
+    } else { cat(paste(this_directory, " has been ignored \n",sep=""))}
   }
   
   setwd(metadata_directory)
@@ -168,33 +178,6 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
   saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,".RDS",sep=""))
   # write.csv(CSV_total,  paste("All_Exif_metadata_",session_id,".csv"),row.names = F)
   
-  
-  # add condition exists before susbet ?
-  metadata_pictures <- select(CSV_total,
-                              session_id,
-                              session_photo_number,
-                              relative_path,
-                              FileName,
-                              GPSLatitude,
-                              GPSLongitude,
-                              GPSDateTime,
-                              DateTimeOriginal,
-                              # Raw_Time_Julien,
-                              LightValue,
-                              ImageSize,
-                              Model,
-                              geometry_postgis,
-                              geometry_gps_correlate,
-                              geometry_native,
-                              ThumbnailImage,
-                              PreviewImage                             
-                              
-  )
-  
-  name_file_csv<-paste("Core_Exif_metadata_",session_id,".csv",sep="")
-  # write.csv(metadata_pictures, name_file_csv,row.names = F)
-  saveRDS(metadata_pictures, paste("Core_Exif_metadata_",session_id,".RDS",sep=""))
-  
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
   return(head(metadata_pictures))
 }
@@ -202,27 +185,29 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,load_metad
 
 # ELEMENTS A TESTER SUR CSV ALL METADATA
 # CSV_total$PreviewImage[1] 
-# CSV_total$PreviewImage[1] 
 # CSV_total$ThumbnailImage[1] 
 # CSV_total$ThumbnailOffset[1]
 # CSV_total$ThumbnailLength[1]
 
-extract_exif_metadata_in_this_directory <- function(images_directory,this_directory,template_df, mime_type = "*.JPG", time_zone="Indian/Mauritius"){
+extract_exif_metadata_in_this_directory <- function(images_directory, this_directory,template_df, mime_type = "*.JPG", time_zone="Indian/Mauritius"){
   setwd(this_directory)
   
   log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
   parent_directory <- gsub(dirname(dirname(dirname(this_directory))),"",dirname(dirname(this_directory)))
   parent_directory <- gsub("/","",parent_directory)
+  session_id <- gsub(" ","_",gsub(paste0(dirname(images_directory),"/"),"",images_directory))
+  
   
   files <- list.files(pattern = mime_type ,recursive = TRUE)
   exif_metadata <-template_df
   exif_metadata <- read_exif(files,quiet = FALSE)#DDD deg MM' SS.SS"
-  exif_metadata$session_id = parent_directory
+  exif_metadata$session_id = session_id
   exif_metadata$session_photo_number <-c(1:nrow(exif_metadata))# @julien => A INCREMENTER ?
   exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
   
   # # IF THERE IS NO GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES NA
   if(is.null(exif_metadata$GPSLatitude)==TRUE){
+    # "GPSLatitude" %in% colnames(exif_metadata)
     exif_metadata$GPSVersionID <-NA
     exif_metadata$GPSLatitudeRef <-NA
     exif_metadata$GPSLongitudeRef <-NA
@@ -232,12 +217,15 @@ extract_exif_metadata_in_this_directory <- function(images_directory,this_direct
     exif_metadata$GPSDateStamp <-NA
     exif_metadata$GPSAltitude <-NA
     exif_metadata$GPSDateTime <-NA
+    # exif_metadata$GPSDateTime <-"1977:06:18 10:00:00"
     exif_metadata$GPSLatitude <-NA
     exif_metadata$GPSLongitude <-NA
     exif_metadata$GPSPosition <-NA
   }
   # change default data types
-  exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ", tz="UTC")
+  # exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ", tz="UTC")
+  exif_metadata$GPSDateTime = with_tz(as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ",  tz="UTC"), "UTC")
+  
   # exif_metadata$Raw_Time_Julien = exif_metadata$DateTimeOriginal
   exif_metadata$DateTimeOriginal = with_tz(as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz=time_zone), "UTC")
   # exif_metadata$DateTimeOriginal <- format(exif_metadata$DateTimeOriginal, tz="UTC",usetz=TRUE)
@@ -404,14 +392,17 @@ return_dataframe_gps_file <- function(wd, gps_file, type="TCX",session_id,load_i
   head(track_points)
   # sapply(track_points,class)
   slotNames(track_points)
-  existing_rows <-NULL
-  if(load_in_database==TRUE){
-  existing_rows <- dbGetQuery(con_Reef_database, paste0("SELECT COUNT(*) FROM gps_tracks WHERE session_id='",session_id,"';"))
-  }
-  if(is.null(existing_rows)){
-    existing_rows=0
-    track_points$ogc_fid <-c(1:nrow(track_points))
+  existing_rows_session <-NULL
+  # if(load_in_database==TRUE){
+  existing_rows_session <- dbGetQuery(con_Reef_database, paste0("SELECT COUNT(*) FROM gps_tracks WHERE session_id='",session_id,"';"))
+  existing_rows=dbGetQuery(con_Reef_database, paste0("SELECT COUNT(*) FROM gps_tracks;"))
+  # }
+  if(existing_rows_session$count==0){
+    # existing_rows=0
+    track_points$ogc_fid <-c(existing_rows$count+1:nrow(track_points))
   }else{
+    # start <- as.integer(existing_rows_session+1)
+    # end <- as.integer(existing_rows_session+nrow(track_points))
     start <- as.integer(existing_rows+1)
     end <- as.integer(existing_rows+nrow(track_points))
     track_points$ogc_fid <-c(start:end)
@@ -570,7 +561,9 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
   create_csv_from_view <- dbGetQuery(con_Reef_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
   # head(create_csv_from_view)
   setwd(paste0(images_directory,"/GPS"))
-  write.csv(create_csv_from_view, paste0("photos_location_",session_id,".csv"),row.names = F)
+  filename <- paste0("photos_location_",session_id,".csv")
+  write.csv(create_csv_from_view, filename,row.names = F)
+  shape_file <- write_shp_from_csv(file_name)
   setwd(original_directory)
   
   return(create_csv_from_view)
