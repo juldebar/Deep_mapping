@@ -9,7 +9,11 @@ CREATE TABLE "public"."gps_tracks"(
     altitude double precision,
     heart_rate double precision,
     the_geom geometry(Point,4326),
-    CONSTRAINT activities_pk PRIMARY KEY (ogc_fid,session_id)
+    CONSTRAINT gps_pkey PRIMARY KEY ("ogc_fid"),
+  CONSTRAINT unique_identifier UNIQUE ("ogc_fid")
+)
+WITH (
+  OIDS=FALSE
 );
 
 SET TIME ZONE 'UTC';
