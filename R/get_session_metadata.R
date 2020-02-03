@@ -19,8 +19,8 @@ library(prettymapr)
 # metadata <- get_session_metadata(session_directory, google_drive_path,metadata_sessions)
 # metadata
 ################### Function to fill the geoflow data frame with metadata #######################
-get_session_metadata <- function(session_directory, google_drive_path, metadata_sessions){
-  
+get_session_metadata <- function(session_directory, google_drive_path, metadata_sessions,type_images="gopro"){
+    
   ################### Set directories #######################
   this_directory <- session_directory
   setwd(this_directory)
@@ -28,7 +28,8 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
   number_sub_directories <-length(sub_directories)
   
   ################### Set static metadata elements #######################
-  session_id <- gsub(paste0(dirname(this_directory),"/"),"",this_directory)
+  session_id <- gsub(" ","_",gsub(paste0(dirname(this_directory),"/"),"",this_directory))
+  
   title <- gsub("201"," of the 201",gsub("_"," ",session_id))
   subject <- "GENERAL:Mauritius,coral reef,photos,deep learning,kite surfing,coral reef habitats;"
   creator <- "owner:emmanuel.blondel1@gmail.com;\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
@@ -104,6 +105,8 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
       # spatial_extent_geom <- sf::st_as_sfc(spatial_extent,wkt = "geom")
       # spatial_extent_geom <- sf::st_as_sfc(paste0("SRID=4326;",spatial_extent))
       spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
+      simplified_spatial_extent <- sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005)  %>% st_as_text()
+      
       
       # class(spatial_extent_geom)
       latitude <- as.data.frame(st_coordinates(spatial_extent_geom))$Y
@@ -124,10 +127,17 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
       # bbox <- makebbox(ymax+0.03,xmax+0.03,ymin-0.03,xmin-0.03)
       bbox <- st_bbox(spatial_extent_geom)
       
-      ######################## write a pdf and a jpeg file to get an overview of the spat
+      ######################## write a pdf and a jpeg file to get an overview of the spat https://cran.r-project.org/web/packages/rosm/rosm.pdf
       pdf(paste0(session_id,".pdf"))
-      
-      bmaps.plot(bbox, type = "Aerial",res=600,zoomin=-1,stoponlargerequest=FALSE)
+      if(grepl("odrigue",session_id)){
+        zoomin=-1
+        type = "hikebike"
+        osm.plot(bbox, type = type,res=600,zoomin=zoomin,stoponlargerequest=FALSE)
+      }else{
+        zoomin=-1
+        type = "Aerial"
+        bmaps.plot(bbox, type = type,res=600,zoomin=zoomin,stoponlargerequest=FALSE)
+        }
       # prettymap(bmaps.plot(bbox, type = "Aerial",zoomin=-1,stoponlargerequest=FALSE),res=300, scale.style="ticks", scale.tick.cex=0.5)
       # osm.points(spatial_extent_geom$longitude,dataframe_gps_file$latitude, col="yellow",pch=18, cex=0.5)
       osm.points(longitude,latitude, col="yellow",pch=18, cex=0.5)
@@ -136,6 +146,8 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
       # https://cran.r-project.org/web/packages/pdftools/pdftools.pdf
       pdf_convert(paste0(session_id,".pdf"), pages = NULL,format = "jpeg",dpi = 600,filenames=paste0(session_id,".jpeg"))
       
+      pdf_uri <- NULL
+      jpeg_uri <-NULL
       pdf_uri <- gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path,paste0(session_id,".pdf"))))
       jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path,paste0(session_id,".jpeg"))))
       
@@ -146,8 +158,8 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
       # data <-paste0("source:file:///tmp/dessin.pdf;\nsourceName:",session_id,";\ntype:other;\nupload:true;")
       
       ######################## store spatial data in a shape file
-      file_name <- gsub("\\.","_",dataframe_gps_files$file_name[t])
-      # file_name <- gsub("x","x.csv",file_name)
+      file_name <- gsub("\\.","_",gsub(" ","_",dataframe_gps_files$file_name[t]))
+      # file_name <- gsub(" ","_",file_name)
       if (!file.exists(paste0(file_name,".shp"))){
         shape_file <- write_shp_from_csv(file_name)
       }else{
@@ -168,18 +180,25 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
     spatial_extent <- "No GPS file"
   }
   files <- NULL
-  con <- file(paste(this_directory,"LABEL","tag.txt",sep="/"),"r")
-  first_line <- readLines(con,n=1)
-  close(con)
   
-  first_line <- sub('.*session', 'session', first_line)
-  photo_calibration_metadata <- read_exif(paste(gsub(session_id,"",this_directory), sub(' => .*', '', first_line),sep=""))
-  Photo_GPS_timestamp<- as.POSIXct(photo_calibration_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
-  
-  GPS_timestamp <- sub('.* => ', '', first_line)
-  GPS_timestamp <- sub('secs\").*', 'secs\")', GPS_timestamp)
-  offset <- GPS_timestamp
-  ############################################################
+  if(type_images=="drone"){
+    offset=0
+  }else{
+    con <- file(paste(this_directory,"LABEL","tag.txt",sep="/"),"r")
+    first_line <- readLines(con,n=1)
+    close(con)
+    
+    first_line <- sub('.*session', 'session', first_line)
+    photo_calibration_metadata <- read_exif(paste(gsub(session_id,"",this_directory), sub(' => .*', '', first_line),sep=""))
+    Photo_GPS_timestamp<- as.POSIXct(photo_calibration_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+    
+    GPS_timestamp <- sub('.* => ', '', first_line)
+    GPS_timestamp <- sub('secs\").*', 'secs\")', GPS_timestamp)
+    offset <- GPS_timestamp
+    #############################
+  }
+    
+###############################
   ################### CREATE DATAFRAME #######################
   ############################################################
   
@@ -191,7 +210,7 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
                        Creator=creator,
                        Date=date,
                        Type=type,
-                       SpatialCoverage=paste0("SRID=4326;",spatial_extent),
+                       SpatialCoverage=paste0("SRID=4326;",simplified_spatial_extent),
                        TemporalCoverage=temporal_extent,
                        Language=language,
                        Relation=relation,
