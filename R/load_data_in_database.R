@@ -9,6 +9,7 @@ source(paste0(codes_directory,"R/get_session_metadata.R"))
 images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Drone_images/2019_10_11_Le_Morne"
 type_images <- "drone"
 images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/database"
+images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/test/database"
 type_images <- "gopro"
 
 # images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/validated"
@@ -16,6 +17,7 @@ missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FA
 
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
 create_database(con_Reef_database, codes_directory)
+  
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 
 metadata_missions <- data.frame(
@@ -51,7 +53,7 @@ for(m in missions){
   setwd(m)
   nb_photos_located <- load_data_in_database(con_database=con_Reef_database, mission_directory=m)
   # metadata_sessions$nb_photos_located <- nb_photos_located
-  metadata_missions <- get_session_metadata(session_directory=m, google_drive_path,metadata_missions,type_images=type_images)
+  # metadata_missions <- get_session_metadata(session_directory=m, google_drive_path,metadata_missions,type_images=type_images)
 }
 names(metadata_missions)
 head(metadata_missions)
@@ -144,6 +146,7 @@ load_data_in_database <- function(con_database, mission_directory){
                                     # Raw_Time_Julien,
                                     LightValue,
                                     ImageSize,
+                                    # Make,
                                     Model,
                                     geometry_postgis,
                                     geometry_gps_correlate,
