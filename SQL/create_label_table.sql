@@ -5,6 +5,7 @@ CREATE TABLE "public"."label" (
 	CONSTRAINT "label_pk" PRIMARY KEY ("tag_id")
 	);
 
+ALTER TABLE "public"."label" ADD COLUMN "tag_code" VARCHAR(254);
 ALTER TABLE "public"."label" ADD COLUMN "tag_label" VARCHAR(254);
 ALTER TABLE "public"."label" ADD COLUMN "tag_definition" VARCHAR(254);
 
