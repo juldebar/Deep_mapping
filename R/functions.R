@@ -309,9 +309,77 @@ create_database <- function(con, codes_directory){
   
   query_create_table_label <- paste(readLines(paste0(codes_directory,"SQL/create_label_table.sql")), collapse=" ")
   query_create_table_label <- gsub("Reef_admin",User,query_create_table_label)
-  create_table_exif_metadata <- dbGetQuery(con_Reef_database,query_create_table_label)
+  create_table_label <- dbGetQuery(con_Reef_database,query_create_table_label)
   
 } 
+
+#############################################################################################################
+############################ load_labels_in_database ###################################################
+#############################################################################################################
+
+labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
+names(labels)
+toto <- labels %>% mutate(id = row_number()) %>% select(id, Name, SubName, Pattern) %>% rename(tag_id = id, tag_code = Name, tag_label = SubName, tag_definition = Pattern)
+names(toto)
+head(toto)
+load_labels_in_database(con_Reef_database, codes_directory, toto, create_table=TRUE)
+
+load_labels_in_database <- function(con, codes_directory, labels, create_table=FALSE){
+  
+  if(create_table==TRUE){
+    query_create_table_label <- paste(readLines(paste0(codes_directory,"SQL/create_label_table.sql")), collapse=" ")
+    query_create_table_label <- gsub("Reef_admin",User,query_create_table_label)
+    create_table_label <- dbGetQuery(con_Reef_database,query_create_table_label)
+  }
+  
+  dbWriteTable(con, "label", labels, row.names=FALSE, append=TRUE)
+  
+}
+
+#############################################################################################################
+############################ load_annotation_in_database ###################################################
+#############################################################################################################
+# load images and tags for original images
+images_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/14XiNE6gvXjWZg9YAQZ-OWvdgYBDL6knoLD86ZRvx_jw/edit?usp=sharing"))
+head(images_tags_and_labels)
+
+
+update_annotations_in_database <- function(con, codes_directory, images_tags_and_labels, create_table=FALSE){
+  
+  for (i in 1:nrow(images_tags_and_labels)){
+    session_id <- images_tags_and_labels$name_session[i]
+    FileName <- images_tags_and_labels$file_name[i]
+    related_image <- dbGetQuery(con_Reef_database, paste0('SELECT * FROM public.photos_exif_core_metadata WHERE "session_id"=\'',session_id,'\' AND "FileName"=\'',FileName,'\';'))
+    
+    if(nrow(related_image)==1){
+      cat(related_image$FileName)
+      photo_id <- related_image$photo_id
+      tag_id <- strsplit(",",gsub(" ","",images_tags_and_labels$tag[i]))
+      tag_id <- 1
+      old_tag <-images_tags_and_labels$old_tag[i]
+      map_tag_with_label(con, old_tag,labels)
+      # related_image <- dbGetQuery(con_Reef_database, paste0('INSERT INTO annotation VALUES (\'',photo_id,'\',\'',tag_id,'\');'))
+      
+    }else if(nrow(related_image)==0){
+      # cat("\n NOT ANNOTATEd ! \n")
+      }else if(nrow(related_image)>1){
+        cat("\n BIG PROBLEM ! \n")
+        }
+  }
+  
+}
+
+
+map_tag_with_label <- function(con, old_tag,labels){
+  for(dir in 1:nrow(labels)){
+    if(grepl(pattern = labels$Pattern[dir], x=old_tag)){
+      cat(labels$Pattern[dir])
+      cat("\n")
+      cat(paste0('INSERT INTO annotation VALUES (\'',photo_id,'\',\'',dir,'\');\n'))
+      related_image <- dbGetQuery(con_Reef_database, paste0('INSERT INTO annotation VALUES (\'',photo_id,'\',\'',dir,'\');'))
+    }
+  }
+}
 
 
 #############################################################################################################
@@ -563,7 +631,7 @@ infer_photo_location_from_gps_tracks <- function(con, images_directory, codes_di
   setwd(paste0(images_directory,"/GPS"))
   filename <- paste0("photos_location_",session_id,".csv")
   write.csv(create_csv_from_view, filename,row.names = F)
-  shape_file <- write_shp_from_csv(file_name)
+  # shape_file <- write_shp_from_csv(file_name)
   setwd(original_directory)
   
   return(create_csv_from_view)
