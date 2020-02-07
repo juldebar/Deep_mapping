@@ -158,13 +158,12 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
       # data <-paste0("source:file:///tmp/dessin.pdf;\nsourceName:",session_id,";\ntype:other;\nupload:true;")
       
       ######################## store spatial data in a shape file
-      file_name <- gsub("\\.","_",gsub(" ","_",dataframe_gps_files$file_name[t]))
-      # file_name <- gsub(" ","_",file_name)
-      if (!file.exists(paste0(file_name,".shp"))){
-        shape_file <- write_shp_from_csv(file_name)
-      }else{
-        paste0("\n Le fichier ", file_name,".shp  existe déjà !\n ")
-      }
+      # file_name <- paste0("photos_location_",session_id)
+      # if (!file.exists(paste0(file_name,".shp"))){
+      #   shape_file <- write_shp_from_csv(file_name)
+      # }else{
+      #   paste0("\n Le fichier ", file_name,".shp  existe déjà !\n ")
+      # }
       
       ######################## write a qgis project to visualize the shape file
       # qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_csv.qgs"
