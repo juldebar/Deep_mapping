@@ -27,8 +27,10 @@ return_dataframe_tag_txt <- function(wd){
   for (i in sub_directories){
     if (substr(i, nchar(i)-4, nchar(i))=="LABEL"){
       setwd(i)
-      cat(dirname(i))
-      name_session <-gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
+      path_session <-dirname(i)
+      cat(paste0(i,"\n"))
+      cat(paste0(path_session,"\n"))
+      name_session <-gsub(paste(dirname(path_session),"/",sep=""),"",path_session)
       files <- list.files(pattern = "*.txt")
       # if(length(files)==1){
       if(length(files)>0){
@@ -50,14 +52,16 @@ return_dataframe_tag_txt <- function(wd){
           tx2  <- gsub(pattern = ";", replace = ",", x = tx2)
           tx2  <- gsub(pattern = "herbier marron", replace = "Thalassodendron ciliatum", x = tx2)
           tx2  <- gsub(pattern = "herbier vert", replace = "Syringodium isoetifolium", x = tx2)
-          # tx2  <- gsub(pattern = '.*\\/DCIM', replace = paste0(dirname(i),"/DCIM"),x = tx2)
+          
+          # tx2  <- gsub(pattern = '.*\\/DCIM', replace = paste0(path,"/DCIM"),x = tx2)
           # writeChar(tx2, con=paste0("/tmp/",name_session,"_tags_bis.csv"))
           fileName_bis <-  gsub(pattern = ".csv", replace = "_bis.csv", x = fileName)
           writeLines(tx2, con=fileName_bis)
+          
           fileName_ter <-  gsub(pattern = ".csv", replace = "_ter.csv", x = fileName)
           # csv_file <- readLines(con <- file(fileName_bis))
           csv_file <- read.csv(fileName_bis,sep = ",")
-          csv_file$path <- gsub(pattern = '.*\\/DCIM', replace = paste0(dirname(i),"/DCIM"),x = csv_file$path)
+          csv_file$path <- gsub(pattern = '.*\\/DCIM', replace = paste0(path_session,"/DCIM"),x = csv_file$path)
           csv_file$name_session <- gsub("/","",name_session)
           csv_file$file_name <-gsub(pattern = '.*\\/G0',"G0",csv_file$path)
           head(csv_file)
@@ -83,7 +87,7 @@ wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2017"
 # wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/A/"
 # wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2018/GOOD"
 # wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019"
-# wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2017"
+wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/all_txt_gps_files"
 df <- return_dataframe_tag_txt(wd)
 head(df)
 
@@ -98,8 +102,9 @@ newdf$photo_name=paste0(newdf$name_session,"_",newdf$file_name)
 head(newdf)
 system(command = "awk 'FNR==1 && NR!=1{next;}{print}' *ter.csv  > combined.csv")
 
-
-
+google_drive_path_label <- drive_find(pattern = "Photos_tagging", type = "folder")
+upload_file_on_drive_repository(google_drive_path_label,"all.csv")
+                                
 
 # library(data.table)
 # library(dplyr)
@@ -151,15 +156,17 @@ copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_im
       if(crop_images){dir.create(file.path(mainDir, "crop"))}
       # we copy each image in the sub-repository and in wd_copy as well if needed
       for(f in 1:nrow(relevant_images)){
-        print(paste0("\n",relevant_images$path[f]),"\n")
+        # print(paste0("\n",relevant_images$path[f]),"\n")
         # check the clause below!
         if(length(relevant_images$path[f])>0){
           # copy relevant images for this category in this sub-repository (crop images if asked)
           filename <- gsub(paste0(dirname(as.character(relevant_images$path[f])),"/"),"", as.character(relevant_images$path[f]))
-          print(paste0(filename,"\n"))
-          cat(paste0("cp ",paste0(as.character(relevant_images$path[f])," .",gsub(dirname(as.character(relevant_images$path[f])),"", as.character(relevant_images$path[f])))))
-          system(paste0("cp ",paste0("/",as.character(relevant_images$path[f])," ./",relevant_images$photo_name[f])))
-          system(paste0("cp ",paste0("/",as.character(relevant_images$path[f])," ../",relevant_images$photo_name[f])))
+          # print(paste0(filename,"\n"))
+          command <- paste0("cp ", as.character(relevant_images$path[f])," ./",relevant_images$photo_name[f],"\n")
+          # cat(command)
+          # cat(paste0("cp ",paste0(as.character(relevant_images$path[f])," .",gsub(dirname(as.character(relevant_images$path[f])),"", as.character(relevant_images$path[f]))),"\n"))
+          system(command)
+          # system(gsub(" ."," ..",command))
           }else{
             cat(paste0("\n issue with ",relevant_images$path[f],"\n" ))
           }
@@ -181,7 +188,9 @@ wd_copy <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash"
 all_categories <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
 # df_images <-all_files
 df_images <-newdf
-head(df_images)
+# head(df_images)
+# newdf$path
+df_images$path <- gsub("/media/juldebar/Deep_Mapping_4To/data_deep_mapping/all_txt_gps_files","/media/juldebar/Deep_Mapping_4To/data_deep_mapping",df_images$path)
 crop_images=FALSE
 
 # we make a copy of all annotated images
