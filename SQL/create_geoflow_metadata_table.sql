@@ -21,7 +21,7 @@ CREATE TABLE metadata
   "Data" text,
   "path" text,
   "gps_file_name" text,
-  "Number_of_Pictures" text,
+  "Number_of_Pictures" integer,
   "GPS_timestamp" text,
   "Photo_GPS_timestamp" text,
   CONSTRAINT metadata_pkey PRIMARY KEY ("Identifier"),
