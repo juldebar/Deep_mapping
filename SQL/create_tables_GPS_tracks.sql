@@ -16,6 +16,7 @@ WITH (
   OIDS=FALSE
 );
 
+
 SET TIME ZONE 'UTC';
 
 COMMENT ON TABLE gps_tracks IS 'Table containing the raw spatial data as delivered by devices (GPS, RTK...). According to settings, the frequency of data collection can differ. The current data structure is inherited from tcx files';
