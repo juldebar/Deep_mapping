@@ -1,152 +1,187 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg height="465" version="1.1" width="1098" xmlns="http://www.w3.org/2000/svg">
-<rect fill="#ffffff" height="312" stroke="#ffffff" stroke-width="1" width="216" x="606" y="54"/>
-<rect fill="none" height="312" stroke="#000000" stroke-width="1" width="216" x="606" y="54"/>
-<text font-family="Dialog" font-size="12" x="628" y="67">
+<svg height="483" version="1.1" width="1258" xmlns="http://www.w3.org/2000/svg">
+<rect fill="#ffffff" height="440" stroke="#ffffff" stroke-width="1" width="229" x="598" y="22"/>
+<rect fill="none" height="440" stroke="#000000" stroke-width="1" width="229" x="598" y="22"/>
+<text font-family="Dialog" font-size="12" x="626" y="35">
 photos_exif_core_metadata</text>
-<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="216" x="606" y="77"/>
-<text font-family="Dialog" font-size="12" x="610" y="91">
-ogc_fid : Integer</text>
-<text font-family="Dialog" font-size="12" x="610" y="106">
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="229" x="598" y="45"/>
+<text font-family="Dialog" font-size="12" x="602" y="59">
+photo_id : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="75">
 session_id : String</text>
-<text font-family="Dialog" font-size="12" x="610" y="123">
+<text font-family="Dialog" font-size="12" x="602" y="91">
 session_photo_number : Integer</text>
-<text font-family="Dialog" font-size="12" x="610" y="139">
+<text font-family="Dialog" font-size="12" x="602" y="107">
 relative_path : String</text>
-<text font-family="Dialog" font-size="12" x="610" y="155">
-filename : String</text>
-<text font-family="Dialog" font-size="12" x="610" y="171">
-newAttr : Integer</text>
-<text font-family="Dialog" font-size="12" x="610" y="187">
-gpslatitud : Integer</text>
-<text font-family="Dialog" font-size="12" x="610" y="203">
-gpslongitu : UnlimitedInteger</text>
-<text font-family="Dialog" font-size="12" x="610" y="219">
-gpsdatetim : Integer</text>
-<text font-family="Dialog" font-size="12" x="610" y="235">
-datetimeor : Integer</text>
-<text font-family="Dialog" font-size="12" x="610" y="251">
-lightvalue : Integer</text>
-<text font-family="Dialog" font-size="12" x="610" y="267">
-imagesize : Integer</text>
-<text font-family="Dialog" font-size="12" x="610" y="283">
-model : Integer</text>
-<text font-family="Dialog" font-size="12" x="610" y="299">
-geometry_postgis : geom</text>
-<text font-family="Dialog" font-size="12" x="610" y="315">
-geometry_gps_correlate : geom</text>
-<text font-family="Dialog" font-size="12" x="610" y="331">
-geometry_native : geom</text>
-<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="216" x="606" y="341"/>
-<text font-family="Dialog" font-size="12" x="610" y="355">
-newOperation()</text>
-<rect fill="#ffffff" height="437" stroke="#ffffff" stroke-width="1" width="227" x="14" y="14"/>
-<rect fill="none" height="437" stroke="#000000" stroke-width="1" width="227" x="14" y="14"/>
+<text font-family="Dialog" font-size="12" x="602" y="123">
+FileName : String</text>
+<text font-family="Dialog" font-size="12" x="602" y="139">
+FileSize : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="155">
+FileType : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="171">
+DateTimeOriginal : UnlimitedInteger</text>
+<text font-family="Dialog" font-size="12" x="602" y="187">
+Make : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="203">
+Model : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="219">
+LightValue : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="235">
+ImageSize : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="251">
+ExifToolVersion : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="267">
+GPSLatitude : geom</text>
+<text font-family="Dialog" font-size="12" x="602" y="283">
+GPSLongitude : geom</text>
+<text font-family="Dialog" font-size="12" x="602" y="299">
+GPSDateTime : geom</text>
+<text font-family="Dialog" font-size="12" x="602" y="315">
+ThumbnailImage : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="331">
+ThumbnailOffset : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="347">
+ThumbnailLength : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="363">
+PreviewImage : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="379">
+URL_original_image : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="395">
+geometry_postgis : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="411">
+geometry_gps_correlate : Integer</text>
+<text font-family="Dialog" font-size="12" x="602" y="427">
+geometry_native : Integer</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="229" x="598" y="437"/>
+<rect fill="#ffffff" height="455" stroke="#ffffff" stroke-width="1" width="227" x="14" y="14"/>
+<rect fill="none" height="455" stroke="#000000" stroke-width="1" width="227" x="14" y="14"/>
 <text font-family="Dialog" font-size="12" x="97" y="27">
 metadata</text>
 <rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="227" x="14" y="37"/>
 <text font-family="Dialog" font-size="12" x="18" y="51">
-session_number : Integer</text>
+id_metadata : serial</text>
 <text font-family="Dialog" font-size="12" x="18" y="67">
-id_session : Integer</text>
+Identifier : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="83">
-persistent_identifier : Integer</text>
+Description : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="99">
-related_sql_query : Integer</text>
+Title : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="115">
-related_view_name : Integer</text>
+Subject : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="131">
-identifier : Integer</text>
+Creator : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="147">
-title : Integer</text>
+Date : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="163">
-contacts_and_roles : Integer</text>
+Type : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="179">
-subject : Integer</text>
+SpatialCoverage : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="195">
-description : Integer</text>
+TemporalCoverage : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="211">
-date : Integer</text>
+Language : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="227">
-dataset_type : Integer</text>
+Relation : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="243">
-format : Integer</text>
+Rights : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="259">
-language : Integer</text>
+Source : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="275">
-relation : Integer</text>
+Provenance : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="291">
-relation : Integer</text>
+Format : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="307">
-temporal_coverage : Integer</text>
+Data : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="323">
-rights : Integer</text>
+path : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="339">
-source : Integer</text>
+gps_file_name : text</text>
 <text font-family="Dialog" font-size="12" x="18" y="355">
-provenance : Integer</text>
+Number_of_Pictures : Integer</text>
 <text font-family="Dialog" font-size="12" x="18" y="371">
-supplemental_information : Integer</text>
+GPS_timestamp : Integer</text>
 <text font-family="Dialog" font-size="12" x="18" y="387">
-database_table_name : Integer</text>
+Photo_GPS_timestamp : Integer</text>
 <text font-family="Dialog" font-size="12" x="18" y="403">
-time_offset : Integer</text>
+geometry : Integer</text>
 <text font-family="Dialog" font-size="12" x="18" y="419">
 geometry_session : Integer</text>
-<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="227" x="14" y="429"/>
-<rect fill="#ffffff" height="181" stroke="#ffffff" stroke-width="1" width="131" x="382" y="54"/>
-<rect fill="none" height="181" stroke="#000000" stroke-width="1" width="131" x="382" y="54"/>
-<text font-family="Dialog" font-size="12" x="413" y="67">
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="227" x="14" y="438"/>
+<rect fill="#ffffff" height="181" stroke="#ffffff" stroke-width="1" width="131" x="366" y="54"/>
+<rect fill="none" height="181" stroke="#000000" stroke-width="1" width="131" x="366" y="54"/>
+<text font-family="Dialog" font-size="12" x="397" y="67">
 gps_tracks</text>
-<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="131" x="382" y="77"/>
-<text font-family="Dialog" font-size="12" x="386" y="91">
-fid : Integer</text>
-<text font-family="Dialog" font-size="12" x="386" y="107">
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="131" x="366" y="77"/>
+<text font-family="Dialog" font-size="12" x="370" y="91">
+ogc_fid : Integer</text>
+<text font-family="Dialog" font-size="12" x="370" y="107">
 session_id : Integer</text>
-<text font-family="Dialog" font-size="12" x="386" y="123">
+<text font-family="Dialog" font-size="12" x="370" y="123">
 latitude : Integer</text>
-<text font-family="Dialog" font-size="12" x="386" y="139">
+<text font-family="Dialog" font-size="12" x="370" y="139">
 longitude : Integer</text>
-<text font-family="Dialog" font-size="12" x="386" y="155">
+<text font-family="Dialog" font-size="12" x="370" y="155">
 altitude : Integer</text>
-<text font-family="Dialog" font-size="12" x="386" y="171">
+<text font-family="Dialog" font-size="12" x="370" y="171">
 time : Integer</text>
-<text font-family="Dialog" font-size="12" x="386" y="187">
+<text font-family="Dialog" font-size="12" x="370" y="187">
 heart_rate : Integer</text>
-<text font-family="Dialog" font-size="12" x="386" y="203">
+<text font-family="Dialog" font-size="12" x="370" y="203">
 the_geom : Integer</text>
-<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="131" x="382" y="213"/>
-<rect fill="#ffffff" height="101" stroke="#ffffff" stroke-width="1" width="150" x="934" y="150"/>
-<rect fill="none" height="101" stroke="#000000" stroke-width="1" width="150" x="934" y="150"/>
-<text font-family="Dialog" font-size="12" x="994" y="163">
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="131" x="366" y="213"/>
+<rect fill="#ffffff" height="101" stroke="#ffffff" stroke-width="1" width="150" x="1094" y="30"/>
+<rect fill="none" height="101" stroke="#000000" stroke-width="1" width="150" x="1094" y="30"/>
+<text font-family="Dialog" font-size="12" x="1154" y="43">
 label</text>
-<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="150" x="934" y="173"/>
-<text font-family="Dialog" font-size="12" x="938" y="187">
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="150" x="1094" y="53"/>
+<text font-family="Dialog" font-size="12" x="1098" y="67">
 tag_id : Integer</text>
-<text font-family="Dialog" font-size="12" x="938" y="203">
+<text font-family="Dialog" font-size="12" x="1098" y="83">
 tag_label : Integer</text>
-<text font-family="Dialog" font-size="12" x="938" y="219">
+<text font-family="Dialog" font-size="12" x="1098" y="99">
 tag_definition : Integer</text>
-<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="150" x="934" y="229"/>
-<polyline fill="none" points="821,202 934,202" stroke="#000000" stroke-width="1"/>
-<text font-family="Dialog" font-size="12" x="842" y="217">
-*</text>
-<text font-family="Dialog" font-size="12" x="907" y="217">
-*</text>
-<polyline fill="none" points="240,118 382,118" stroke="#000000" stroke-width="1"/>
-<text font-family="Dialog" font-size="12" x="260" y="133">
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="150" x="1094" y="109"/>
+<polyline fill="none" points="240,94 366,94" stroke="#000000" stroke-width="1"/>
+<text font-family="Dialog" font-size="12" x="259" y="109">
 1</text>
-<text font-family="Dialog" font-size="12" x="355" y="133">
+<text font-family="Dialog" font-size="12" x="338" y="109">
 *</text>
-<polyline fill="none" points="240,294 606,294" stroke="#000000" stroke-width="1"/>
-<text font-family="Dialog" font-size="12" x="260" y="309">
+<polyline fill="none" points="240,294 598,294" stroke="#000000" stroke-width="1"/>
+<text font-family="Dialog" font-size="12" x="259" y="309">
 1</text>
-<text font-family="Dialog" font-size="12" x="579" y="309">
+<text font-family="Dialog" font-size="12" x="570" y="309">
 *</text>
-<polyline fill="none" points="512,110 606,110" stroke="#000000" stroke-width="1"/>
-<text font-family="Dialog" font-size="12" x="532" y="125">
+<polyline fill="none" points="496,94 598,94" stroke="#000000" stroke-width="1"/>
+<text font-family="Dialog" font-size="12" x="511" y="108">
 *</text>
-<text font-family="Dialog" font-size="12" x="579" y="125">
+<text font-family="Dialog" font-size="12" x="570" y="109">
 *</text>
+<polyline fill="none" points="1094,62 826,62" stroke="#000000" stroke-width="1"/>
+<text font-family="Dialog" font-size="12" x="1067" y="77">
+*</text>
+<text font-family="Dialog" font-size="12" x="847" y="77">
+*</text>
+<ellipse cx="960" cy="60" fill="#000000" rx="0.5" ry="0.5" stroke="#000000" stroke-width="1"/>
+<ellipse cx="961" cy="61" fill="#ffffff" rx="-0.5" ry="-0.5" stroke="#ffffff" stroke-width="1"/>
+<rect fill="#ffffff" height="69" stroke="#ffffff" stroke-width="1" width="152" x="878" y="166"/>
+<rect fill="none" height="69" stroke="#000000" stroke-width="1" width="152" x="878" y="166"/>
+<text font-family="Dialog" font-size="12" x="919" y="179">
+annotation</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="152" x="878" y="189"/>
+<text font-family="Dialog" font-size="12" x="882" y="203">
+bounding_box : Integer</text>
+<rect fill="#000000" height="1" stroke="#000000" stroke-width="1" width="152" x="878" y="213"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="60" y2="65"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="70" y2="75"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="80" y2="85"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="90" y2="95"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="100" y2="105"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="110" y2="115"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="120" y2="125"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="130" y2="135"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="140" y2="145"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="150" y2="155"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="960" x2="960" y1="160" y2="165"/>
 </svg>
