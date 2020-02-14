@@ -54,7 +54,7 @@ for(m in missions){
   cat(paste0("Processing mission: ", m,"\n"))
   setwd(m)
   nb_photos_located <- load_data_in_database(con_database=con_Reef_database, mission_directory=m)
-  metadata_missions <- get_session_metadata(session_directory=m, google_drive_path,metadata_missions,type_images=type_images)
+  metadata_missions <- get_session_metadata(con_Reef_database, session_directory=m, google_drive_path,metadata_missions,type_images=type_images)
   # metadata_missions$nb_photos_located[c] <- nb_photos_located
 }
 
@@ -71,7 +71,7 @@ sum(metadata_missions$Number_of_Pictures)
 #Load annotation table
 list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/14XiNE6gvXjWZg9YAQZ-OWvdgYBDL6knoLD86ZRvx_jw/edit?usp=sharing"))
 # list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://drive.google.com/open?id=1TkX5P7pr5MEvxr7J78tCMKrSGzqUSG-FXicod9yLCEc"))
-update_annotations_in_database(con, codes_directory, list_images_with_tags_and_labels, create_table=FALSE)
+update_annotations_in_database(con_Reef_database, codes_directory, list_images_with_tags_and_labels, create_table=FALSE)
 
 #Disconnect database
 dbDisconnect(con_Reef_database)
@@ -84,7 +84,9 @@ google_drive_path <- drive_get(id="0B0FxQQrHqkh0NnZ0elY5S0tHUkJxZWNLQlhuQnNGOE15
 # drive_download("Deep_mappping_worflow.json")
 setwd(images_directory)
 require(geoflow)
-configuration_file <- "/home/juldebar/Bureau/CODES/Deep_mapping/R/Deep_mappping_worflow.json"
+# configuration_file <- "/home/juldebar/Bureau/CODES/Deep_mapping/R/Deep_mappping_worflow.json"
+configuration_file <- "/home/juldebar/Bureau/CODES/Deep_mapping/Deep_mappping_worflow.json"
 # executeWorkflow(file = "Deep_mappping_worflow.json")
-initWorkflow(file = configuration_file)
+# initWorkflow(file = configuration_file)
 executeWorkflow(file = configuration_file)
+
