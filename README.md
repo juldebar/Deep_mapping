@@ -28,7 +28,8 @@ Data collected have to comply with the following file structure:
 
 Our goal is to use this data structure as an input for R codes which will parse the subdirectories and files to load information in a Postgres / Postgis database with the following conceptual model (UML schema):
  
-<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://raw.githubusercontent.com/juldebar/Deep_mapping/master/SQL/Reef_Database.svg" width="800">
+<!-- <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://raw.githubusercontent.com/juldebar/Deep_mapping/master/SQL/Reef_Database.svg" width="800"> -->
+<img src="https://raw.github.com/juldebar/Deep_mapping/master/SQL/Reef_Database.svg">
 
 
 
