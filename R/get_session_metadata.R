@@ -19,7 +19,7 @@ library(prettymapr)
 # metadata <- get_session_metadata(session_directory, google_drive_path,metadata_sessions)
 # metadata
 ################### Function to fill the geoflow data frame with metadata #######################
-get_session_metadata <- function(session_directory, google_drive_path, metadata_sessions,type_images="gopro"){
+get_session_metadata <- function(con_database, session_directory, google_drive_path, metadata_sessions,type_images="gopro"){
     
   ################### Set directories #######################
   this_directory <- session_directory
@@ -90,7 +90,7 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
       
       gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
       dataframe_gps_file <-NULL
-      dataframe_gps_file <- return_dataframe_gps_file(wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id)
+      dataframe_gps_file <- return_dataframe_gps_file(con_database, wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id)
       # #       head(dataframe_gps_file)
       #       xmin <- min(dataframe_gps_file$longitude)
       #       xmax <- max(dataframe_gps_file$longitude)
@@ -154,7 +154,8 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
       relation <-paste0("thumbnail:",session_id,"@",jpeg_uri)
       relation <-paste0(relation,";\nhttp:map(pdf)@",pdf_uri)
       # data <-paste0("uploadType:dbview;\n:",pdf_uri)
-      data <-paste0('source:mydatasource;\nuploadType:dbquery;\ndbquery:"SELECT * FROM', session_id,';\nlayername:',session_id,';\nstyle:line_grid5x5')
+      data <-paste0('source:Postgis;\nuploadType:dbquery;\nsql:SELECT * FROM "', session_id,'";\nlayername:',session_id,';\nstyle:point;\nattribute:ImageSize[ImageSize],Model[Model],Make[Make];\nvariable:LightValue[LightValue]')
+      
       # data <-paste0("source:file:///tmp/dessin.pdf;\nsourceName:",session_id,";\ntype:other;\nupload:true;")
       
       ######################## store spatial data in a shape file
@@ -208,7 +209,7 @@ get_session_metadata <- function(session_directory, google_drive_path, metadata_
                        Subject=subject,
                        Creator=creator,
                        Date=date,
-                       Type=type,
+                       Type="dataset",
                        SpatialCoverage=paste0("SRID=4326;",simplified_spatial_extent),
                        TemporalCoverage=temporal_extent,
                        Language=language,
