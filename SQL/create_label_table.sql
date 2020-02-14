@@ -19,6 +19,7 @@ DROP TABLE IF EXISTS  "public"."annotation" CASCADE;
 CREATE TABLE "public"."annotation" (
 	"photo_id" INTEGER,
 	"tag_id" INTEGER,
+	"bounding_box" VARCHAR(254),
 	PRIMARY KEY (photo_id, tag_id),
 	FOREIGN KEY ("tag_id") REFERENCES "label" ("tag_id"),
 	FOREIGN KEY ("photo_id") REFERENCES "photos_exif_core_metadata" ("photo_id")
@@ -26,6 +27,7 @@ CREATE TABLE "public"."annotation" (
 
 COMMENT ON TABLE "annotation" IS 'Table storing some of the numerous exif metadata element which are extracted from pictures headers (using exifr R package)';
 COMMENT ON COLUMN "annotation"."tag_id" IS '"tag_id" ';
-COMMENT ON COLUMN "annotation"."photo_id" IS '"photo_id" ';
+COMMENT ON COLUMN "annotation"."photo_id" IS '"photo_id": identifier of the photo (Foreign Key from "photos_exif_core_metadata" table. ';
+COMMENT ON COLUMN "annotation"."photo_id" IS '"bounding_box: in case the location of the object in the image reference system (coordinates of pixels) would be needed." ';
 
 
