@@ -20,37 +20,70 @@ library(prettymapr)
 # metadata
 ################### Function to fill the geoflow data frame with metadata #######################
 get_session_metadata <- function(con_database, session_directory, google_drive_path, metadata_sessions,type_images="gopro"){
-    
+  
+  cat(paste0("Extracting metadata for mission: ", session_directory,"\n"))
+  
   ################### Set directories #######################
   this_directory <- session_directory
   setwd(this_directory)
   sub_directories <- list.dirs(path=this_directory,full.names = TRUE,recursive = FALSE)
   number_sub_directories <-length(sub_directories)
   
-  ################### Set static metadata elements #######################
-  session_id <- gsub(" ","_",gsub(paste0(dirname(this_directory),"/"),"",this_directory))
+  con <- file(paste(this_directory,"LABEL","tag.txt",sep="/"),"r")
+  first_line <- readLines(con,n=1)
+  close(con)
+  first_line <- sub('.*session', 'session', first_line)
   
+  GPS_timestamp <- NULL
+  Photo_GPS_timestamp <- NULL
+  ################### Set directories #######################
+  if(type_images=="drone"){
+    session_id <- paste0(gsub(paste0(dirname(dirname(session_directory)),"/"),"",dirname(session_directory)),gsub(" ","",gsub(paste0(dirname(session_directory),"/"),"",session_directory)))
+    pattern = "*.jpg"
+    DCIM_directory <- "data"
+    date <- "2020-02-15"
+    keywords="GENERAL:drone,coral reef;"
+    photo_calibration_metadata <- read_exif(paste(this_directory, sub(' => .*', '', first_line),sep="/"))
+    
+    # Photo_GPS_timestamp <- "2020-01-26 09:28:54"
+    # GPS_timestamp <- "2020-01-26 09:28:54"
+    # offset=0
+    }else{
+      session_id <- gsub(" ","",gsub(paste0(dirname(session_directory),"/"),"",session_directory))
+      keywords <- "GENERAL:Mauritius,coral reef,photos,deep learning,kite surfing,coral reef habitats;"
+      pattern = "*.JPG"
+      DCIM_directory <- "DCIM"
+      date <- gsub("_","-",substr(session_id,9,18))
+      photo_calibration_metadata <- read_exif(paste(gsub(session_id,"",this_directory), sub(' => .*', '', first_line),sep="/"))
+      
+    }
+  
+  ############# offset ################
+  Photo_GPS_timestamp<- as.POSIXct(photo_calibration_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+  GPS_timestamp <- sub('.* => ', '', first_line)
+  GPS_timestamp <- sub('secs\").*', 'secs\")', GPS_timestamp)
+  offset <- GPS_timestamp
+  #############################
+  
+  ################### Set static metadata elements #######################
   title <- gsub("201"," of the 201",gsub("_"," ",session_id))
-  subject <- "GENERAL:Mauritius,coral reef,photos,deep learning,kite surfing,coral reef habitats;"
+  subject <- keywords
   creator <- "owner:emmanuel.blondel1@gmail.com;\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
   type <- "dataset"
   language <- "eng"
-  date <- gsub("_","-",substr(session_id,9,18))
   provenance <-"statement:This is some data quality statement providing information on the provenance"
-  source <-"my kite;"
-  format <-"JPEG"
+  source <-"camera;"
+  format <-gsub("*.","",pattern)
   gps_file <- NULL
   spatial_extent <- NULL
   temporal_extent <- NULL
   Number_of_Pictures <- NULL
   rights <-"use:terms1;"
-  GPS_timestamp <- NULL
-  Photo_GPS_timestamp <- NULL
   
   ################### Calculate dynamicmetadata elements #######################
   ################### Number of Photos #######################
   files <- NULL
-  files <- list.files(path = paste(this_directory,"DCIM",sep="/"), pattern = "*.JPG",recursive = TRUE)
+  files <- list.files(path = paste(this_directory,DCIM_directory,sep="/"), pattern = pattern,recursive = TRUE)
   if(length(files)>0){
     Number_of_Pictures <- length(files)
     description <- paste0("abstract:This dataset is made of ",Number_of_Pictures," pictures which have been collected during the ", title)
@@ -58,10 +91,11 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     ################### TEMPORAL COVERAGE ######################
     ############################################################
     # geoflow entities data structure => 2007-03-01T13:00:00Z/2008-05-11T15:30:00Z
-    first_picture_metadata <- read_exif(paste(this_directory,"DCIM", files[1],sep="/"))
+    first_picture_metadata <- read_exif(paste(this_directory,DCIM_directory, files[1],sep="/"))
+    last_picture_metadata <- read_exif(paste(this_directory,DCIM_directory,files[Number_of_Pictures],sep="/"))
     start_date<- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
     start_date<-paste0(gsub(" ","T",start_date),"Z")
-    end_date<- as.POSIXct(read_exif(paste(this_directory,"DCIM",files[Number_of_Pictures],sep="/"))$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+    end_date<- as.POSIXct(last_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
     end_date<-paste0(gsub(" ","T",end_date),"Z")
     temporal_extent <- paste0(start_date,"/",end_date)
     }else{
@@ -179,30 +213,11 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     gps_file <- "No GPS file"
     spatial_extent <- "No GPS file"
   }
-  files <- NULL
-  
-  if(type_images=="drone"){
-    offset=0
-  }else{
-    con <- file(paste(this_directory,"LABEL","tag.txt",sep="/"),"r")
-    first_line <- readLines(con,n=1)
-    close(con)
-    
-    first_line <- sub('.*session', 'session', first_line)
-    photo_calibration_metadata <- read_exif(paste(gsub(session_id,"",this_directory), sub(' => .*', '', first_line),sep=""))
-    Photo_GPS_timestamp<- as.POSIXct(photo_calibration_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
-    
-    GPS_timestamp <- sub('.* => ', '', first_line)
-    GPS_timestamp <- sub('secs\").*', 'secs\")', GPS_timestamp)
-    offset <- GPS_timestamp
-    #############################
-  }
-    
 ###############################
   ################### CREATE DATAFRAME #######################
   ############################################################
   
-  
+  newRow <-NULL
   newRow <- data.frame(Identifier=paste0("id:",session_id),
                        Description=description,
                        Title=title,
@@ -222,8 +237,8 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
                        path=this_directory,
                        gps_file_name=gps_file,
                        Number_of_Pictures=Number_of_Pictures,
-                       GPS_timestamp=GPS_timestamp,
-                       Photo_GPS_timestamp=Photo_GPS_timestamp,
+                       GPS_timestamp=GPS_timestamp, # ??
+                       Photo_GPS_timestamp=Photo_GPS_timestamp, # ??
                        # geometry=spatial_extent_geom
                        # geometry=st_as_binary(spatial_extent_geom)
                        geometry=NA

@@ -1,4 +1,10 @@
 # rm(list=ls())
+require(geoflow)
+# configuration_file <- "/home/juldebar/Bureau/CODES/Deep_mapping/R/Deep_mappping_worflow.json"
+configuration_file <- "/home/juldebar/Bureau/CODES/Deep_mapping/Deep_mappping_worflow.json"
+con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
+create_database(con_Reef_database, codes_directory)
+
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 setwd(codes_directory)
 source(paste0(codes_directory,"R/functions.R"))
@@ -7,16 +13,13 @@ source(paste0(codes_directory,"R/credentials_databases.R"))
 source(paste0(codes_directory,"R/get_session_metadata.R"))
 #attention pas de slash à la fin du path
 images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Drone_images/2019_10_11_Le_Morne"
-type_images <- "drone"
-images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/database"
 images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/test/database"
-type_images <- "gopro"
+# images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/test/database/Mission1"
+# images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/database"
+# images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/test/database"
 
 # images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/validated"
 missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FALSE)
-
-con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
-create_database(con_Reef_database, codes_directory)
   
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 metadata_missions <- NULL
@@ -51,10 +54,25 @@ google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive
 c=0
 for(m in missions){
   c <-c+1
-  cat(paste0("Processing mission: ", m,"\n"))
-  setwd(m)
-  nb_photos_located <- load_data_in_database(con_database=con_Reef_database, mission_directory=m)
-  metadata_missions <- get_session_metadata(con_Reef_database, session_directory=m, google_drive_path,metadata_missions,type_images=type_images)
+  if(grepl(pattern = "drone",m)){
+    type_images <- "drone"
+    platform <- "drone"
+    missions_drone <- m
+    missions_drone <- list.dirs(path = m, full.names = TRUE, recursive = FALSE)
+    for(md in missions_drone){
+      setwd(md)
+      cat(paste0("Processing mission: ", md,"\n"))
+      nb_photos_located <- load_data_in_database(con_database=con_Reef_database, mission_directory=md,platform)
+      metadata_missions <- get_session_metadata(con_database=con_Reef_database, session_directory=md, google_drive_path,metadata_missions,type_images=type_images)
+      }
+    }else{
+      setwd(m)
+      type_images <- "gopro"
+      platform <- "kite"
+      cat(paste0("Processing mission: ", m,"\n"))
+      nb_photos_located <- load_data_in_database(con_database=con_Reef_database, mission_directory=m,platform)
+      metadata_missions <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_missions,type_images=type_images)
+      }
   # metadata_missions$nb_photos_located[c] <- nb_photos_located
 }
 
@@ -82,11 +100,8 @@ dbDisconnect(con_Reef_database)
 google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
 google_drive_path <- drive_get(id="0B0FxQQrHqkh0NnZ0elY5S0tHUkJxZWNLQlhuQnNGOE15YVlB")
 # drive_download("Deep_mappping_worflow.json")
-setwd(images_directory)
-require(geoflow)
-# configuration_file <- "/home/juldebar/Bureau/CODES/Deep_mapping/R/Deep_mappping_worflow.json"
-configuration_file <- "/home/juldebar/Bureau/CODES/Deep_mapping/Deep_mappping_worflow.json"
-# executeWorkflow(file = "Deep_mappping_worflow.json")
+setwd(codes_directory)
+configuration_file <- "Deep_mappping_worflow.json"
 # initWorkflow(file = configuration_file)
 executeWorkflow(file = configuration_file)
 

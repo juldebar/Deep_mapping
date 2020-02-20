@@ -102,10 +102,9 @@ sessions_metadata_dataframe <- function(Dublin_Core_metadata){
 #############################################################################################################
 ############################ WRITE EXIF METADATA CSV FILES ###################################################
 #############################################################################################################
-extract_exif_metadata_in_csv <- function(images_directory,template_df,mime_type,load_metadata_in_database=FALSE,time_zone="Indian/Mauritius"){
+extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df,mime_type,load_metadata_in_database=FALSE,time_zone="Indian/Mauritius"){
   
   setwd(images_directory)
-  session_id <- gsub(" ","_",gsub(paste0(dirname(images_directory),"/"),"",images_directory))
   
   #create directories if they don't exist
     if(!dir.exists(file.path(images_directory, "METADATA"))){
@@ -130,7 +129,7 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,mime_type,
     setwd(images_directory)
     this_directory <- sub_directories[i]
     
-    if (endsWith(this_directory, "GOPRO")==TRUE){
+    if (endsWith(this_directory, "GOPRO") || endsWith(this_directory, "data")==TRUE){
       
       setwd(this_directory)
       files <- list.files(pattern = mime_type ,recursive = TRUE)
@@ -138,7 +137,7 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,mime_type,
       if(length((files))>0){
         
         cat(paste("\n Metadata extraction for photos in ", this_directory, "\n", sep=" "))
-        exif_metadata <- extract_exif_metadata_in_this_directory(images_directory,this_directory,template_df, mime_type = mime_type, time_zone=time_zone)
+        exif_metadata <- extract_exif_metadata_in_this_directory(session_id,images_directory,this_directory,template_df, mime_type = mime_type, time_zone=time_zone)
         new_exif_metadata <- bind_rows(template_df, exif_metadata)
         CSV_total <- rbind(CSV_total, new_exif_metadata)
         
@@ -174,13 +173,12 @@ extract_exif_metadata_in_csv <- function(images_directory,template_df,mime_type,
 # CSV_total$ThumbnailOffset[1]
 # CSV_total$ThumbnailLength[1]
 
-extract_exif_metadata_in_this_directory <- function(images_directory, this_directory,template_df, mime_type = "*.JPG", time_zone="Indian/Mauritius"){
+extract_exif_metadata_in_this_directory <- function(session_id,images_directory, this_directory,template_df, mime_type = "*.JPG", time_zone="Indian/Mauritius"){
   setwd(this_directory)
   
   log <- paste("Adding references for photos in ", this_directory, "\n", sep=" ")
   parent_directory <- gsub(dirname(dirname(dirname(this_directory))),"",dirname(dirname(this_directory)))
   parent_directory <- gsub("/","",parent_directory)
-  session_id <- gsub(" ","_",gsub(paste0(dirname(images_directory),"/"),"",images_directory))
   
   files <- list.files(pattern = mime_type ,recursive = TRUE)
   exif_metadata <- NULL#check if needed
@@ -190,6 +188,9 @@ extract_exif_metadata_in_this_directory <- function(images_directory, this_direc
   exif_metadata$session_photo_number <-c(1:nrow(exif_metadata))
   exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
   # # IF THERE IS NO EMBEDDED GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES ("NA")
+  if(is.null(exif_metadata$GPSDateTime)==TRUE){
+    exif_metadata$GPSDateTime <-NA
+  }
   if(is.null(exif_metadata$GPSLatitude)==TRUE){
     # "GPSLatitude" %in% colnames(exif_metadata)
     exif_metadata$GPSVersionID <-NA
@@ -208,7 +209,11 @@ extract_exif_metadata_in_this_directory <- function(images_directory, this_direc
   }
   # change default data types
   # exif_metadata$GPSDateTime = as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ", tz="UTC")
-  exif_metadata$GPSDateTime = with_tz(as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ",  tz="UTC"), "UTC")
+  if(platform=="drone"){
+    exif_metadata$GPSDateTime = with_tz(as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%SZ",  tz="UTC"), "UTC")
+  }else{
+    exif_metadata$GPSDateTime = with_tz(as.POSIXct(unlist(exif_metadata$GPSDateTime),"%Y:%m:%d %H:%M:%SZ",  tz="UTC"), "UTC")
+  }
   # exif_metadata$Raw_Time_Julien = exif_metadata$DateTimeOriginal
   exif_metadata$DateTimeOriginal = with_tz(as.POSIXct(unlist(exif_metadata$DateTimeOriginal),"%Y:%m:%d %H:%M:%S", tz=time_zone), "UTC")
   # exif_metadata$DateTimeOriginal <- format(exif_metadata$DateTimeOriginal, tz="UTC",usetz=TRUE)
@@ -279,7 +284,7 @@ rename_exif_csv <- function(images_directory){
 
 create_database <- function(con_database, codes_directory){
   
-  query_create_table_gps_tracks <- paste(readLines(paste0(codes_directory,"SQL/create_tables_GPS_tracks.sql")), collapse=" ")
+  query_create_table_gps_tracks <- paste(readLines(paste0(codes_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
   create_table <- dbGetQuery(con_database,query_create_table_gps_tracks)
   
   query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_geoflow_metadata_table.sql")), collapse=" ")
@@ -296,7 +301,6 @@ create_database <- function(con_database, codes_directory){
   labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
   to_be_loaded <- labels %>% mutate(id = row_number()) %>% select(id, Name, SubName, Pattern) %>% rename(tag_id = id, tag_code = Name, tag_label = SubName, tag_definition = Pattern)
   load_labels_in_database(con_database, codes_directory, to_be_loaded, create_table=FALSE)
-  
   
 } 
 
@@ -387,7 +391,7 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, core_e
   } else {
     photo_id_min <- dbGetQuery(con_database, paste0("SELECT max(photo_id) FROM photos_exif_core_metadata;"))+1
     if(is.na(photo_id_min)){
-      photo_id_min=0
+      photo_id_min=1
       }
     photo_id_max <- max(photo_id_min)+nrow(core_exif_metadata)-1
     core_exif_metadata$photo_id <-c(max(photo_id_min):photo_id_max)
@@ -395,6 +399,10 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, core_e
     # core_exif_metadata <- core_exif_metadata[,c(15,1,2,3,4,5,6,7,8,9,10,11,12,13,14)]
     dbWriteTable(con_database, "photos_exif_core_metadata", core_exif_metadata, row.names=FALSE, append=TRUE)
   }
+  query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column_exif_metadata.sql")), collapse=" ")
+  update_Table <- dbGetQuery(con_database,query_update_table_spatial_column)
+  return (cat("\n Exif data succesfully loaded in Postgis !\n"))
+  
   # dbWriteTable(con_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
 }
 
@@ -404,7 +412,7 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, core_e
 
 load_gps_tracks_in_database <- function(con_database, codes_directory, gps_tracks, create_table=TRUE){
   if(create_table==TRUE){
-    query_create_table <- paste(readLines(paste0(codes_directory,"SQL/create_tables_GPS_tracks.sql")), collapse=" ")
+    query_create_table <- paste(readLines(paste0(codes_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
     create_Table <- dbGetQuery(con_database,query_create_table)
     dbWriteTable(con_database, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
   } else {
@@ -422,7 +430,7 @@ load_gps_tracks_in_database <- function(con_database, codes_directory, gps_track
 #############################################################################################################
 # Create or replace a SQL materialized view to gather data per dataset / survey
 
-infer_photo_location_from_gps_tracks <- function(con_database, images_directory, codes_directory, session_id, offset, create_view=FALSE){
+infer_photo_location_from_gps_tracks <- function(con_database, images_directory, codes_directory, session_id, platform, offset, create_view=FALSE){
   original_directory <- getwd()
   setwd(images_directory)
   # query <- NULL
@@ -446,33 +454,43 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
   
   ###########################################################
   ###########################################################
-  query <- NULL
-  # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
-  query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
-  query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
-  query <- paste0(query_drop,'CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
-  # query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
-  query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
+  create_table_from_view <-NULL
   
-  if(offset < 0){
-    query <- gsub("- interval","+ interval",query)
-    query <- gsub("13848",abs(offset)+1,query)
-  }else{
-    query <- gsub("13848",abs(offset)-1,query)
-  }
-  query <- paste0(query," WITH DATA")
-  
-  fileConn<-file(paste0('view_',session_id,'.SQL'))
-  writeLines(query, fileConn)
-  close(fileConn)
-  dbGetQuery(con_database, query)
-  add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"view_',session_id,'_geom_i\" ; CREATE INDEX \"view_',session_id,'_geom_i\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
-  
-  
-  create_table_from_view <- dbGetQuery(con_database, paste0('DROP TABLE IF EXISTS  \"',session_id,'\"; CREATE TABLE \"',session_id,'\" AS SELECT photo_id, session_id, session_photo_number, photo_relative_file_path, \"geom_WKT\", \"GPSDateTime\", \"DateTimeOriginal\", \"LightValue\", \"ImageSize\", \"Make\", \"Model\", \"ThumbnailImage\", \"PreviewImage\", \"URL_original_image\", \"the_geom\" FROM \"view_',session_id,'\";'))
+  if(platform =="drone"){
+    cat("/ntoto/n")
+    create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(codes_directory,"SQL/create_table_from_exif_table.sql")), collapse=" "))
+    fileConn<-file(paste0('table_',session_id,'.SQL'))
+    writeLines(create_table_from_view, fileConn)
+    close(fileConn)
+    
+    }else{
+      create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(codes_directory,"SQL/create_table_from_view.sql")), collapse=" "))
+      query <- NULL
+    # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
+    query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
+    query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
+    query <- paste0(query_drop,'CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
+    # query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
+    query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
+    
+    if(offset < 0){
+      query <- gsub("- interval","+ interval",query)
+      query <- gsub("13848",abs(offset)+1,query)
+    }else{
+      query <- gsub("13848",abs(offset)-1,query)
+    }
+    query <- paste0(query," WITH DATA")
+    dbGetQuery(con_database, query)
+    
+    fileConn<-file(paste0('view_',session_id,'.SQL'))
+    writeLines(query, fileConn)
+    close(fileConn)
+      }
+  result <- dbGetQuery(con_database, create_table_from_view)
+  # add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"view_',session_id,'_geom_i\" ; CREATE INDEX \"view_',session_id,'_geom_i\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
   add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"',session_id,'_geom_idx\" ;  CREATE INDEX \"',session_id,'_geom_idx\" ON \"',session_id,'\" USING GIST (the_geom);'))
-  
-  create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
+
+  create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"',session_id,'\";'))
   # head(create_csv_from_view)
   setwd(paste0(images_directory,"/GPS"))
   filename <- paste0("photos_location_",session_id,".csv")
@@ -487,15 +505,18 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
 ############################ load_data_in_database ###################################################
 #############################################################################################################
 
-load_data_in_database <- function(con_database, mission_directory){
+load_data_in_database <- function(con_database, mission_directory,platform){
+  
+  
+  cat(paste0("Start loading data for mission: ", mission_directory,"\n"))
+  
   
   # SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE
   dataset_time_zone <- "Indian/Mauritius"
   
-  session_id <- gsub(" ","_",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory))
-  
   # SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE
   if(type_images=="drone"){
+    session_id <- paste0(gsub(paste0(dirname(dirname(mission_directory)),"/"),"",dirname(mission_directory)),gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
     mime_type = "*.jpg"
     prefix_mission = "Mission"
     images_dir = "./data"
@@ -504,6 +525,7 @@ load_data_in_database <- function(con_database, mission_directory){
     offset <- 0
     
   }else if(type_images=="gopro"){
+    session_id <- gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory))
     mime_type = "*.JPG"
     prefix_mission = "session_"
     gps_dir = "GPS"
@@ -523,7 +545,7 @@ load_data_in_database <- function(con_database, mission_directory){
   if(!file.exists(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))){
     # extract exif metadata on the fly
     template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),stringsAsFactors = FALSE)
-    exif_metadata <- extract_exif_metadata_in_csv(images_directory = mission_directory, template_df, mime_type,load_metadata_in_database=FALSE,time_zone=dataset_time_zone)
+    exif_metadata <- extract_exif_metadata_in_csv(session_id, images_directory = mission_directory, template_df, mime_type,load_metadata_in_database=FALSE,time_zone=dataset_time_zone)
   }else{
     # read existing exif metadata from RDS file
     exif_metadata <- readRDS(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
@@ -588,7 +610,7 @@ load_data_in_database <- function(con_database, mission_directory){
   # define expected mime type for the search
   # check the number of GPS files for the session (sometimes more than one: battery issue..)
   # Use function "dataframe_gps_files" to list all gps files
-  setwd(m)
+  setwd(mission_directory)
   
   if(!dir.exists(file.path(mission_directory, "GPS"))){
     cat("Create GPS directory")
@@ -600,7 +622,7 @@ load_data_in_database <- function(con_database, mission_directory){
   if(type_images=="drone"){
     gps_files <- list.files(pattern = "\\.gpx$",ignore.case=TRUE)
     file.copy(gps_files, "./GPS")
-    newRow <- data.frame(session=session_id,path=m,file_name=gps_files)
+    newRow <- data.frame(session=session_id,path=mission_directory,file_name=gps_files)
     dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
   }else{
     dataframe_gps_files <- return_dataframe_gps_files(mission_directory,type=file_type)
@@ -631,7 +653,8 @@ load_data_in_database <- function(con_database, mission_directory){
   }else(cat("No GPS file when looking for TCX or GPX files => RTK ??"))
   
   # INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP
-  photo_location <- infer_photo_location_from_gps_tracks(con_database, mission_directory, codes_directory,session_id , offset=offset,create_view=TRUE)
+  photo_location <- infer_photo_location_from_gps_tracks(con_database, mission_directory, codes_directory,session_id, platform=platform, offset=offset,create_view=TRUE)
+    
   head(photo_location$the_geom,n = 50)
   cat("Materialized view has been created!\n")
   
@@ -867,3 +890,50 @@ plot_tcx <- function(tcx_file,directory){
   dev.off()
   setwd(original_directory)
 }    
+
+
+
+#############################################################################################################
+############################ plot map TCX file ###################################################
+#############################################################################################################
+# jsonfile <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Drone_images/2019_08_10_La_Preneuse_Tamarin/Mission 1/image_locations.json"
+
+drone_photos_locations <- function(jsonfile){
+  result <- fromJSON(file = jsonfile)
+  library("rjson")
+  length(result)
+  lengths(result)
+  class(result)
+  json_data_frame <-NULL
+  json_data_frame <- data.frame(filename=character(),
+                                aboveGroundAltitude=character(),
+                                altitudeReference=character(),
+                                index=integer(),
+                                latitude=character(),
+                                longitude=character(),
+                                pitch=character(),
+                                roll=character(),
+                                yaw=character()
+                                )
+  
+  for(i in 1:length(result)){
+    # print(result[i])
+    # print(result[[i]])
+    newRow <-NULL
+    newRow <-  data.frame(filename=names(result[i]),
+                           aboveGroundAltitude=result[[i]]$aboveGroundAltitude,
+                           altitudeReference=result[[i]]$altitudeReference,
+                           index=result[[i]]$index,
+                           latitude=result[[i]]$location2D$latitude,
+                           longitude=result[[i]]$location2D$longitude,
+                           pitch=result[[i]]$pitch,
+                           roll=result[[i]]$roll,
+                           yaw=result[[i]]$yaw
+    )
+    json_data_frame <- rbind(json_data_frame,newRow)
+    
+  }
+  json_data_frame
+  # write.csv(json_data_frame, paste("/tmp/drones.csv", sep=""),row.names = F)
+  return(json_data_frame)
+}
