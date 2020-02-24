@@ -52,7 +52,7 @@ COMMENT ON COLUMN "metadata"."Rights" IS '"Rights" metadata element as defined b
 COMMENT ON COLUMN "metadata"."Source" IS '"Source" metadata element as defined by DCMI (http://purl.org/dc/elements/1.1/source): A related resource from which the described resource is derived.';
 COMMENT ON COLUMN "metadata"."Provenance" IS '"Provenance" metadata element as defined by DCMI (http://purl.org/dc/terms/provenance): A statement of any changes in ownership and custody of the resource since its creation that are significant for its authenticity, integrity, and interpretation.';
 COMMENT ON COLUMN "metadata"."Format" IS '"Format" metadata element as defined by DCMI (http://purl.org/dc/elements/1.1/format): The file format, physical medium, or dimensions of the resource.';
-COMMENT ON COLUMN "metadata"."Data" IS '"Data" metadata element:';
+COMMENT ON COLUMN "metadata"."Data" IS '"Data" metadata element: information about the data described by (above) DCMI metadata elements. Syntactic rules, if applied, are following guidelines of geoflow R package (https://github.com/eblondel/geoflow)';
 COMMENT ON COLUMN "metadata"."geometry" IS '"geometry" metadata element which stores the spatial geometry (SFS) representing the dataset (eg a set of track points collected by the GPS during the session). The geometry can be the binary version of the "SpatialCoverage" metadata element or a more accurate one.';
 
 --# path	Number_of_Pictures	GPS_timestamp	Photo_GPS_timestamp "time_offset" numeric(24,15)
