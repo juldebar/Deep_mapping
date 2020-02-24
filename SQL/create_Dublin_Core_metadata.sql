@@ -27,8 +27,10 @@ WITH (
   OIDS=FALSE
 );
 
-ALTER TABLE "public"."metadata" ADD COLUMN "Number_of_Pictures" VARCHAR(254);
+
 CREATE INDEX "metadata_geometry_session_geom_idx" ON "public"."metadata" USING GIST ("geometry");
+ALTER TABLE "public"."metadata" ADD COLUMN "Number_of_Pictures" VARCHAR(254);
+
 ALTER TABLE "metadata" OWNER TO Reef_admin;
 GRANT SELECT ON TABLE "metadata" TO Reef_admin;
 GRANT ALL ON TABLE "metadata" TO Reef_admin;
