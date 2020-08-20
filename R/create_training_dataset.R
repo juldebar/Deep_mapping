@@ -82,12 +82,13 @@ return_dataframe_tag_txt <- function(wd){
 
 
 # we use the "return_dataframe_tag_txt" function to create a single file which gathers all annotations (from all sessions) and store it in the given repository (wd)
-wd <- "/media/juldebar/Deep_Mapping_one1"
+# wd <- "/media/juldebar/Deep_Mapping_one1"
 wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2017"
 # wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/A/"
-# wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2018/GOOD"
+wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2018/GOOD"
 # wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019"
-wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/all_txt_gps_files"
+# wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/all_txt_gps_files"
+wd <-"/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/validated"
 df <- return_dataframe_tag_txt(wd)
 head(df)
 
@@ -165,7 +166,9 @@ copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_im
           command <- paste0("cp ", as.character(relevant_images$path[f])," ./",relevant_images$photo_name[f],"\n")
           # cat(command)
           # cat(paste0("cp ",paste0(as.character(relevant_images$path[f])," .",gsub(dirname(as.character(relevant_images$path[f])),"", as.character(relevant_images$path[f]))),"\n"))
-          system(command)
+          # if(!file.exists(relevant_images$photo_name[f])){
+            system(command)
+          # }
           # system(gsub(" ."," ..",command))
           }else{
             cat(paste0("\n issue with ",relevant_images$path[f],"\n" ))
