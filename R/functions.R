@@ -284,12 +284,15 @@ rename_exif_csv <- function(images_directory){
 
 create_database <- function(con_database, codes_directory){
   
-  query_create_table_gps_tracks <- paste(readLines(paste0(codes_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
-  create_table <- dbGetQuery(con_database,query_create_table_gps_tracks)
+  query_create_database <- paste(readLines(paste0(codes_directory,"SQL/create_Reef_database.sql")), collapse=" ")
+  create_database <- dbGetQuery(con_database,query_create_database)
   
-  query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_geoflow_metadata_table.sql")), collapse=" ")
+  query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_Dublin_Core_metadata.sql")), collapse=" ")
   query_create_table_metadata <- gsub("Reef_admin",User,query_create_table_metadata)
   create_table_metadata <- dbGetQuery(con_database,query_create_table_metadata)
+  
+  query_create_table_gps_tracks <- paste(readLines(paste0(codes_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
+  create_table <- dbGetQuery(con_database,query_create_table_gps_tracks)
   
   query_create_table_exif_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_exif_metadata_table.sql")), collapse=" ")
   query_create_table_exif_metadata <- gsub("Reef_admin",User,query_create_table_exif_metadata)
@@ -367,7 +370,7 @@ load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_m
   
   if(create_table==TRUE){
     
-    query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_geoflow_metadata_table.sql")), collapse=" ")
+    query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_Dublin_Core_metadata.sql")), collapse=" ")
     query_create_table_metadata <- gsub("Reef_admin",User,query_create_table_metadata)
     create_table_metadata <- dbGetQuery(con_database,query_create_table_metadata)
     
@@ -516,7 +519,7 @@ load_data_in_database <- function(con_database, mission_directory,platform){
   
   # SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE
   if(type_images=="drone"){
-    session_id <- paste0(gsub(paste0(dirname(dirname(mission_directory)),"/"),"",dirname(mission_directory)),gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
+    session_id <- paste0(gsub(paste0(dirname(dirname(mission_directory)),"/"),"",dirname(mission_directory)),"_",gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
     mime_type = "*.jpg"
     prefix_mission = "Mission"
     images_dir = "./data"
@@ -536,7 +539,7 @@ load_data_in_database <- function(con_database, mission_directory,platform){
     con <- file(paste0(mission_directory,"/LABEL/tag.txt"),"r")
     first_line <- readLines(con,n=1)
     close(con)
-    offset <- eval(parse(text = sub(".*=> ","",first_line)))
+    offset <- as.numeric(eval(parse(text = sub(".*=> ","",first_line))))
   }
   
   # EXTRACT exif metadata elements & store them in a CSV file & LOAD THEM INTO POSTGRES DATABASE
@@ -654,17 +657,17 @@ load_data_in_database <- function(con_database, mission_directory,platform){
   
   # INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP
   photo_location <- infer_photo_location_from_gps_tracks(con_database, mission_directory, codes_directory,session_id, platform=platform, offset=offset,create_view=TRUE)
-    
   head(photo_location$the_geom,n = 50)
+  
   cat("Materialized view has been created!\n")
   
   paste0("For a total of ",nrow(exif_metadata), " photos")
   paste0(nrow(photo_location), " photos have been located from GPS tracks")
   ratio = nrow(photo_location) / nrow(exif_metadata)
-  ratio
+  ratio <-c(nrow(photo_location),nrow(exif_metadata))
   nrow(dataframe_gps_file)
   
-  return(nrow(photo_location))
+  return(ratio)
 }
 
 #############################################################################################################
