@@ -1,4 +1,8 @@
-setwd("/media/juldebar/Deep_Mapping_4To/data_deep_mapping/GPS_tracks/")
+source(paste0(codes_directory,"R/credentials_databases.R"))
+con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
+
+wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/GPS_tracks/TCX/"
+setwd(wd)
 type="TCX"
 if (type=="TCX"){pattern = "\\.tcx"} else if (type=="GPX"){pattern = "*.gpx"} else if (type=="RTK"){pattern = "*.rtk"}
 files <- list.files(pattern = pattern, recursive = TRUE)
@@ -10,9 +14,8 @@ CSV_total <-NULL
 for (i in gps_files){
   dataframe_gps_file=NULL
   cat(paste0("\n File : \n",i," \n"))
-  name_session <-gsub(".tcx","",i)
-  load_in_database=FALSE
-  dataframe_gps_file <-return_dataframe_gps_file(getwd(), i, type="TCX", name_session,load_in_database)
+  # return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",session_id,load_in_database=FALSE){
+  dataframe_gps_file <-return_dataframe_gps_file(con_database=con_Reef_database,wd=wd, gps_file=i, type="TCX", session_id=gsub(".tcx","",i),load_in_database=FALSE)
   write.csv(dataframe_gps_file, paste0(name_session,".csv"))  
   CSV_total <- rbind(CSV_total, dataframe_gps_file)
 }
@@ -22,7 +25,7 @@ saveRDS(CSV_total, "CSV_total.RDS")
 
 wd <- "/home/juldebar/Téléchargements/"
 wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/"
-wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/GPS_tracks/"
+# wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/GPS_tracks/"
 
 setwd(wd)
 type="TCX"
