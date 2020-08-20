@@ -38,7 +38,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   Photo_GPS_timestamp <- NULL
   ################### Set directories #######################
   if(type_images=="drone"){
-    session_id <- paste0(gsub(paste0(dirname(dirname(session_directory)),"/"),"",dirname(session_directory)),gsub(" ","",gsub(paste0(dirname(session_directory),"/"),"",session_directory)))
+    session_id <- paste0(gsub(paste0(dirname(dirname(session_directory)),"/"),"",dirname(session_directory)),"_",gsub(" ","",gsub(paste0(dirname(session_directory),"/"),"",session_directory)))
     pattern = "*.jpg"
     DCIM_directory <- "data"
     date <- "2020-02-15"
@@ -141,7 +141,6 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
       simplified_spatial_extent <- sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005)  %>% st_as_text()
       
-      
       # class(spatial_extent_geom)
       latitude <- as.data.frame(st_coordinates(spatial_extent_geom))$Y
       longitude <- as.data.frame(st_coordinates(spatial_extent_geom))$X
@@ -161,34 +160,38 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       # bbox <- makebbox(ymax+0.03,xmax+0.03,ymin-0.03,xmin-0.03)
       bbox <- st_bbox(spatial_extent_geom)
       
-      ######################## write a pdf and a jpeg file to get an overview of the spat https://cran.r-project.org/web/packages/rosm/rosm.pdf
-      pdf(paste0(session_id,".pdf"))
-      if(grepl("odrigue",session_id)){
-        zoomin=-1
-        type = "hikebike"
-        osm.plot(bbox, type = type,res=600,zoomin=zoomin,stoponlargerequest=FALSE)
-      }else{
-        zoomin=-1
-        type = "Aerial"
-        bmaps.plot(bbox, type = type,res=600,zoomin=zoomin,stoponlargerequest=FALSE)
-        }
-      # prettymap(bmaps.plot(bbox, type = "Aerial",zoomin=-1,stoponlargerequest=FALSE),res=300, scale.style="ticks", scale.tick.cex=0.5)
-      # osm.points(spatial_extent_geom$longitude,dataframe_gps_file$latitude, col="yellow",pch=18, cex=0.5)
-      osm.points(longitude,latitude, col="yellow",pch=18, cex=0.5)
-      dev.off()
       
       # https://cran.r-project.org/web/packages/pdftools/pdftools.pdf
-      pdf_convert(paste0(session_id,".pdf"), pages = NULL,format = "jpeg",dpi = 600,filenames=paste0(session_id,".jpeg"))
-      
       pdf_uri <- NULL
       jpeg_uri <-NULL
-      pdf_uri <- gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path,paste0(session_id,".pdf"))))
-      jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path,paste0(session_id,".jpeg"))))
+      pdf_spatial_extent <- paste0(session_id,".pdf")
+      jpeg_spatial_extent <- paste0(session_id,".jpeg")
+      if (!file.exists(pdf_spatial_extent)){
+        ######################## write a pdf and a jpeg file to get an overview of the spat https://cran.r-project.org/web/packages/rosm/rosm.pdf
+        pdf(pdf_spatial_extent)
+        if(grepl("odrigue",session_id)){
+          zoomin=-1
+          type = "hikebike"
+          osm.plot(bbox, type = type,res=600,zoomin=zoomin,stoponlargerequest=FALSE)
+        }else{
+          zoomin=-1
+          type = "Aerial"
+          bmaps.plot(bbox, type = type,res=600,zoomin=zoomin,stoponlargerequest=FALSE)
+        }
+        # prettymap(bmaps.plot(bbox, type = "Aerial",zoomin=-1,stoponlargerequest=FALSE),res=300, scale.style="ticks", scale.tick.cex=0.5)
+        # osm.points(spatial_extent_geom$longitude,dataframe_gps_file$latitude, col="yellow",pch=18, cex=0.5)
+        osm.points(longitude,latitude, col="yellow",pch=18, cex=0.5)
+        dev.off()
+        pdf_convert(pdf_spatial_extent, pages = NULL,format = "jpeg",dpi = 600,filenames=jpeg_spatial_extent)
+      }
       
+      pdf_uri <- gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path,pdf_spatial_extent)))
+      jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path,jpeg_spatial_extent)))
+
       relation <-paste0("thumbnail:",session_id,"@",jpeg_uri)
       relation <-paste0(relation,";\nhttp:map(pdf)@",pdf_uri)
       # data <-paste0("uploadType:dbview;\n:",pdf_uri)
-      data <-paste0('source:Postgis;\nuploadType:dbquery;\nsql:SELECT * FROM "', session_id,'";\nlayername:',session_id,';\nstyle:point;\nattribute:ImageSize[ImageSize],Model[Model],Make[Make];\nvariable:LightValue[LightValue]')
+      data <-paste0('source:Postgis;\nuploadType:dbquery;\nsql:SELECT * FROM "', session_id,'";\nlayername:',session_id,';\nstyle:point;\nattribute:GPSLatitude[GPSLatitude],GPSLongitude[GPSLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make];\nvariable:LightValue[LightValue]')
       
       # data <-paste0("source:file:///tmp/dessin.pdf;\nsourceName:",session_id,";\ntype:other;\nupload:true;")
       
@@ -218,7 +221,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   ############################################################
   
   newRow <-NULL
-  newRow <- data.frame(Identifier=paste0("id:",session_id),
+  newRow <- data.frame(Identifier=session_id,#Identifier=paste0("id:",session_id),
                        Description=description,
                        Title=title,
                        Subject=subject,
@@ -234,14 +237,13 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
                        Provenance=provenance,
                        Format=format,
                        Data=data,
-                       path=this_directory,
-                       gps_file_name=gps_file,
-                       Number_of_Pictures=Number_of_Pictures,
-                       GPS_timestamp=GPS_timestamp, # ??
-                       Photo_GPS_timestamp=Photo_GPS_timestamp, # ??
+                       # path=this_directory,
+                       # GPS_timestamp=GPS_timestamp, # ??
+                       # Photo_GPS_timestamp=Photo_GPS_timestamp, # ??
                        # geometry=spatial_extent_geom
                        # geometry=st_as_binary(spatial_extent_geom)
-                       geometry=NA
+                       geometry=NA,
+                       Number_of_Pictures=Number_of_Pictures
                        )
   
   metadata_sessions <- rbind(metadata_sessions,newRow)
