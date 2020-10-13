@@ -1,31 +1,22 @@
 # rm(list=ls())
 require(geoflow)
-# configuration_file <- "/home/juldebar/Bureau/CODES/Deep_mapping/R/Deep_mappping_worflow.json"
-configuration_file <- "/home/juldebar/Bureau/CODES/Deep_mapping/Deep_mappping_worflow.json"
-
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 setwd(codes_directory)
+configuration_file <- paste0(codes_directory,"Deep_mappping_worflow.json")
 source(paste0(codes_directory,"R/functions.R"))
 source(paste0(codes_directory,"R/gpx_to_wkt.R"))
 source(paste0(codes_directory,"R/credentials_databases.R"))
 source(paste0(codes_directory,"R/get_session_metadata.R"))
-#attention pas de slash à la fin du path
-images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Drone_images/2019_10_11_Le_Morne"
-images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/test/database"
-# images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/test/database/Mission1"
-# images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/database"
-# images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/test/database"
+#warning: no slash at the end of the path
 images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good"
+# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
 create_database(con_Reef_database, codes_directory)
 
-# images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/validated"
 missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FALSE)
-missions <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/validated/session_2019_05_11_kite_le_Morne_Lapointe"
-
-# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
-metadata_missions <- NULL
+missions <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new/session_2019_05_11_kite_le_Morne_Lapointe"
+# metadata_missions <- NULL
 # metadata_missions <- data.frame(
 #   Identifier=character(),
 #   Description=character(),
@@ -105,7 +96,7 @@ dbDisconnect(con_Reef_database)
 ########################################################################################################################
 ################### Run geoflow to load Geonetwork and Geoserver #######################
 ########################################################################################################################
-google_drive_path <- drive_get(id="0B0FxQQrHqkh0NnZ0elY5S0tHUkJxZWNLQlhuQnNGOE15YVlB")
+# google_drive_path <- drive_get(id="0B0FxQQrHqkh0NnZ0elY5S0tHUkJxZWNLQlhuQnNGOE15YVlB")
 google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
 
 # drive_download("Deep_mappping_worflow.json")
