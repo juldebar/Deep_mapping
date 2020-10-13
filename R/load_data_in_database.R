@@ -8,7 +8,7 @@ source(paste0(codes_directory,"R/gpx_to_wkt.R"))
 source(paste0(codes_directory,"R/credentials_databases.R"))
 source(paste0(codes_directory,"R/get_session_metadata.R"))
 #warning: no slash at the end of the path
-images_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good"
+images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new/session_2019_05_11_kite_le_Morne_Lapointe"
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
@@ -88,7 +88,7 @@ sum(metadata_missions$Number_of_Pictures)
 #Load annotation table
 list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/14XiNE6gvXjWZg9YAQZ-OWvdgYBDL6knoLD86ZRvx_jw/edit?usp=sharing"))
 # list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://drive.google.com/open?id=1TkX5P7pr5MEvxr7J78tCMKrSGzqUSG-FXicod9yLCEc"))
-update_annotations_in_database(con_Reef_database, codes_directory, list_images_with_tags_and_labels, create_table=FALSE)
+# update_annotations_in_database(con_Reef_database, codes_directory, list_images_with_tags_and_labels, create_table=FALSE)
 
 #Disconnect database
 dbDisconnect(con_Reef_database)
