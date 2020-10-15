@@ -1,5 +1,5 @@
 # rm(list=ls())
-require(geoflow)
+pacman::p_load(geoflow,googledrive, exifr, RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate)
 codes_directory <-"~/Bureau/CODES/Deep_mapping/"
 setwd(codes_directory)
 configuration_file <- paste0(codes_directory,"Deep_mappping_worflow.json")
@@ -8,40 +8,16 @@ source(paste0(codes_directory,"R/gpx_to_wkt.R"))
 source(paste0(codes_directory,"R/credentials_databases.R"))
 source(paste0(codes_directory,"R/get_session_metadata.R"))
 #warning: no slash at the end of the path
-images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new/session_2019_05_11_kite_le_Morne_Lapointe"
+images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new/session_2019_07_10_Le_Morne_ti_reef_Bastien"
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 
+cat("Connect the database\n")
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
+cat("Replace the database\n")
 create_database(con_Reef_database, codes_directory)
 
 missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FALSE)
-missions <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new/session_2019_05_11_kite_le_Morne_Lapointe"
-# metadata_missions <- NULL
-# metadata_missions <- data.frame(
-#   Identifier=character(),
-#   Description=character(),
-#   Title=character(),
-#   Subject=character(),
-#   Creator=character(),
-#   Date=character(),
-#   Type=character(),
-#   SpatialCoverage=character(),
-#   TemporalCoverage=character(),
-#   Language=character(),
-#   Relation=character(),
-#   Rights=character(),  
-#   Source=character(),  
-#   Provenance=character(),
-#   Format=character(),
-#   Data=character(),
-#   path=character(),
-#   gps_file_name=character(),
-#   Number_of_Pictures=integer(),
-#   GPS_timestamp=character(),
-#   Photo_GPS_timestamp=character(),
-#   geometry=character()
-# )
-
+missions <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new/session_2019_10_12_kite_Le_Morne"
 google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
 google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_path$id)
 
@@ -67,8 +43,11 @@ for(m in missions){
       type_images <- "gopro"
       platform <- "kite"
       cat(paste0("Processing mission: ", m,"\n"))
+      cat(paste0("Extracting dynamic metadata: ", m,"\n"))
       metadata_missions <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_missions,type_images=type_images)
+      cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
       load_DCMI_metadata_in_database(con_Reef_database, codes_directory, metadata_missions,create_table=FALSE)
+      cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
       ratio <- load_data_in_database(con_database=con_Reef_database, mission_directory=m,platform)
       metadata_missions$Comment <- paste0("Ratio d'images géoréférencées: ",ratio[1]/ratio[2], "(images géoréférencées: ", ratio[1]," pour un total d'images de : ", ratio[2],")")
       }
