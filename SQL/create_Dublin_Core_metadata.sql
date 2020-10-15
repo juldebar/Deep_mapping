@@ -31,9 +31,9 @@ WITH (
 CREATE INDEX "metadata_geometry_session_geom_idx" ON "public"."metadata" USING GIST ("geometry");
 ALTER TABLE "public"."metadata" ADD COLUMN "Number_of_Pictures" VARCHAR(254);
 
-ALTER TABLE "metadata" OWNER TO Reef_admin;
-GRANT SELECT ON TABLE "metadata" TO Reef_admin;
-GRANT ALL ON TABLE "metadata" TO Reef_admin;
+ALTER TABLE "metadata" OWNER TO "Reef_admin";
+GRANT SELECT ON TABLE "metadata" TO "Reef_admin";
+GRANT ALL ON TABLE "metadata" TO "Reef_admin";
 
 COMMENT ON TABLE "metadata" IS 'Table containing the metadata on all the datasets available in the database using DCMI Metadata Terms (https://www.dublincore.org/specifications/dublin-core/dcmi-terms)';
 COMMENT ON COLUMN "metadata"."id_metadata" IS '"id_metadata" is a Serial (integer) which can be used as another primary key to identify each dataset within the database model';
