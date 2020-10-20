@@ -17,69 +17,6 @@ library(googledrive)
 ########################################################################################################################################################################
 ########################################################################################################################################################################
 
-# Function to merge the annotations of images coming from different files (one per session / survey)
-return_dataframe_tag_txt <- function(wd){
-  setwd(wd)
-  dataframe_csv_files <- NULL
-  dataframe_csv_files <- data.frame(session=character(), path=character(), file_name=character())
-  sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
-  sub_directories  
-  for (i in sub_directories){
-    if (substr(i, nchar(i)-4, nchar(i))=="LABEL"){
-      setwd(i)
-      path_session <-dirname(i)
-      cat(paste0(i,"\n"))
-      cat(paste0(path_session,"\n"))
-      name_session <-gsub(paste(dirname(path_session),"/",sep=""),"",path_session)
-      files <- list.files(pattern = "*.txt")
-      # if(length(files)==1){
-      if(length(files)>0){
-        csv_files <- files
-        newRow <- data.frame(session=name_session,path=i,file_name=csv_files)
-        dataframe_csv_files <- rbind(dataframe_csv_files,newRow)
-        for (f in files){
-          csv_file <-NULL
-          fileName <-  paste0("/tmp/",name_session,"_",gsub(".txt",".csv",f))
-          system(paste0("cp ",paste0(i,"/",f)," ", fileName))
-          system(paste0("sed -i '1 i\\","path;tag'"," ",fileName))
-          
-          tx2  <- readChar(fileName, file.info(fileName)$size)
-          tx2  <- gsub(pattern = "[\r\n]+", replace = "\n", x = tx2)
-          tx2  <- gsub(pattern = "[  ]+", replace = " ", x = tx2)
-          tx2  <- gsub(pattern = "[   ]+", replace = " ", x = tx2)
-          tx2  <- gsub(pattern = ",", replace = " et ", x = tx2)
-          tx2  <- gsub(pattern = " => ", replace = ";", x = tx2)
-          tx2  <- gsub(pattern = ";", replace = ",", x = tx2)
-          tx2  <- gsub(pattern = "herbier marron", replace = "Thalassodendron ciliatum", x = tx2)
-          tx2  <- gsub(pattern = "herbier vert", replace = "Syringodium isoetifolium", x = tx2)
-          
-          # tx2  <- gsub(pattern = '.*\\/DCIM', replace = paste0(path,"/DCIM"),x = tx2)
-          # writeChar(tx2, con=paste0("/tmp/",name_session,"_tags_bis.csv"))
-          fileName_bis <-  gsub(pattern = ".csv", replace = "_bis.csv", x = fileName)
-          writeLines(tx2, con=fileName_bis)
-          
-          fileName_ter <-  gsub(pattern = ".csv", replace = "_ter.csv", x = fileName)
-          # csv_file <- readLines(con <- file(fileName_bis))
-          csv_file <- read.csv(fileName_bis,sep = ",")
-          csv_file$path <- gsub(pattern = '.*\\/DCIM', replace = paste0(path_session,"/DCIM"),x = csv_file$path)
-          csv_file$name_session <- gsub("/","",name_session)
-          csv_file$file_name <-gsub(pattern = '.*\\/G0',"G0",csv_file$path)
-          head(csv_file)
-          # writeLines(csv_file,con=fileName_ter)
-          write.table(x = csv_file,file = fileName_ter, sep=",",row.names = FALSE)
-          # system(paste0("rm ",fileName))
-          # system(paste0("rm ",fileName_bis))
-        }
-      } else {
-        cat("\ CHECK\n")
-        cat(i)
-        cat("\n")
-      }
-    }
-  }
-  return(dataframe_csv_files)
-}
-
 
 # we use the "return_dataframe_tag_txt" function to create a single file which gathers all annotations (from all sessions) and store it in the given repository (wd)
 # wd <- "/media/juldebar/Deep_Mapping_one1"
@@ -89,6 +26,7 @@ wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2018/GOOD"
 # wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019"
 # wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/all_txt_gps_files"
 wd <-"/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/validated"
+wd <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new"
 df <- return_dataframe_tag_txt(wd)
 head(df)
 
@@ -97,15 +35,18 @@ files <- list.files(pattern = "*ter.csv")
 all_files <- NULL
 all_files <- Reduce(rbind, lapply(files, read.csv))
 head(all_files)
-write.table(x = all_files,file = "all.csv", sep=",",row.names = FALSE)
+file_name <-"all.csv"
+write.table(x = all_files,file = file_name, sep=",",row.names = FALSE)
 newdf <- read.csv("all.csv",sep = ",")
 newdf$photo_name=paste0(newdf$name_session,"_",newdf$file_name)
 head(newdf)
 system(command = "awk 'FNR==1 && NR!=1{next;}{print}' *ter.csv  > combined.csv")
+tags_google_drive_path <- drive_get(id="1U6I6tgAqKRDgurb7gnQGV8Q5_i_jJSB4")
+google_drive_path_label <- drive_find(pattern = "list_images_with_tags_and_labels", type = "folder")
+upload_file_on_drive_repository(google_drive_path_label,"list_images_with_tags_and_labels")
+tags_file_path <- drive_get(id="1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM")
+googledrive::drive_update(file=tags_file_path,name=file_name,media=file_name)
 
-google_drive_path_label <- drive_find(pattern = "Photos_tagging", type = "folder")
-upload_file_on_drive_repository(google_drive_path_label,"all.csv")
-                                
 
 # library(data.table)
 # library(dplyr)
@@ -139,48 +80,9 @@ upload_file_on_drive_repository(google_drive_path_label,"all.csv")
 # }
 # newdf
 # 
-########################################################################################################################################################################
-########################################################################################################################################################################
-# Function to copy all annotated images in a single repository and/or in repositories whose name is the same as the label annotating images
-copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_images=FALSE){
-  current_dir <- getwd()
-  setwd(wd_copy)
-  # create sub-repositories for  each object / category to be identified where all images tagged with this category will be copied
-  for(dir in 1:nrow(file_categories)){
-    #we filter the dataset to selectonly images tagged with the category (matching the pattern)
-    mainDir <-  file_categories$RepositoryName[dir]
-    relevant_images <- all_images %>% filter(str_detect(tag, file_categories$Pattern[dir]))
-    # if some images have been tagged with the relevant label we create the sub-reporsitory with the name of the label
-    if(nrow(relevant_images)>0){
-      dir.create(mainDir)
-      setwd(mainDir)
-      if(crop_images){dir.create(file.path(mainDir, "crop"))}
-      # we copy each image in the sub-repository and in wd_copy as well if needed
-      for(f in 1:nrow(relevant_images)){
-        # print(paste0("\n",relevant_images$path[f]),"\n")
-        # check the clause below!
-        if(length(relevant_images$path[f])>0){
-          # copy relevant images for this category in this sub-repository (crop images if asked)
-          filename <- gsub(paste0(dirname(as.character(relevant_images$path[f])),"/"),"", as.character(relevant_images$path[f]))
-          # print(paste0(filename,"\n"))
-          command <- paste0("cp ", as.character(relevant_images$path[f])," ./",relevant_images$photo_name[f],"\n")
-          # cat(command)
-          # cat(paste0("cp ",paste0(as.character(relevant_images$path[f])," .",gsub(dirname(as.character(relevant_images$path[f])),"", as.character(relevant_images$path[f]))),"\n"))
-          # if(!file.exists(relevant_images$photo_name[f])){
-            system(command)
-          # }
-          # system(gsub(" ."," ..",command))
-          }else{
-            cat(paste0("\n issue with ",relevant_images$path[f],"\n" ))
-          }
-        if(crop_images){crop_this_image(filename,mainDir)}
-      }
-      }
-    setwd(wd_copy)
-    }
-  cat("done")
-  setwd(current_dir)
-}
+
+
+############################ copy all annotated images in  repositories whose name are the same as the label annotating images  ########################
 
 
 # wd_copy <- "/media/julien/Deep_Mapping_two/trash"

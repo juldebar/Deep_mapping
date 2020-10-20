@@ -17,7 +17,30 @@ library(prettymapr)
 # google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
 # google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_path$id)
 # metadata <- get_session_metadata(session_directory, google_drive_path,metadata_sessions)
-# metadata
+# metadata <- data.frame(
+#   Identifier=character(),
+#   Description=character(),
+#   Title=character(),
+#   Subject=character(),
+#   Creator=character(),
+#   Date=character(),
+#   Type=character(),
+#   SpatialCoverage=character(),
+#   TemporalCoverage=character(),
+#   Language=character(),
+#   Relation=character(),
+#   Rights=character(),  
+#   Source=character(),  
+#   Provenance=character(),
+#   Format=character(),
+#   Data=character(),
+#   path=character(),
+#   gps_file_name=character(),
+#   Number_of_Pictures=integer(),
+#   GPS_timestamp=character(),
+#   Photo_GPS_timestamp=character(),
+#   geometry=character()
+# )
 ################### Function to fill the geoflow data frame with metadata #######################
 get_session_metadata <- function(con_database, session_directory, google_drive_path, metadata_sessions,type_images="gopro"){
   
@@ -243,8 +266,10 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
                        # geometry=spatial_extent_geom
                        # geometry=st_as_binary(spatial_extent_geom)
                        geometry=NA,
-                       Number_of_Pictures=Number_of_Pictures
-                       )
+                       Number_of_Pictures=Number_of_Pictures,
+                       Comment=NA,
+                       Nb_photos_located=NA
+  )
   
   metadata_sessions <- rbind(metadata_sessions,newRow)
   # metadata_sessions <- metadata_sessions[,c(1,2,3,16,17,4,18,19,7,8,9,10,11,12,5,6,13,14,15)]

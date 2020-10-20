@@ -8,6 +8,9 @@ library(data.table)
 library(dplyr)
 library(trackeR)
 library(lubridate)
+require(stringr)
+require(tidyr)
+library(googledrive)
 # library(maps)
 # library(reshape)  
 # library(geosphere)
@@ -285,6 +288,7 @@ rename_exif_csv <- function(images_directory){
 create_database <- function(con_database, codes_directory){
   
   query_create_database <- paste(readLines(paste0(codes_directory,"SQL/create_Reef_database.sql")), collapse=" ")
+  query_create_database <- gsub("Reef_admin",User,query_create_database)
   create_database <- dbGetQuery(con_database,query_create_database)
   
   query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_Dublin_Core_metadata.sql")), collapse=" ")
@@ -292,6 +296,7 @@ create_database <- function(con_database, codes_directory){
   create_table_metadata <- dbGetQuery(con_database,query_create_table_metadata)
   
   query_create_table_gps_tracks <- paste(readLines(paste0(codes_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
+  query_create_table_gps_tracks <- gsub("Reef_admin",User,query_create_table_gps_tracks)
   create_table <- dbGetQuery(con_database,query_create_table_gps_tracks)
   
   query_create_table_exif_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_exif_metadata_table.sql")), collapse=" ")
@@ -327,7 +332,7 @@ load_labels_in_database <- function(con_database, codes_directory, labels, creat
 ############################ load_annotation_in_database ###################################################
 #############################################################################################################
 # load images and tags for original images
-update_annotations_in_database <- function(con_database, codes_directory, images_tags_and_labels, create_table=FALSE){
+update_annotations_in_database <- function(con_database, images_tags_and_labels){
   
   labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
   
@@ -335,7 +340,9 @@ update_annotations_in_database <- function(con_database, codes_directory, images
     # path	tag	name_session	file_name		
     session_id <- images_tags_and_labels$name_session[i]
     FileName <- images_tags_and_labels$file_name[i]
-    related_image <- dbGetQuery(con_database, paste0('SELECT * FROM public.photos_exif_core_metadata WHERE "session_id"=\'',session_id,'\' AND "FileName"=\'',FileName,'\';'))
+    query_session_photos <- paste0('SELECT * FROM public.photos_exif_core_metadata WHERE "session_id"=\'',session_id,'\' AND "FileName"=\'',FileName,'\';')
+    related_image <- dbGetQuery(con_database, query_session_photos)
+    # nrow(related_image)
     
     if(nrow(related_image)==1){
       cat("\n One for the show ! \n")
@@ -358,7 +365,7 @@ update_annotations_in_database <- function(con_database, codes_directory, images
         cat("\n BIG PROBLEM ! \n")
         }
   }
-  
+  return(query)
 }
 
 #############################################################################################################
@@ -940,3 +947,121 @@ drone_photos_locations <- function(jsonfile){
   # write.csv(json_data_frame, paste("/tmp/drones.csv", sep=""),row.names = F)
   return(json_data_frame)
 }
+
+
+
+
+
+#############################################################################################################
+############################ return a dataframe with all tags for multiple sessions  ########################
+#############################################################################################################
+
+# Function to merge the annotations of images coming from different files (one per session / survey)
+return_dataframe_tag_txt <- function(wd){
+  setwd(wd)
+  dataframe_csv_files <- NULL
+  dataframe_csv_files <- data.frame(session=character(), path=character(), file_name=character())
+  sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
+  sub_directories  
+  for (i in sub_directories){
+    if (substr(i, nchar(i)-4, nchar(i))=="LABEL"){
+      setwd(i)
+      path_session <-dirname(i)
+      cat(paste0(i,"\n"))
+      cat(paste0(path_session,"\n"))
+      name_session <-gsub(paste(dirname(path_session),"/",sep=""),"",path_session)
+      files <- list.files(pattern = "*.txt")
+      # if(length(files)==1){
+      if(length(files)>0){
+        csv_files <- files
+        newRow <- data.frame(session=name_session,path=i,file_name=csv_files)
+        dataframe_csv_files <- rbind(dataframe_csv_files,newRow)
+        for (f in files){
+          csv_file <-NULL
+          fileName <-  paste0("/tmp/",name_session,"_",gsub(".txt",".csv",f))
+          system(paste0("cp ",paste0(i,"/",f)," ", fileName))
+          system(paste0("sed -i '1 i\\","path;tag'"," ",fileName))
+          
+          tx2  <- readChar(fileName, file.info(fileName)$size)
+          tx2  <- gsub(pattern = "[\r\n]+", replace = "\n", x = tx2)
+          tx2  <- gsub(pattern = "[  ]+", replace = " ", x = tx2)
+          tx2  <- gsub(pattern = "[   ]+", replace = " ", x = tx2)
+          tx2  <- gsub(pattern = ",", replace = " et ", x = tx2)
+          tx2  <- gsub(pattern = " => ", replace = ";", x = tx2)
+          tx2  <- gsub(pattern = ";", replace = ",", x = tx2)
+          tx2  <- gsub(pattern = "herbier marron", replace = "Thalassodendron ciliatum", x = tx2)
+          tx2  <- gsub(pattern = "herbier vert", replace = "Syringodium isoetifolium", x = tx2)
+          
+          # tx2  <- gsub(pattern = '.*\\/DCIM', replace = paste0(path,"/DCIM"),x = tx2)
+          # writeChar(tx2, con=paste0("/tmp/",name_session,"_tags_bis.csv"))
+          fileName_bis <-  gsub(pattern = ".csv", replace = "_bis.csv", x = fileName)
+          writeLines(tx2, con=fileName_bis)
+          
+          fileName_ter <-  gsub(pattern = ".csv", replace = "_ter.csv", x = fileName)
+          # csv_file <- readLines(con <- file(fileName_bis))
+          csv_file <- read.csv(fileName_bis,sep = ",")
+          csv_file$path <- gsub(pattern = '.*\\/DCIM', replace = paste0(path_session,"/DCIM"),x = csv_file$path)
+          csv_file$name_session <- gsub("/","",name_session)
+          csv_file$file_name <-gsub(pattern = '.*\\/G0',"G0",csv_file$path)
+          head(csv_file)
+          # writeLines(csv_file,con=fileName_ter)
+          write.table(x = csv_file,file = fileName_ter, sep=",",row.names = FALSE)
+          # system(paste0("rm ",fileName))
+          # system(paste0("rm ",fileName_bis))
+        }
+      } else {
+        cat("\ CHECK\n")
+        cat(i)
+        cat("\n")
+      }
+    }
+  }
+  return(dataframe_csv_files)
+}
+
+
+########################################################################################################################################################
+############################ copy all annotated images in  repositories whose name are the same as the label annotating images  ########################
+########################################################################################################################################################
+# Function to copy all annotated images in a single repository and/or in repositories whose name is the same as the label annotating images
+
+copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_images=FALSE){
+  current_dir <- getwd()
+  setwd(wd_copy)
+  # create sub-repositories for  each object / category to be identified where all images tagged with this category will be copied
+  for(dir in 1:nrow(file_categories)){
+    #we filter the dataset to selectonly images tagged with the category (matching the pattern)
+    mainDir <-  file_categories$RepositoryName[dir]
+    relevant_images <- all_images %>% filter(str_detect(tag, file_categories$Pattern[dir]))
+    # if some images have been tagged with the relevant label we create the sub-reporsitory with the name of the label
+    if(nrow(relevant_images)>0){
+      dir.create(mainDir)
+      setwd(mainDir)
+      if(crop_images){dir.create(file.path(mainDir, "crop"))}
+      # we copy each image in the sub-repository and in wd_copy as well if needed
+      for(f in 1:nrow(relevant_images)){
+        # print(paste0("\n",relevant_images$path[f]),"\n")
+        # check the clause below!
+        if(length(relevant_images$path[f])>0){
+          # copy relevant images for this category in this sub-repository (crop images if asked)
+          filename <- gsub(paste0(dirname(as.character(relevant_images$path[f])),"/"),"", as.character(relevant_images$path[f]))
+          # print(paste0(filename,"\n"))
+          command <- paste0("cp ", as.character(relevant_images$path[f])," ./",relevant_images$photo_name[f],"\n")
+          # cat(command)
+          # cat(paste0("cp ",paste0(as.character(relevant_images$path[f])," .",gsub(dirname(as.character(relevant_images$path[f])),"", as.character(relevant_images$path[f]))),"\n"))
+          # if(!file.exists(relevant_images$photo_name[f])){
+          system(command)
+          # }
+          # system(gsub(" ."," ..",command))
+        }else{
+          cat(paste0("\n issue with ",relevant_images$path[f],"\n" ))
+        }
+        if(crop_images){crop_this_image(filename,mainDir)}
+      }
+    }
+    setwd(wd_copy)
+  }
+  cat("done")
+  setwd(current_dir)
+}
+
