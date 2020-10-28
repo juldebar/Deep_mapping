@@ -48,7 +48,7 @@ for(m in missions){
       cat(paste0("Processing mission: ", md,"\n"))
       metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=md, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images)
       load_DCMI_metadata_in_database(con_Reef_database, codes_directory, metadata_this_mission,create_table=FALSE)
-      ratio <- load_data_in_database(con_database=con_Reef_database, mission_directory=md, platform)
+      ratio <- load_data_in_database(con_database=con_Reef_database, codes_directory, mission_directory=md, platform)
       }
     }else{
       setwd(m)
@@ -60,7 +60,7 @@ for(m in missions){
       cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
       load_DCMI_metadata_in_database(con_Reef_database, codes_directory, metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],create_table=FALSE)
       cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
-      ratio <- load_data_in_database(con_database=con_Reef_database, mission_directory=m,platform)
+      ratio <- load_data_in_database(con_database=con_Reef_database, codes_directory=codes_directory, mission_directory=m,platform)
       # lapply(ratio,class)
       cat(paste0("Load tags of photos in the database: ", m,"\n"))
       
