@@ -57,6 +57,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   close(con)
   first_line <- sub('.*session', 'session', first_line)
   
+  
   GPS_timestamp <- NULL
   Photo_GPS_timestamp <- NULL
   ################### Set directories #######################
@@ -273,6 +274,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   
   metadata_sessions <- rbind(metadata_sessions,newRow)
   # metadata_sessions <- metadata_sessions[,c(1,2,3,16,17,4,18,19,7,8,9,10,11,12,5,6,13,14,15)]
+  # metadata_sessions <- metadata_sessions[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)]
   
   setwd(session_directory)
   return(metadata_sessions)

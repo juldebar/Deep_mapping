@@ -1,15 +1,14 @@
-# rm(list=ls())
-pacman::p_load(remotes,geoflow,googledrive, exifr, RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate)
-
-codes_directory <-"~/Bureau/CODES/Deep_mapping/"
-codes_github_repository <-"https://raw.githubusercontent.com/juldebar/Deep_mapping/master/"
-images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new"
-
+rm(list=ls())
+# install.packages("pacman")
+pacman::p_load(remotes,geoflow,googledrive, exifr, RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,pdftools,rosm,gsheet,dplyr,sf)
+codes_directory <-"~/Desktop/CODES/Deep_mapping/"
+source(paste0(codes_directory,"R/credentials_databases.R"))
 setwd(codes_directory)
+
 configuration_file <- paste0(codes_directory,"Deep_mappping_worflow.json")
+codes_github_repository=codes_directory
 source(paste0(codes_github_repository,"R/functions.R"))
 source(paste0(codes_github_repository,"R/gpx_to_wkt.R"))
-source(paste0(codes_directory,"R/credentials_databases.R"))
 source(paste0(codes_github_repository,"R/get_session_metadata.R"))
 #warning: no slash at the end of the path
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
@@ -21,12 +20,17 @@ create_database(con_Reef_database, codes_github_repository)
 
 #if multiple missions, list sub-repositories
 missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FALSE)
-#if only one mission, indicate the specirfic sub-repository
+#if only one mission, indicate the specific sub-repository
 # missions <- paste0(images_directory,"/","session_2019_10_12_kite_Le_Morne")
+missions <- "/media/julien/3362-6161/session_2019_09_18_kite_Le_Morne_La_Pointe"
+
+
 
 #specify which google drive folder should be used to store files
 google_drive_path <- drive_get(id="1tZrN_zKxhc6Q0ysUp8XEbTnID6HCV13K")
 google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_path$id)
+tags_folder_google_drive_path <- drive_get(id="1U6I6tgAqKRDgurb7gnQGV8Q5_i_jJSB4")
+tags_file_google_drive_path <- drive_get(id="1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM")
 
 #iterate on all missions to load the database with data (Dublin Core metadata, GPS data, exif metadata)
 c=0
@@ -54,10 +58,19 @@ for(m in missions){
       cat(paste0("Extracting dynamic metadata: ", m,"\n"))
       metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images)
       cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
-      load_DCMI_metadata_in_database(con_Reef_database, codes_directory, metadata_this_mission,create_table=FALSE)
+      load_DCMI_metadata_in_database(con_Reef_database, codes_directory, metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],create_table=FALSE)
       cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
       ratio <- load_data_in_database(con_database=con_Reef_database, mission_directory=m,platform)
+      # lapply(ratio,class)
       cat(paste0("Load tags of photos in the database: ", m,"\n"))
+      
+      tag_file <- paste(m,"LABEL","tag.txt",sep="/")
+      session_id <- gsub(paste0(dirname(m),"/"),"",m)
+      tags_folder_google_drive_path <- drive_get(id="1U6I6tgAqKRDgurb7gnQGV8Q5_i_jJSB4")
+      drive_upload(media=tag_file, path = tags_folder_google_drive_path,name=paste0(session_id,"_tag.txt"))
+      close(con)
+      
+      
       url <-paste0("https://docs.google.com/spreadsheets/d/",tags_file_google_drive_path$id)
       tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(url))
       query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=tags_file_google_drive)
@@ -71,7 +84,7 @@ for(m in missions){
     }
   
 }
-
+ratio
 
 cat(paste0("Ratio of geolocated images / Total number of images : ",ratio[1]/ratio[2]))
 
