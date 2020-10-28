@@ -136,12 +136,19 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
       
       setwd(this_directory)
       files <- list.files(pattern = mime_type ,recursive = TRUE)
+      new_exif_metadata <-data.frame()
       
       if(length((files))>0){
         
         cat(paste("\n Metadata extraction for photos in ", this_directory, "\n", sep=" "))
         exif_metadata <- extract_exif_metadata_in_this_directory(session_id,images_directory,this_directory,template_df, mime_type = mime_type, time_zone=time_zone)
-        new_exif_metadata <- bind_rows(template_df, exif_metadata)
+        colnames(exif_metadata)
+        lapply(exif_metadata,class)
+        message_done <- "ICI"
+        cat(message_done)
+        new_exif_metadata <- bind_rows(new_exif_metadata, exif_metadata)
+        message_done <- "LA"
+        cat(message_done)
         CSV_total <- rbind(CSV_total, new_exif_metadata)
         
         message_done <- paste("\n References for photos in ", this_directory, " have been extracted !\n", sep=" ")
@@ -185,8 +192,16 @@ extract_exif_metadata_in_this_directory <- function(session_id,images_directory,
   
   files <- list.files(pattern = mime_type ,recursive = TRUE)
   exif_metadata <- NULL#check if needed
-  exif_metadata <- template_df#check if needed
+  # exif_metadata <- template_df#check if needed
+  # lapply(template_df,class)
+  # lapply(exif_metadata,class)
+  
   exif_metadata <- read_exif(files,quiet = FALSE)#DDD deg MM' SS.SS"
+  lapply(exif_metadata,class)
+  
+  # transform(exif_metadata, SourceFile = as.character(SourceFile),ExposureIndex = as.numeric(ExposureIndex))
+  # lapply(exif_metadata,class)
+  
   exif_metadata$session_id = session_id
   exif_metadata$session_photo_number <-c(1:nrow(exif_metadata))
   exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
@@ -229,6 +244,7 @@ extract_exif_metadata_in_this_directory <- function(session_id,images_directory,
   exif_metadata$geometry_gps_correlate = as.numeric(unlist(exif_metadata$geometry_gps_correlate))
   exif_metadata$geometry_native <- NA
   exif_metadata$geometry_native = as.numeric(unlist(exif_metadata$geometry_native))
+  # lapply(exif_metadata,class)
   
   return(exif_metadata)
 }
@@ -395,7 +411,7 @@ load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_m
 
 load_exif_metadata_in_database <- function(con_database, codes_directory, core_exif_metadata, create_table=FALSE){
   if(create_table==TRUE){
-    query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_directory,"SQL/create_exif_metadata_table.sql")), collapse=" ")
+    query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_github_repository,"SQL/create_exif_metadata_table.sql")), collapse=" ")
     create_exif_core_metadata_table <- dbGetQuery(con_database,query_create_exif_core_metadata_table)
     dbWriteTable(con_database, "photos_exif_core_metadata", core_exif_metadata, row.names=FALSE, append=TRUE)
   } else {
@@ -515,7 +531,7 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
 ############################ load_data_in_database ###################################################
 #############################################################################################################
 
-load_data_in_database <- function(con_database, mission_directory,platform){
+load_data_in_database <- function(con_database, codes_directory, mission_directory,platform){
   
   
   cat(paste0("Start loading data for mission: ", mission_directory,"\n"))
@@ -550,21 +566,30 @@ load_data_in_database <- function(con_database, mission_directory,platform){
   }
   
   # EXTRACT exif metadata elements & store them in a CSV file & LOAD THEM INTO POSTGRES DATABASE
-  exif_metadata <-NULL
+  all_exif_metadata <-NULL
   # 1) extract exif metadata and store it into a CSV or RDS file
   if(!file.exists(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))){
     # extract exif metadata on the fly
-    template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),stringsAsFactors = FALSE)
-    exif_metadata <- extract_exif_metadata_in_csv(session_id, images_directory = mission_directory, template_df, mime_type,load_metadata_in_database=FALSE,time_zone=dataset_time_zone)
+    template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),
+                            colClasses=c(SourceFile="character",ExifToolVersion="numeric",FileName="character",Directory="character",FileSize="integer",FileModifyDate="character",FileAccessDate="character",FileInodeChangeDate="character",FilePermissions="integer",FileType="character",FileTypeExtension="character",MIMEType="character",ExifByteOrder="character",ImageDescription="character",Make="character",Orientation="integer",XResolution="integer",YResolution="integer",ResolutionUnit="integer",Software="character",ModifyDate="character",YCbCrPositioning="integer",ExposureTime="numeric",FNumber="numeric",ExposureProgram="integer",ISO="integer",ExifVersion="character",DateTimeOriginal="POSIXct",CreateDate="character",ComponentsConfiguration="character",CompressedBitsPerPixel="numeric",ShutterSpeedValue="numeric",ApertureValue="numeric",MaxApertureValue="numeric",SubjectDistance="integer",MeteringMode="integer",LightSource="integer",Flash="integer",FocalLength="integer",Warning="character",FlashpixVersion="character",ColorSpace="integer",ExifImageWidth="integer",ExifImageHeight="integer",InteropIndex="character",InteropVersion="character",ExposureIndex="character",SensingMethod="integer",FileSource="integer",SceneType="integer",CustomRendered="integer",ExposureMode="integer",DigitalZoomRatio="integer",FocalLengthIn35mmFormat="integer",SceneCaptureType="integer",GainControl="integer",Contrast="integer",Saturation="integer",DeviceSettingDescription="character",SubjectDistanceRange="integer",SerialNumber="character",GPSLatitudeRef="character",GPSLongitudeRef="character",GPSAltitudeRef="integer",GPSTimeStamp="character",GPSDateStamp="character",Compression="integer",ThumbnailOffset="integer",ThumbnailLength="integer",MPFVersion="character",NumberOfImages="integer",MPImageFlags="integer",MPImageFormat="integer",MPImageType="integer",MPImageLength="integer",MPImageStart="integer",DependentImage1EntryNumber="integer",DependentImage2EntryNumber="integer",ImageUIDList="character",TotalFrames="integer",DeviceName="character",FirmwareVersion="character",CameraSerialNumber="character",Model="character",AutoRotation="character",DigitalZoom="character",ProTune="character",WhiteBalance="character",Sharpness="character",ColorMode="character",AutoISOMax="integer",AutoISOMin="integer",ExposureCompensation="numeric",Rate="character",PhotoResolution="character",HDRSetting="character",ImageWidth="integer",ImageHeight="integer",EncodingProcess="integer",BitsPerSample="integer",ColorComponents="integer",YCbCrSubSampling="character",Aperture="numeric",GPSAltitude="numeric",GPSDateTime="POSIXct",GPSLatitude="numeric",GPSLongitude="numeric",GPSPosition="character",ImageSize="character",PreviewImage="character",Megapixels="integer",ScaleFactor35efl="integer",ShutterSpeed="numeric",ThumbnailImage="character",CircleOfConfusion="character",FOV="numeric",FocalLength35efl="integer",HyperfocalDistance="numeric",LightValue="numeric",session_id="character",session_photo_number="integer",relative_path="character",geometry_postgis="numeric",geometry_gps_correlate="numeric",geometry_native="numeric"),
+                            stringsAsFactors = FALSE)
+    lapply(template_df,class)
+    all_exif_metadata <- extract_exif_metadata_in_csv(session_id, images_directory = mission_directory, template_df, mime_type,load_metadata_in_database=FALSE,time_zone=dataset_time_zone)
+    lapply(all_exif_metadata,class)
+    
   }else{
     # read existing exif metadata from RDS file
-    exif_metadata <- readRDS(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
+    all_exif_metadata <- readRDS(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
   }
-  exif_metadata$PreviewImage <- paste0("base64:",base64enc::base64encode("/home/juldebar/Images/Logo_IRD_2016_BLOC_FR_COUL.jpg"))
-  exif_metadata$URL_original_image <-"http://thredds.oreme.org/tmp/Deep_mapping/session_2017_11_19_paddle_Black_Rocks_G0028305.JPG"
+  cat(paste0("Adding attributes \n"))
+  
+  all_exif_metadata$PreviewImage <- paste0("base64:",base64enc::base64encode("https://upload.wikimedia.org/wikipedia/commons/7/7f/Logo_IRD_2016_BLOC_FR_COUL.png"))
+  all_exif_metadata$URL_original_image <-"http://thredds.oreme.org/tmp/Deep_mapping/session_2017_11_19_paddle_Black_Rocks_G0028305.JPG"
+  
+  cat(paste0("Extracting Core exif metadata \n"))
   core_exif_metadata <-NULL
-  if(!is.null(exif_metadata)){
-    core_exif_metadata <- select(exif_metadata,
+  if(!is.null(all_exif_metadata)){
+    core_exif_metadata <- select(all_exif_metadata,
                                  session_id,
                                  session_photo_number,
                                  relative_path,
@@ -596,9 +621,10 @@ load_data_in_database <- function(con_database, mission_directory,platform){
         # name_file_csv<-paste("Core_Exif_metadata_",session_id,".csv",sep="")
         # saveRDS(core_exif_metadata, paste("Core_Exif_metadata_",session_id,".RDS",sep=""))
         
-        # load the exif metadata in the SQL database
+        cat(paste0("Load the core exif metadata in the SQL database \n"))
         load_exif_metadata_in_database(con_database, codes_directory, core_exif_metadata, create_table=FALSE)
-        #  Check that the SQL database was properly loaded
+
+        cat(paste0("Check that the SQL database was properly loaded \n"))
         check_database <- dbGetQuery(con_database, paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 10"))
         check_database
         
@@ -668,10 +694,10 @@ load_data_in_database <- function(con_database, mission_directory,platform){
   
   cat("Materialized view has been created!\n")
   
-  paste0("For a total of ",nrow(exif_metadata), " photos")
+  paste0("For a total of ",nrow(all_exif_metadata), " photos")
   paste0(nrow(photo_location), " photos have been located from GPS tracks")
-  ratio = nrow(photo_location) / nrow(exif_metadata)
-  ratio <-c(nrow(photo_location),nrow(exif_metadata))
+  ratio = nrow(photo_location) / nrow(all_exif_metadata)
+  ratio <-c(nrow(photo_location),nrow(all_exif_metadata))
   nrow(dataframe_gps_file)
   
   return(ratio)
