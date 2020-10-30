@@ -27,20 +27,10 @@ wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2018/GOOD"
 # wd <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/all_txt_gps_files"
 wd <-"/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/validated"
 wd <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new"
-df <- return_dataframe_tag_txt(wd)
-head(df)
-
-setwd("/tmp")
-files <- list.files(pattern = "*ter.csv")
-all_files <- NULL
-all_files <- Reduce(rbind, lapply(files, read.csv))
-head(all_files)
-file_name <-"all.csv"
-write.table(x = all_files,file = file_name, sep=",",row.names = FALSE)
-newdf <- read.csv("all.csv",sep = ",")
-newdf$photo_name=paste0(newdf$name_session,"_",newdf$file_name)
+wd<-"/media/julien/3362-6161/session_2019_09_18_kite_Le_Morne_La_Pointe"
+newdf <- return_dataframe_tag_txt(wd)
 head(newdf)
-system(command = "awk 'FNR==1 && NR!=1{next;}{print}' *ter.csv  > combined.csv")
+
 tags_google_drive_path <- drive_get(id="1U6I6tgAqKRDgurb7gnQGV8Q5_i_jJSB4")
 google_drive_path_label <- drive_find(pattern = "list_images_with_tags_and_labels", type = "folder")
 upload_file_on_drive_repository(google_drive_path_label,"list_images_with_tags_and_labels")
@@ -83,8 +73,6 @@ googledrive::drive_update(file=tags_file_path,name=file_name,media=file_name)
 
 
 ############################ copy all annotated images in  repositories whose name are the same as the label annotating images  ########################
-
-
 # wd_copy <- "/media/julien/Deep_Mapping_two/trash"
 dir.create("/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash")
 wd_copy <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/trash"

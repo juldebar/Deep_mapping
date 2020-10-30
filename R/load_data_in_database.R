@@ -1,6 +1,4 @@
 rm(list=ls())
-# install.packages("pacman")
-pacman::p_load(remotes,geoflow,googledrive, exifr, RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,pdftools,rosm,gsheet,dplyr,sf)
 codes_directory <-"~/Desktop/CODES/Deep_mapping/"
 source(paste0(codes_directory,"R/credentials_databases.R"))
 setwd(codes_directory)
@@ -22,15 +20,8 @@ create_database(con_Reef_database, codes_github_repository)
 missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FALSE)
 #if only one mission, indicate the specific sub-repository
 # missions <- paste0(images_directory,"/","session_2019_10_12_kite_Le_Morne")
-missions <- "/media/julien/3362-6161/session_2019_09_18_kite_Le_Morne_La_Pointe"
+# missions <- "/media/julien/3362-6161/saved/session_2019_09_12_kite_Le_Morne"
 
-
-
-#specify which google drive folder should be used to store files
-google_drive_path <- drive_get(id="1tZrN_zKxhc6Q0ysUp8XEbTnID6HCV13K")
-google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_path$id)
-tags_folder_google_drive_path <- drive_get(id="1U6I6tgAqKRDgurb7gnQGV8Q5_i_jJSB4")
-tags_file_google_drive_path <- drive_get(id="1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM")
 
 #iterate on all missions to load the database with data (Dublin Core metadata, GPS data, exif metadata)
 c=0
@@ -51,29 +42,31 @@ for(m in missions){
       ratio <- load_data_in_database(con_database=con_Reef_database, codes_directory, mission_directory=md, platform)
       }
     }else{
+      cat(paste0("Processing mission: ", m,"\n"))
       setwd(m)
+      session_id <- gsub(paste0(dirname(m),"/"),"",m)
       type_images <- "gopro"
       platform <- "kite"
-      cat(paste0("Processing mission: ", m,"\n"))
       cat(paste0("Extracting dynamic metadata: ", m,"\n"))
       metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images)
+      cat(paste0("Upload metadata on google drive: ", m,"\n"))
+      file_name <- paste0(session_id,"_DCMI_metadata.csv")
+      write.csv(metadata_this_mission,file = file_name,row.names = F)
+      # googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
+      gsheet_id <- upload_file_on_drive_repository(DCMI_metadata_google_drive_path,media=file_name, file_name=file_name,type="spreadsheet")
+      
       cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
       load_DCMI_metadata_in_database(con_Reef_database, codes_directory, metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],create_table=FALSE)
       cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
       ratio <- load_data_in_database(con_database=con_Reef_database, codes_directory=codes_directory, mission_directory=m,platform)
       # lapply(ratio,class)
       cat(paste0("Load tags of photos in the database: ", m,"\n"))
-      
-      tag_file <- paste(m,"LABEL","tag.txt",sep="/")
-      session_id <- gsub(paste0(dirname(m),"/"),"",m)
-      tags_folder_google_drive_path <- drive_get(id="1U6I6tgAqKRDgurb7gnQGV8Q5_i_jJSB4")
-      drive_upload(media=tag_file, path = tags_folder_google_drive_path,name=paste0(session_id,"_tag.txt"))
-      close(con)
-      
-      
-      url <-paste0("https://docs.google.com/spreadsheets/d/",tags_file_google_drive_path$id)
+      tags_as_csv <- return_dataframe_tag_txt(m)
+      file_name <- paste0(session_id,"_tag.csv")
+      gsheet_id <- upload_file_on_drive_repository(tags_folder_google_drive_path,media=tags_as_csv, file_name,type="spreadsheet")
+      url <-paste0("https://docs.google.com/spreadsheets/d/",gsheet_id)
       tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(url))
-      query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=tags_file_google_drive)
+      # query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=tags_file_google_drive)
     }
   metadata_this_mission$Comment <- paste0("Ratio d'images géoréférencées: ",ratio[1]/ratio[2], "(images géoréférencées: ", ratio[1]," pour un total d'images de : ", ratio[2],")")
   metadata_this_mission$Nb_photos_located <- ratio[1]
@@ -82,20 +75,16 @@ for(m in missions){
   }else{
     metadata_missions <- rbind(metadata_missions,metadata_this_mission)
     }
-  
 }
-ratio
-
-cat(paste0("Ratio of geolocated images / Total number of images : ",ratio[1]/ratio[2]))
 
 #write metadata table
-colnames(metadata_this_mission)
 setwd(images_directory)
-file_name <-"metadata_missions.csv"
+file_name <-"metadata_all_sessions.csv"
 write.csv(metadata_missions,file = file_name,row.names = F)
-DCMI_metadata_google_drive_path <- drive_get(id="12anx6McwA6xiZeswfF8Y9sGuQSnohWZsUNIhc1fFjnw")
 googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
-
+upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=pdf_spatial_extent,type=NULL)
+ratio
+cat(paste0("Ratio of geolocated images / Total number of images : ",ratio[1]/ratio[2]))
 
 #Number of mission processed in the iteration
 nrow(metadata_missions)
@@ -103,34 +92,42 @@ nrow(metadata_missions)
 sum(metadata_missions$Number_of_Pictures)
 
 #Merge all tags from different sessions
-images_directory <- "/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/new"
-df <- return_dataframe_tag_txt(images_directory)
-head(df)
+all_tags_as_csv <- return_dataframe_tag_txt(images_directory)
+all_tags_as_csv <- return_dataframe_tag_txt("/media/julien/Deep_Mapping_bac/data_deep_mapping/2019/good/checked")
+all_tags_as_csv <- return_dataframe_tag_txt("/media/julien/Deep_Mapping_bac/data_deep_mapping/2018/GOOD")
 
-setwd("/tmp")
-files <- list.files(pattern = "*ter.csv")
-all_files <- NULL
-all_files <- Reduce(rbind, lapply(files, read.csv))
-all_files$old_tag <-all_files$tag
-head(all_files)
-file_name <-"all.csv"
-write.table(x = all_files,file = file_name, sep=",",row.names = FALSE)
-newdf <- read.csv("all.csv",sep = ",")
-newdf$photo_name=paste0(newdf$name_session,"_",newdf$file_name)
-head(newdf)
-system(command = "awk 'FNR==1 && NR!=1{next;}{print}' *ter.csv  > combined.csv")
-tags_folder_google_drive_path <- drive_get(id="1U6I6tgAqKRDgurb7gnQGV8Q5_i_jJSB4")
-tags_file_google_drive_path <- drive_get(id="1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM")
-googledrive::drive_update(file=tags_file_google_drive_path,name=file_name,media=file_name)
+file_name <- paste0("all_sessions_tags.csv")
+gsheet_id <- upload_file_on_drive_repository(tags_folder_google_drive_path,media=all_tags_as_csv, file_name,type="spreadsheet")
+url <-paste0("https://docs.google.com/spreadsheets/d/",gsheet_id)
+tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(url))
+
+# #Load annotation table
+# # 1qT9j398DhTmvBvBd0FZvoesy3kMkOta96YZQVhT5Tjw
+# list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM/edit?usp=sharing"))
+# # list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://drive.google.com/open?id=1TkX5P7pr5MEvxr7J78tCMKrSGzqUSG-FXicod9yLCEc"))
+# cat("Update annotations in the database with the content of this google sheet \n")
+# # update_annotations_in_database(con_Reef_database, codes_directory, list_images_with_tags_and_labels, create_table=FALSE)
 
 
 
-#Load annotation table
-# 1qT9j398DhTmvBvBd0FZvoesy3kMkOta96YZQVhT5Tjw
-list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM/edit?usp=sharing"))
-# list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://drive.google.com/open?id=1TkX5P7pr5MEvxr7J78tCMKrSGzqUSG-FXicod9yLCEc"))
-cat("Update annotations in the database with the content of this google sheet \n")
-# update_annotations_in_database(con_Reef_database, codes_directory, list_images_with_tags_and_labels, create_table=FALSE)
+# wd_copy <- "/media/julien/Deep_Mapping_two/trash"
+training_images <- "/tmp/trash"
+dir.create(training_images)
+# We load the mapping between annotation and labels from either a csv or a google sheet
+# all_categories <- read.csv("/home/julien/Bureau/CODES/Deep_mapping/CSV/All_categories.csv",stringsAsFactors = FALSE)
+
+all_categories <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
+# df_images <-all_files
+df_images <-read.csv(tags_as_csv)
+df_images <-read.csv(all_tags_as_csv)
+# head(df_images)
+# newdf$path
+df_images$path <- gsub("/media/juldebar/Deep_Mapping_4To/data_deep_mapping/all_txt_gps_files","/media/juldebar/Deep_Mapping_4To/data_deep_mapping",df_images$path)
+crop_images=FALSE
+# we make a copy of all annotated images
+copy_images_for_training(training_images, df_images,all_categories,crop_images=crop_images)
+# ckeck if sub-repositories exist
+
 
 #Disconnect database
 dbDisconnect(con_Reef_database)

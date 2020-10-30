@@ -125,7 +125,10 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
   
   sub_directories <- list.dirs(path=getwd(),full.names = TRUE, recursive = TRUE)
   number_sub_directories <-length(sub_directories)
+  
   CSV_total <-NULL
+  new_exif_metadata <-NULL
+  # new_exif_metadata <-template_df
   
   for (i in 1:number_sub_directories){
     # dat <-template_df
@@ -136,7 +139,7 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
       
       setwd(this_directory)
       files <- list.files(pattern = mime_type ,recursive = TRUE)
-      new_exif_metadata <-data.frame()
+      # new_exif_metadata <-data.frame()
       
       if(length((files))>0){
         
@@ -149,7 +152,8 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
         new_exif_metadata <- bind_rows(new_exif_metadata, exif_metadata)
         message_done <- "LA"
         cat(message_done)
-        CSV_total <- rbind(CSV_total, new_exif_metadata)
+        # CSV_total <- rbind(CSV_total, new_exif_metadata)
+        CSV_total <- bind_rows(CSV_total, exif_metadata)
         
         message_done <- paste("\n References for photos in ", this_directory, " have been extracted !\n", sep=" ")
         cat(message_done)
@@ -194,12 +198,15 @@ extract_exif_metadata_in_this_directory <- function(session_id,images_directory,
   exif_metadata <- NULL#check if needed
   # exif_metadata <- template_df#check if needed
   # lapply(template_df,class)
-  # lapply(exif_metadata,class)
+  # print(lapply(exif_metadata,class))
   
-  exif_metadata <- read_exif(files,quiet = FALSE)#DDD deg MM' SS.SS"
-  lapply(exif_metadata,class)
+  exif_metadata <- read_exif(files,quiet=TRUE)#DDD deg MM' SS.SS"
+  # exif_metadata <- bind_rows(exif_metadata, template_df)
   
+  # print(colnames(exif_metadata))
+  print(lapply(exif_metadata$ExposureIndex[1],class))
   # transform(exif_metadata, SourceFile = as.character(SourceFile),ExposureIndex = as.numeric(ExposureIndex))
+  exif_metadata$ExposureIndex <- as.numeric(as.character(exif_metadata$ExposureIndex))
   # lapply(exif_metadata,class)
   
   exif_metadata$session_id = session_id
@@ -789,10 +796,11 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
       name_session <- gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
       cat(paste0("\n Processing GPS repository => ",i,"\n"))
       cat(paste0("\n Name session => ",name_session,"\n"))
-      cat("\n List tcx \n")
+      cat("\n List tcx files \n")
       if (type=="TCX"){pattern = "\\.tcx$"} else if (type=="GPX"){pattern = "\\.gpx$"} else if (type=="RTK"){pattern = "\\.rtk$"}
       files <- list.files(pattern = pattern,ignore.case=TRUE)
       gps_files <- files
+      cat("\n Names of spatial data files \n")
       cat(gps_files)
       # if(length(gps_files)>1){cat("\n ERROR! \n")}
       # cat(c(name_session,i,gps_files))
@@ -809,6 +817,8 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
       # cat(substr(i, nchar(i)-2, nchar(i)))
     }
   }
+  
+  cat("\n End return_dataframe_gps_files function \n")
   return(dataframe_gps_files)
 }
 
@@ -837,8 +847,8 @@ return(shape_file)
 # https://googledrive.tidyverse.org/
 # install.packages("googledrive")    
 
-upload_google_drive <- function(google_drive_path,file_name){
-  google_drive_file <- drive_upload(media=file_name, path = google_drive_path,name=file_name)
+upload_google_drive <- function(google_drive_path,media,file_name){
+  google_drive_file <- drive_upload(media=media, path = google_drive_path,name=file_name)
   # If to update the content or metadata of an existing Drive file, use drive_update()
   return(google_drive_file)
 }
@@ -847,17 +857,17 @@ upload_google_drive <- function(google_drive_path,file_name){
 # google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
 # google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_path$id)
 
-upload_file_on_drive_repository <- function(google_drive_path,file_name){
+upload_file_on_drive_repository <- function(google_drive_path,media,file_name,type=NULL){
   # check <- drive_find(pattern = file_name)
   # drive_get(path = google_drive_path, id = file_name, team_drive = NULL, corpus = NULL,verbose = TRUE)
   check <- drive_ls(path = google_drive_path, pattern = file_name, recursive = FALSE)
   check
   if(nrow(check)>0){
-    google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=file_name)
+    google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=media)
     # google_drive_file <- drive_upload(media=file_name, path = google_drive_path,name=file_name)
     
   }else{
-    google_drive_file <- drive_upload(media=file_name, path = google_drive_path,name=file_name)
+    google_drive_file <- drive_upload(media=media, path = google_drive_path,name=file_name,type = type)
   }
   # If to update the content or metadata of an existing Drive file, use drive_update()
   google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
@@ -984,11 +994,14 @@ drone_photos_locations <- function(jsonfile){
 
 # Function to merge the annotations of images coming from different files (one per session / survey)
 return_dataframe_tag_txt <- function(wd){
+  
   setwd(wd)
+  tmpdir <- tempdir()
   dataframe_csv_files <- NULL
-  dataframe_csv_files <- data.frame(session=character(), path=character(), file_name=character())
+  dataframe_csv_files <- data.frame(session=character(), path=character(), file_name=character,photo_name=character)
   sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
   sub_directories  
+  
   for (i in sub_directories){
     if (substr(i, nchar(i)-4, nchar(i))=="LABEL"){
       setwd(i)
@@ -1004,7 +1017,7 @@ return_dataframe_tag_txt <- function(wd){
         dataframe_csv_files <- rbind(dataframe_csv_files,newRow)
         for (f in files){
           csv_file <-NULL
-          fileName <-  paste0("/tmp/",name_session,"_",gsub(".txt",".csv",f))
+          fileName <-  paste0(tmpdir,"/",name_session,"_",gsub(".txt",".csv",f))
           system(paste0("cp ",paste0(i,"/",f)," ", fileName))
           system(paste0("sed -i '1 i\\","path;tag'"," ",fileName))
           
@@ -1019,7 +1032,7 @@ return_dataframe_tag_txt <- function(wd){
           tx2  <- gsub(pattern = "herbier vert", replace = "Syringodium isoetifolium", x = tx2)
           
           # tx2  <- gsub(pattern = '.*\\/DCIM', replace = paste0(path,"/DCIM"),x = tx2)
-          # writeChar(tx2, con=paste0("/tmp/",name_session,"_tags_bis.csv"))
+          # writeChar(tx2, con=paste0(tmpdir,"/",name_session,"_tags_bis.csv"))
           fileName_bis <-  gsub(pattern = ".csv", replace = "_bis.csv", x = fileName)
           writeLines(tx2, con=fileName_bis)
           
@@ -1029,7 +1042,8 @@ return_dataframe_tag_txt <- function(wd){
           csv_file$path <- gsub(pattern = '.*\\/DCIM', replace = paste0(path_session,"/DCIM"),x = csv_file$path)
           csv_file$name_session <- gsub("/","",name_session)
           csv_file$file_name <-gsub(pattern = '.*\\/G0',"G0",csv_file$path)
-          head(csv_file)
+          csv_file$photo_name=paste0(csv_file$name_session,"_",csv_file$file_name)
+          
           # writeLines(csv_file,con=fileName_ter)
           write.table(x = csv_file,file = fileName_ter, sep=",",row.names = FALSE)
           # system(paste0("rm ",fileName))
@@ -1042,7 +1056,21 @@ return_dataframe_tag_txt <- function(wd){
       }
     }
   }
-  return(dataframe_csv_files)
+  
+  setwd(tmpdir)
+  files <- list.files(pattern = "*ter.csv")
+  all_files <- NULL
+  all_files <- Reduce(rbind, lapply(files, read.csv))
+  all_files$old_tag <-all_files$tag
+  
+  # Command below might also be used
+  # system(command = "awk 'FNR==1 && NR!=1{next;}{print}' *ter.csv  > all_files_combined.csv")
+  file_name <-"all_files_combined.csv"
+  write.table(x = all_files,file = file_name, sep=",",row.names = FALSE)
+  newdf <- read.csv("all_files_combined.csv",sep = ",")
+  path_newdf <- paste0(tmpdir,"/all_files_combined.csv")
+  
+  return(path_newdf)
 }
 
 

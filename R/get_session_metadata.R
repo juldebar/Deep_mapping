@@ -114,6 +114,8 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     ############################################################
     ################### TEMPORAL COVERAGE ######################
     ############################################################
+    cat("\n Metadata TEMPORAL COVERAGE \n")
+    
     # geoflow entities data structure => 2007-03-01T13:00:00Z/2008-05-11T15:30:00Z
     first_picture_metadata <- read_exif(paste(this_directory,DCIM_directory, files[1],sep="/"))
     last_picture_metadata <- read_exif(paste(this_directory,DCIM_directory,files[Number_of_Pictures],sep="/"))
@@ -130,14 +132,18 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   ############################################################
   ################### SPATIAL COVERAGE #######################
   ############################################################
+  cat("\n Metadata SPATIAL COVERAGE \n")
+  
   file_type<-"TCX" #  "GPX"  "TCX" "RTK" "videos" "aerial"
   dataframe_gps_files <- return_dataframe_gps_files(this_directory,type=file_type)
   if(is.null(dataframe_gps_files)){
+    cat("\n Search GPX instead of TCX \n")
     file_type<-"GPX"
     dataframe_gps_files <- return_dataframe_gps_files(this_directory,type=file_type)
   }
   number_row<-nrow(dataframe_gps_files)
   if(number_row>0){
+    cat("\n Build a spatial data frame \n")
     
     xmin <- NULL
     xmax <- NULL
@@ -209,9 +215,12 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
         pdf_convert(pdf_spatial_extent, pages = NULL,format = "jpeg",dpi = 600,filenames=jpeg_spatial_extent)
       }
       
-      pdf_uri <- gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path,pdf_spatial_extent)))
-      jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path,jpeg_spatial_extent)))
+      cat("\n Upload maps images on google drive \n")
+      
+      pdf_uri <- gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=pdf_spatial_extent,type=NULL)))
+      jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=jpeg_spatial_extent,type=NULL)))
 
+      cat("\n Set Relation metadata element with google drive urls \n")
       relation <-paste0("thumbnail:",session_id,"@",jpeg_uri)
       relation <-paste0(relation,";\nhttp:map(pdf)@",pdf_uri)
       # data <-paste0("uploadType:dbview;\n:",pdf_uri)
@@ -243,6 +252,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
 ###############################
   ################### CREATE DATAFRAME #######################
   ############################################################
+  cat("\n Create metadata dataframe \n")
   
   newRow <-NULL
   newRow <- data.frame(Identifier=session_id,#Identifier=paste0("id:",session_id),
