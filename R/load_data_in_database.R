@@ -101,6 +101,8 @@ gsheet_id <- upload_file_on_drive_repository(tags_folder_google_drive_path,media
 url <-paste0("https://docs.google.com/spreadsheets/d/",gsheet_id)
 tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(url))
 
+
+
 # #Load annotation table
 # # 1qT9j398DhTmvBvBd0FZvoesy3kMkOta96YZQVhT5Tjw
 # list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM/edit?usp=sharing"))
@@ -111,7 +113,7 @@ tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(url))
 
 
 # wd_copy <- "/media/julien/Deep_Mapping_two/trash"
-training_images <- "/tmp/trash"
+training_images <- "/tmp/training_dataset"
 dir.create(training_images)
 # We load the mapping between annotation and labels from either a csv or a google sheet
 # all_categories <- read.csv("/home/julien/Bureau/CODES/Deep_mapping/CSV/All_categories.csv",stringsAsFactors = FALSE)
