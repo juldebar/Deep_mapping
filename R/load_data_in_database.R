@@ -70,6 +70,8 @@ for(m in missions){
     }
   metadata_this_mission$Comment <- paste0("Ratio d'images géoréférencées: ",ratio[1]/ratio[2], "(images géoréférencées: ", ratio[1]," pour un total d'images de : ", ratio[2],")")
   metadata_this_mission$Nb_photos_located <- ratio[1]
+  this_file_name <-paste0("metadata_",session_id,".csv")
+  write.csv(metadata_this_mission,file = this_file_name,row.names = F)
   if(c==1){
     metadata_missions <- metadata_this_mission
   }else{
@@ -81,8 +83,8 @@ for(m in missions){
 setwd(images_directory)
 file_name <-"metadata_all_sessions.csv"
 write.csv(metadata_missions,file = file_name,row.names = F)
-googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
-upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=pdf_spatial_extent,type=NULL)
+# googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
+upload_file_on_drive_repository(google_drive_path=google_drive_path,media=file_name,file_name=file_name,type=NULL)
 ratio
 cat(paste0("Ratio of geolocated images / Total number of images : ",ratio[1]/ratio[2]))
 
@@ -120,7 +122,6 @@ dir.create(training_images)
 
 all_categories <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
 # df_images <-all_files
-df_images <-read.csv(tags_as_csv)
 df_images <-read.csv(all_tags_as_csv)
 # head(df_images)
 # newdf$path

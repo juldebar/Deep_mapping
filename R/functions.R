@@ -1009,7 +1009,7 @@ return_dataframe_tag_txt <- function(wd){
       cat(paste0(i,"\n"))
       cat(paste0(path_session,"\n"))
       name_session <-gsub(paste(dirname(path_session),"/",sep=""),"",path_session)
-      files <- list.files(pattern = "*.txt")
+      files <- list.files(pattern = "\\.txt$")
       # if(length(files)==1){
       if(length(files)>0){
         csv_files <- files
