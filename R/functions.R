@@ -134,8 +134,9 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
     # dat <-template_df
     setwd(images_directory)
     this_directory <- sub_directories[i]
-    
-    if (endsWith(this_directory, "GOPRO") || endsWith(this_directory, "data")==TRUE){
+      
+    # if (endsWith(this_directory, "GOPRO") || endsWith(this_directory, "data")==TRUE || grepl(pattern= "BEFORE",this_directory)==FALSE || grepl(pattern= "AFTER",this_directory)==FALSE){
+    if (endsWith(this_directory, "GOPRO") && grepl(pattern= "BEFORE",this_directory)==FALSE && grepl(pattern= "AFTER",this_directory)==FALSE){
       
       setwd(this_directory)
       files <- list.files(pattern = mime_type ,recursive = TRUE)
@@ -145,13 +146,8 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
         
         cat(paste("\n Metadata extraction for photos in ", this_directory, "\n", sep=" "))
         exif_metadata <- extract_exif_metadata_in_this_directory(session_id,images_directory,this_directory,template_df, mime_type = mime_type, time_zone=time_zone)
-        colnames(exif_metadata)
         lapply(exif_metadata,class)
-        message_done <- "ICI"
-        cat(message_done)
         new_exif_metadata <- bind_rows(new_exif_metadata, exif_metadata)
-        message_done <- "LA"
-        cat(message_done)
         # CSV_total <- rbind(CSV_total, new_exif_metadata)
         CSV_total <- bind_rows(CSV_total, exif_metadata)
         
@@ -499,30 +495,28 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
     }else{
       create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(codes_directory,"SQL/create_table_from_view.sql")), collapse=" "))
       query <- NULL
-    # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
-    query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
-    query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
-    query <- paste0(query_drop,'CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
-    # query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
-    query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
-    
-    if(offset < 0){
-      query <- gsub("- interval","+ interval",query)
-      query <- gsub("13848",abs(offset)+1,query)
-    }else{
-      query <- gsub("13848",abs(offset)-1,query)
-    }
-    query <- paste0(query," WITH DATA")
-    dbGetQuery(con_database, query)
-    
-    fileConn<-file(paste0('view_',session_id,'.SQL'))
-    writeLines(query, fileConn)
-    close(fileConn)
-      }
+      # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
+      query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
+      query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
+      query <- paste0(query_drop,'CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
+      # query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
+      query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
+      if(offset < 0){      
+        query <- gsub("- interval","+ interval",query)
+        query <- gsub("778",abs(offset)+1,query)
+      }else{        
+        query <- gsub("778",abs(offset)-1,query)
+        }
+      query <- paste0(query," WITH DATA")
+      dbGetQuery(con_database, query)
+      
+          fileConn<-file(paste0('view_',session_id,'.SQL'))
+          writeLines(query, fileConn)
+          close(fileConn)
+          }
   result <- dbGetQuery(con_database, create_table_from_view)
   # add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"view_',session_id,'_geom_i\" ; CREATE INDEX \"view_',session_id,'_geom_i\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
   add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"',session_id,'_geom_idx\" ;  CREATE INDEX \"',session_id,'_geom_idx\" ON \"',session_id,'\" USING GIST (the_geom);'))
-
   create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"',session_id,'\";'))
   # head(create_csv_from_view)
   setwd(paste0(images_directory,"/GPS"))
