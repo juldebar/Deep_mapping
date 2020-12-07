@@ -52,17 +52,17 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   sub_directories <- list.dirs(path=this_directory,full.names = TRUE,recursive = FALSE)
   number_sub_directories <-length(sub_directories)
   
+  #extract camera offset information
   con <- file(paste(this_directory,"LABEL","tag.txt",sep="/"),"r")
   first_line <- readLines(con,n=1)
   close(con)
   first_line <- sub('.*session', 'session', first_line)
   
-  
   GPS_timestamp <- NULL
   Photo_GPS_timestamp <- NULL
   ################### Set directories #######################
   if(type_images=="drone"){
-    session_id <- paste0(gsub(paste0(dirname(dirname(session_directory)),"/"),"",dirname(session_directory)),"_",gsub(" ","",gsub(paste0(dirname(session_directory),"/"),"",session_directory)))
+    session_id <- paste0(gsub(paste0(dirname(dirname(this_directory)),"/"),"",dirname(this_directory)),"_",gsub(" ","",gsub(paste0(dirname(this_directory),"/"),"",this_directory)))
     pattern = "*.jpg"
     DCIM_directory <- "data"
     date <- "2020-02-15"
@@ -73,7 +73,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     # GPS_timestamp <- "2020-01-26 09:28:54"
     # offset=0
     }else{
-      session_id <- gsub(" ","",gsub(paste0(dirname(session_directory),"/"),"",session_directory))
+      session_id <- gsub(" ","",gsub(paste0(dirname(this_directory),"/"),"",this_directory))
       keywords <- "GENERAL:Mauritius,coral reef,photos,deep learning,kite surfing,coral reef habitats;"
       pattern = "*.JPG"
       DCIM_directory <- "DCIM"
@@ -107,9 +107,11 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   ################### Calculate dynamicmetadata elements #######################
   ################### Number of Photos #######################
   files <- NULL
-  files <- list.files(path = paste(this_directory,DCIM_directory,sep="/"), pattern = pattern,recursive = TRUE)
-  if(length(files)>0){
-    Number_of_Pictures <- length(files)
+  directories <- list.dirs(paste(this_directory,DCIM_directory,sep="/"), recursive = FALSE)
+  directories <- directories[grepl("GOPRO", directories)]
+  files <- list.files(path = directories, pattern = pattern,recursive = TRUE)
+  Number_of_Pictures <- length(files)
+  if(Number_of_Pictures>0){
     description <- paste0("abstract:This dataset is made of ",Number_of_Pictures," pictures which have been collected during the ", title)
     ############################################################
     ################### TEMPORAL COVERAGE ######################
@@ -117,8 +119,8 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     cat("\n Metadata TEMPORAL COVERAGE \n")
     
     # geoflow entities data structure => 2007-03-01T13:00:00Z/2008-05-11T15:30:00Z
-    first_picture_metadata <- read_exif(paste(this_directory,DCIM_directory, files[1],sep="/"))
-    last_picture_metadata <- read_exif(paste(this_directory,DCIM_directory,files[Number_of_Pictures],sep="/"))
+    first_picture_metadata <- read_exif(paste(directories[1], files[1],sep="/"))
+    last_picture_metadata <- read_exif(paste(directories[length(directories)],files[Number_of_Pictures],sep="/"))
     start_date<- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
     start_date<-paste0(gsub(" ","T",start_date),"Z")
     end_date<- as.POSIXct(last_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
@@ -213,18 +215,22 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
         osm.points(longitude,latitude, col="yellow",pch=18, cex=0.5)
         dev.off()
         pdf_convert(pdf_spatial_extent, pages = NULL,format = "jpeg",dpi = 600,filenames=jpeg_spatial_extent)
+        
+        cat("\n Upload maps images on google drive \n")
+        pdf_uri <- gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=pdf_spatial_extent,type=NULL)))
+        jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=jpeg_spatial_extent,type=NULL)))
+        
       }
       
-      cat("\n Upload maps images on google drive \n")
-      
-      pdf_uri <- gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=pdf_spatial_extent,type=NULL)))
-      jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=jpeg_spatial_extent,type=NULL)))
-
+    
       cat("\n Set Relation metadata element with google drive urls \n")
       relation <-paste0("thumbnail:",session_id,"@",jpeg_uri)
       relation <-paste0(relation,";\nhttp:map(pdf)@",pdf_uri)
       # data <-paste0("uploadType:dbview;\n:",pdf_uri)
-      data <-paste0('source:Postgis;\nuploadType:dbquery;\nsql:SELECT * FROM "', session_id,'";\nlayername:',session_id,';\nstyle:point;\nattribute:GPSLatitude[GPSLatitude],GPSLongitude[GPSLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make];\nvariable:LightValue[LightValue]')
+      data <-paste0('source:Postgis;\nuploadType:dbquery;\nsql:SELECT * FROM "',session_id,
+                    '";\nsourceSql:SELECT * FROM "',session_id,
+                    '";\nlayername:',session_id,
+                    ';\nstyle:point;\nattribute:decimalLatitude[decimalLatitude],decimalLongitude[decimalLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make];\nvariable:LightValue[LightValue]')
       
       # data <-paste0("source:file:///tmp/dessin.pdf;\nsourceName:",session_id,";\ntype:other;\nupload:true;")
       
@@ -286,7 +292,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   # metadata_sessions <- metadata_sessions[,c(1,2,3,16,17,4,18,19,7,8,9,10,11,12,5,6,13,14,15)]
   # metadata_sessions <- metadata_sessions[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)]
   
-  setwd(session_directory)
+  setwd(this_directory)
   return(metadata_sessions)
   #end function 
 }

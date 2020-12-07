@@ -326,8 +326,8 @@ create_database <- function(con_database, codes_directory){
   query_create_table_label <- gsub("Reef_admin",User,query_create_table_label)
   create_table_label <- dbGetQuery(con_database,query_create_table_label)
   labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
-  to_be_loaded <- labels %>% mutate(id = row_number()) %>% select(id, Name, SubName, Pattern) %>% rename(tag_id = id, tag_code = Name, tag_label = SubName, tag_definition = Pattern)
-  load_labels_in_database(con_database, codes_directory, to_be_loaded, create_table=FALSE)
+  tags_to_be_loaded <- labels %>% select(SubName,TagName, Link) %>% distinct() %>% rename(tag_code = TagName, tag_label = SubName, tag_definition=Link) %>% mutate(tag_id = row_number()) %>% relocate(tag_id,tag_code,tag_label,tag_definition)
+  load_labels_in_database(con_database, codes_directory, tags_to_be_loaded, create_table=FALSE)
   
 } 
 
@@ -353,38 +353,82 @@ load_labels_in_database <- function(con_database, codes_directory, labels, creat
 # load images and tags for original images
 update_annotations_in_database <- function(con_database, images_tags_and_labels){
   
-  labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
+  # labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
+  query_labels <- paste0('SELECT * FROM public.label ;')
+  labels <- dbGetQuery(con_database, query_labels)
   
-  for (i in 1:nrow(images_tags_and_labels)){
-    # path	tag	name_session	file_name		
-    session_id <- images_tags_and_labels$name_session[i]
-    FileName <- images_tags_and_labels$file_name[i]
-    query_session_photos <- paste0('SELECT * FROM public.photos_exif_core_metadata WHERE "session_id"=\'',session_id,'\' AND "FileName"=\'',FileName,'\';')
-    related_image <- dbGetQuery(con_database, query_session_photos)
-    # nrow(related_image)
-    
-    if(nrow(related_image)==1){
-      cat("\n One for the show ! \n")
-      cat(related_image$FileName)
-      photo_id <- related_image$photo_id
-      tag_id <- strsplit(",",gsub(" ","",images_tags_and_labels$tag[i]))
-      tag_id <- 1
-      old_tag <-images_tags_and_labels$old_tag[i]
-      for(l in 1:nrow(labels)){
-        if(grepl(pattern = labels$Pattern[l], x=old_tag)){
-          cat(labels$Pattern[l])
-          cat("\n")
-          query <- paste0('INSERT INTO annotation VALUES (\'',photo_id,'\',\'',l,'\');')
-          related_image <- dbGetQuery(con_database, query)
+  #list different sessions and identifiers for annnotated photos to extract additional info from database
+  list_sessions <- images_tags_and_labels %>% select(file_name, name_session) %>% distinct(images_tags_and_labels$name_session) %>% as.character()
+  list_sessions <-  gsub('"', "'", list_sessions, fixed=TRUE)
+  list_sessions <-  gsub("c\\(","", list_sessions)
+  list_sessions <- gsub("\\)","",list_sessions)
+  list_photo_identifier <- images_tags_and_labels %>% select(file_name, name_session) %>% distinct(images_tags_and_labels$photo_name) %>% as.character()
+  list_photo_identifier <-  gsub('"', "'", list_photo_identifier, fixed=TRUE)
+  list_photo_identifier <-  gsub("c\\(","", list_photo_identifier)
+  list_photo_identifier <- gsub("\\)","",list_photo_identifier)
+  
+  #create accordingly the query which will extract all annnotated photos by using as filters the list of different sessions and photos identifiers
+  query_annotated_pictures_exif_metadata <- paste(readLines(paste0(codes_directory,"SQL/select_annotated_pictures_exif_metadata.sql")), collapse=" ")
+  # query_annotated_pictures_exif_metadata <- gsub("list_photos",list_photos,query_annotated_pictures_exif_metadata)
+  query_annotated_pictures_exif_metadata <- gsub("list_sessions",list_sessions,query_annotated_pictures_exif_metadata)
+  query_annotated_pictures_exif_metadata <- gsub("list_photo_identifier",list_photo_identifier,query_annotated_pictures_exif_metadata)
+  exif_metadata_of_annotated_images <- dbGetQuery(con_database, query_annotated_pictures_exif_metadata)
+  colnames(exif_metadata_of_annotated_images)
+  colnames(images_tags_and_labels)
+  nrow(images_tags_and_labels)
+  nrow(exif_metadata_of_annotated_images)
+  
+  joint_annotated_and_database <- left_join(exif_metadata_of_annotated_images,images_tags_and_labels,by = "photo_name") %>% select(photo_id, photo_name,tag) %>% distinct()
+  nrow(joint_annotated_and_database)
+  #join the two dataframes to add the "photo_id" column to the "images_tags_and_labels"
+  # images_tags_and_labels <- 
+   
+  #create the query which will fill the "annotation" table in the database by adding the identifier of the label "tag_id"
+  query_annotation <-" "
+    # select photo with dplyr  
+    # query_session_photos <- paste0('SELECT photo_id FROM public.photos_exif_core_metadata WHERE "session_id"=\'',session_id,'\' AND "FileName"=\'',FileName,'\';')
+    # related_image <- dbGetQuery(con_database, query_session_photos)
+    for(l in 1:nrow(labels)){
+      relevant_images <-NULL
+      relevant_images <- joint_annotated_and_database %>% filter(str_detect(str_to_lower(tag), str_to_lower(labels$tag_label[l]))) %>% mutate(tag =labels$tag_label[l]) %>% distinct()
+      
+      if(nrow(relevant_images)>=1){
+          for(r in 1:nrow(relevant_images)){
+            # cat(paste0("\n The label ",labels$tag_label[l]," has been found in annotation of picture: ",relevant_images$photo_name[r],"\n"))
+            query_annotation_line <- paste0('INSERT INTO annotation VALUES (\'',relevant_images$photo_id[r],'\',\'',l,'\');')
+              query_annotation <- paste0(query_annotation_line,"\n",query_annotation)
+
           }
         }
-      }else if(nrow(related_image)==0){
-      cat("\n NOT ANNOTATEd ! \n")
-      }else if(nrow(related_image)>1){
-        cat("\n BIG PROBLEM ! \n")
-        }
+    
+    
+    # if(nrow(relevant_images)==1){
+    #   cat(paste0("\n The picture annotated: ",session_id,"_",FileName," is in the database ! \n"))
+    #   cat(relevant_images$FileName)
+    #   # get primary key of this image in the database
+    #   photo_id <- relevant_images$photo_id
+    #   # tag_id <- strsplit(",",gsub(" ","",images_tags_and_labels$tag[i]))
+    #   # tag_id <- 1
+    #   for(l in 1:nrow(labels)){
+    #     if(grepl(pattern = labels$tag_label[l], x=tag)){
+    #       cat(paste0("\n The label ",labels$tag_label[l]," has been found in annotation of picture: ",FileName,"\n"))
+    #       query_annotation_line <- paste0('INSERT INTO annotation VALUES (\'',photo_id,'\',\'',l,'\');\n')
+    #       query_annotation <- paste0(query_annotation_line,query_annotation)
+    #       }
+    #     }
+    #   }else if(nrow(relevant_images)==0){
+    #   cat(paste0("\n The picture annotated: ",session_id,"_",FileName," is not in the database ! \n"))
+    #   }else if(nrow(relevant_images)>1){
+    #     cat(paste0("\n this would mean that the picture: ",session_id,"_",FileName," is stored multiple times ! \n"))
+    #     }
+      
   }
-  return(query)
+  fileConn<-file(paste0('query_annotation.SQL'))
+  writeLines(query_annotation, fileConn)
+  close(fileConn)
+  relevant_images <- dbGetQuery(con_database, query_annotation)
+
+  return(query_annotation)
 }
 
 #############################################################################################################
@@ -401,8 +445,13 @@ load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_m
     create_table_metadata <- dbGetQuery(con_database,query_create_table_metadata)
     
   }
+  test <- dbGetQuery(con_database, paste0('SELECT * FROM public.metadata WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
+  if(nrow(test)==1){
+    dbGetQuery(con_database, paste0('UPDATE public.metadata SET "TemporalCoverage"=\'',DCMI_metadata$TemporalCoverage,'\', "Data"=\'',DCMI_metadata$Data,'\' WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
+  }else{
+    dbWriteTable(con_database, "metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
+    }
   
-  dbWriteTable(con_database, "metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
   existing_rows <- dbGetQuery(con_database, paste0('UPDATE metadata SET geometry = ST_GeomFromText("SpatialCoverage",4326);'))
   
   
@@ -856,12 +905,15 @@ upload_file_on_drive_repository <- function(google_drive_path,media,file_name,ty
   # drive_get(path = google_drive_path, id = file_name, team_drive = NULL, corpus = NULL,verbose = TRUE)
   check <- drive_ls(path = google_drive_path, pattern = file_name, recursive = FALSE)
   check
+  setwd(tempdir())
+  csvfile <- paste0(file_name,".csv")
+  write.csv(media, csvfile,row.names = F)
   if(nrow(check)>0){
-    google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=media)
+    google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=csvfile)
     # google_drive_file <- drive_upload(media=file_name, path = google_drive_path,name=file_name)
     
   }else{
-    google_drive_file <- drive_upload(media=media, path = google_drive_path,name=file_name,type = type)
+    google_drive_file <- drive_upload(media=csvfile, path = google_drive_path,name=file_name,type = type)
   }
   # If to update the content or metadata of an existing Drive file, use drive_update()
   google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
@@ -987,20 +1039,18 @@ drone_photos_locations <- function(jsonfile){
 #############################################################################################################
 
 # Function to merge the annotations of images coming from different files (one per session / survey)
-return_dataframe_tag_txt <- function(wd){
+return_dataframe_tag_txt <- function(wd,all_categories){
   
-  setwd(wd)
   tmpdir <- tempdir()
   dataframe_csv_files <- NULL
   dataframe_csv_files <- data.frame(session=character(), path=character(), file_name=character,photo_name=character)
   sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
-  sub_directories  
+  sub_directories <- data.frame(full_path=list.dirs(path=wd,full.names = TRUE,recursive = TRUE)) %>% filter(endsWith(x = full_path, suffix = "LABEL"))
+  sub_directories
   
-  for (i in sub_directories){
-    if (substr(i, nchar(i)-4, nchar(i))=="LABEL"){
+  for (i in sub_directories$full_path){
       setwd(i)
       path_session <-dirname(i)
-      cat(paste0(i,"\n"))
       cat(paste0(path_session,"\n"))
       name_session <-gsub(paste(dirname(path_session),"/",sep=""),"",path_session)
       files <- list.files(pattern = "\\.txt$")
@@ -1012,9 +1062,11 @@ return_dataframe_tag_txt <- function(wd){
         for (f in files){
           csv_file <-NULL
           fileName <-  paste0(tmpdir,"/",name_session,"_",gsub(".txt",".csv",f))
+          #copy tag.txt file as "session_id_tag.csv" file
           system(paste0("cp ",paste0(i,"/",f)," ", fileName))
+          #add the header to newly created csv file
           system(paste0("sed -i '1 i\\","path;tag'"," ",fileName))
-          
+          #set of cleaning actions
           tx2  <- readChar(fileName, file.info(fileName)$size)
           tx2  <- gsub(pattern = "[\r\n]+", replace = "\n", x = tx2)
           tx2  <- gsub(pattern = "[  ]+", replace = " ", x = tx2)
@@ -1024,9 +1076,26 @@ return_dataframe_tag_txt <- function(wd){
           tx2  <- gsub(pattern = ";", replace = ",", x = tx2)
           tx2  <- gsub(pattern = "herbier marron", replace = "Thalassodendron ciliatum", x = tx2)
           tx2  <- gsub(pattern = "herbier vert", replace = "Syringodium isoetifolium", x = tx2)
-          
+          tx2  <- gsub(pattern = "algue marron", replace = "Sargassum ilicifolium", x = tx2)
+          tx2  <- gsub(pattern = "algues marron", replace = "Sargassum ilicifolium", x = tx2)
+          tx2  <- gsub(pattern = "algue pourrie", replace = "Turbinaria ornata", x = tx2)
+          tx2  <- gsub(pattern = "algues pourrie", replace = "Turbinaria ornata", x = tx2)
+          tx2  <- gsub(pattern = "holoturie noire", replace = "Stichopus chloronotus", x = tx2)
+          tx2  <- gsub(pattern = "holoturies", replace = "Holoturian", x = tx2)
+          tx2  <- gsub(pattern = "holoturie", replace = "Holoturian", x = tx2)
+          tx2  <- gsub(pattern = "idole des maures", replace = "Zanclus cornutus", x = tx2)
+          tx2  <- gsub(pattern = "coraux", replace = "coral", x = tx2)
+          tx2  <- gsub(pattern = "corail", replace = "coral", x = tx2)
+          tx2  <- gsub(pattern = "corail de feu", replace = "Millepora", x = tx2)
+          tx2  <- gsub(pattern = "sable", replace = "sand", x = tx2)
+          tx2  <- gsub(pattern = "poisson", replace = "fish", x = tx2)
           # tx2  <- gsub(pattern = '.*\\/DCIM', replace = paste0(path,"/DCIM"),x = tx2)
-          # writeChar(tx2, con=paste0(tmpdir,"/",name_session,"_tags_bis.csv"))
+          
+          # for(dir in 1:nrow(all_categories)){
+          #   # print(paste0("Trying to detect",all_categories$Pattern[dir],"\n"))
+          #   tx2 <- gsub(pattern =all_categories$Pattern[dir], replace = all_categories$SubName[dir], x = tx2)
+          # }
+          # write the temp file
           fileName_bis <-  gsub(pattern = ".csv", replace = "_bis.csv", x = fileName)
           writeLines(tx2, con=fileName_bis)
           
@@ -1037,36 +1106,31 @@ return_dataframe_tag_txt <- function(wd){
           csv_file$name_session <- gsub("/","",name_session)
           csv_file$file_name <-gsub(pattern = '.*\\/G0',"G0",csv_file$path)
           csv_file$photo_name=paste0(csv_file$name_session,"_",csv_file$file_name)
-          
+
           # writeLines(csv_file,con=fileName_ter)
           write.table(x = csv_file,file = fileName_ter, sep=",",row.names = FALSE)
           # system(paste0("rm ",fileName))
           # system(paste0("rm ",fileName_bis))
         }
       } else {
-        cat("\ CHECK\n")
+        cat("\ These repositories CHECK\n")
         cat(i)
         cat("\n")
       }
-    }
   }
   
   setwd(tmpdir)
   files <- list.files(pattern = "*ter.csv")
   all_files <- NULL
   all_files <- Reduce(rbind, lapply(files, read.csv))
-  all_files$old_tag <-all_files$tag
   
   # Command below might also be used
   # system(command = "awk 'FNR==1 && NR!=1{next;}{print}' *ter.csv  > all_files_combined.csv")
   file_name <-"all_files_combined.csv"
   write.table(x = all_files,file = file_name, sep=",",row.names = FALSE)
-  newdf <- read.csv("all_files_combined.csv",sep = ",")
-  path_newdf <- paste0(tmpdir,"/all_files_combined.csv")
   
-  return(path_newdf)
+  return(all_files)
 }
-
 
 ########################################################################################################################################################
 ############################ copy all annotated images in  repositories whose name are the same as the label annotating images  ########################
@@ -1077,10 +1141,12 @@ copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_im
   current_dir <- getwd()
   setwd(wd_copy)
   # create sub-repositories for  each object / category to be identified where all images tagged with this category will be copied
+  file_categories <- file_categories  %>%  select(SubName,TagName) %>% distinct()
   for(dir in 1:nrow(file_categories)){
     #we filter the dataset to selectonly images tagged with the category (matching the pattern)
-    mainDir <-  file_categories$RepositoryName[dir]
-    relevant_images <- all_images %>% filter(str_detect(tag, file_categories$Pattern[dir]))
+    mainDir <-  file_categories$TagName[dir]
+    print(paste0("Trying to detect",file_categories$Pattern[dir],"\n"))
+    relevant_images <- all_images %>% filter(str_detect(tag, file_categories$SubName[dir]))
     # if some images have been tagged with the relevant label we create the sub-reporsitory with the name of the label
     if(nrow(relevant_images)>0){
       dir.create(mainDir)
@@ -1095,7 +1161,7 @@ copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_im
           filename <- gsub(paste0(dirname(as.character(relevant_images$path[f])),"/"),"", as.character(relevant_images$path[f]))
           # print(paste0(filename,"\n"))
           command <- paste0("cp ", as.character(relevant_images$path[f])," ./",relevant_images$photo_name[f],"\n")
-          # cat(command)
+          print(command)
           # cat(paste0("cp ",paste0(as.character(relevant_images$path[f])," .",gsub(dirname(as.character(relevant_images$path[f])),"", as.character(relevant_images$path[f]))),"\n"))
           # if(!file.exists(relevant_images$photo_name[f])){
           system(command)
@@ -1113,3 +1179,189 @@ copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_im
   setwd(current_dir)
 }
 
+
+#############################################################################################################
+############################ infer_photo_location_from_gps_tracks ###################################################
+#############################################################################################################
+# Create or replace a SQL materialized view to gather data per dataset / survey
+
+create_view_species_occurences <- function(con_database,codes_directory,images_directory){
+  original_directory <- getwd()
+  setwd(images_directory)
+  query <- NULL
+  query <- paste(readLines(paste0(codes_directory,"SQL/extract_species_occurences_manual_annotation.sql")), collapse=" ")
+  query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_occurences_manual_annotation";')
+  query <- paste0(query_drop,'CREATE MATERIALIZED VIEW "view_occurences_manual_annotation" AS ',query)
+  query <- paste0(query," WITH DATA")
+  dbGetQuery(con_database, query)
+  add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"view_occurences_manual_annotation_geom_idx\" ;  CREATE INDEX \"view_occurences_manual_annotation_geom_idx\" ON \"view_occurences_manual_annotation\" USING GIST (geometry_postgis);'))
+  create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"view_occurences_manual_annotation\";'))
+  setwd(images_directory)
+  filename <- "view_occurences_manual_annotation.csv"
+  write.csv(create_csv_from_view, filename,row.names = F)
+  # shape_file <- write_shp_from_csv(file_name)
+  setwd(original_directory)
+  # return(create_csv_from_view)
+}
+
+#############################################################################################################
+############################ update inferred geometry ###################################################
+#############################################################################################################
+# Create or replace a SQL materialized view to gather data per dataset / survey
+
+update_inferred_geometry <- function(con_database,codes_directory,images_directory){
+  original_directory <- getwd()
+  setwd(images_directory)
+  query_sessions <-   dbGetQuery(con_database, 'SELECT DISTINCT session_id from public."photos_exif_core_metadata" ORDER BY session_id ASC')
+  for(i in 1:nrow(query_sessions)){
+    query <- NULL
+    query <- paste(readLines(paste0(codes_directory,"SQL/update_gps_geometry_colum.sql")), collapse=" ")
+    query <- gsub("session_2018_01_14_kite_Le_Morne",query_sessions$session_id[i],query)
+    print(paste0(query,"\n"))
+    dbGetQuery(con_database, query)
+    
+  }
+  setwd(original_directory)
+}
+
+##########################################################################################################################################################################################################################
+######################### extract pictures by WKT area and copy them in a temp folder to foster annation ###############################################
+##########################################################################################################################################################################################################################
+spatial_extraction_of_pictures_and_copy_in_tmp_folder<- function(wd, con_database,codes_directory=codes_directory,images_directory,wkt,expected_species){
+  
+  setwd(wd)
+  
+  #write query to extract all pictures within the given wkt / spatial area
+  query <- NULL
+  query <- paste(readLines(paste0(codes_directory,"SQL/select_pictures_by_area.sql")), collapse=" ")
+  # query <- "SELECT photo_path,session_id,\"FileName\",photo_name,photo_id,map_photo_id FROM public.species_within_buffer;"
+  if(wkt=='none'){
+    query <- gsub("WHERE","--WHERE",query)
+  }else{
+    query <- gsub("polygon_wkt",wkt,query)
+  }
+  print(paste0(query,"\n"))
+  
+  #execute query
+  extracted_images <- dbGetQuery(con_database, query)
+  nrow(extracted_images)
+  
+  #remove pictures already annotated
+  extracted_images_already_annotated <- extracted_images %>% filter(!is.na(map_photo_id))
+  nrow(extracted_images_already_annotated)
+  extracted_images_not_annotated <- extracted_images %>% filter(is.na(map_photo_id))
+  nrow(extracted_images_not_annotated)
+  # ratio <- nrow(extracted_images_already_annotated)/nrow(extracted_images)
+  # ratio
+  
+  #copy pictures not annotated within the temp file
+  if(wkt!='none'){
+    for(i in 1:nrow(extracted_images_not_annotated)){
+    filename <- paste0(images_directory,extracted_images_not_annotated$photo_path[i])
+    command <- paste0("cp ", filename,"  ",getwd(),"/",extracted_images_not_annotated$photo_name[i],"\n")
+    cat(command)
+    system(command)
+    }
+  }
+  return(extracted_images_not_annotated)
+}
+
+#############################################################################################################
+#############################################################################################################
+turn_list_of_files_into_csv_annotated<- function(con_database,wd_selected_candidates,extracted_images_not_annotated,expected_species, mime_type = "*.JPG"){
+  
+  # labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
+  query_labels <- paste0('SELECT * FROM public.label where tag_label=\'',expected_species,'\' ;')
+  label <- dbGetQuery(con_database, query_labels)
+  
+  setwd(wd_selected_candidates)
+  files <- list.files(pattern = mime_type ,recursive = TRUE)
+  vector <- as.vector(files)
+  df <- as.data.frame(vector) %>% rename(photo_name = vector)  %>% mutate(tag = expected_species,tag_id=label$tag_id)
+  nrow(df)
+  colnames(df)
+  colnames(extracted_images_not_annotated)
+  csv_tags <-NULL
+  # csv_tags <- left_join(df,extracted_images_not_annotated,by = "photo_name") %>% distinct()
+  csv_tags <- left_join(df,extracted_images_not_annotated,by = "photo_name")  %>% filter(is.na(map_photo_id)) %>% filter(!is.na(photo_id))  %>% relocate(photo_path,session_id,FileName,tag,photo_name,photo_id,map_photo_id) %>% rename(path=photo_path,name_session=session_id,file_name=FileName,tag=tag) %>% distinct() 
+  colnames(csv_tags)
+  nrow(csv_tags)
+  expected_species <- gsub(" ","_", expected_species)
+  name_file_csv<-paste("candidates_",expected_species,".csv",sep="")
+  write.csv(csv_tags, name_file_csv,row.names = F)
+  
+  # for(i in 1:nrow(csv_tags)){
+  #   filename <- paste0(images_directory,csv_tags$path[i])
+  #   command <- paste0("cp ", filename,"  ",getwd(),"/",csv_tags$photo_name[i],"\n")
+  #   cat(command)
+  #   system(command)
+  # }
+  query_annotation <-" "
+  if(nrow(csv_tags)>=1){
+    for(r in 1:nrow(csv_tags)){
+      # cat(paste0("\n The label ",labels$tag_label[l]," has been found in annotation of picture: ",relevant_images$photo_name[r],"\n"))
+      query_annotation_line <- paste0('INSERT INTO annotation VALUES (\'',csv_tags$photo_id[r],'\',\'',label$tag_id,'\');')
+      query_annotation <- paste0(query_annotation_line,"\n",query_annotation)
+      
+    }
+  }
+  
+  fileConn<-file(paste0('query_annotation.SQL'))
+  writeLines(query_annotation, fileConn)
+  close(fileConn)
+  relevant_images <- dbGetQuery(con_database, query_annotation)
+  
+  # dbGetQuery(con_database, query_annotation)
+  return(query_annotation)
+}
+
+#############################################################################################################
+#############################################################################################################
+##########################################################################################################################################################################################################################
+######################### extract pictures by WKT area and copy them in a temp folder to foster annation ###############################################
+##########################################################################################################################################################################################################################
+extraction_annotated_pictures_from_db<- function(con_database,codes_directory,images_directory){
+  
+  query <- NULL
+  query <- paste(readLines(paste0(codes_directory,"SQL/select_annotated_pictures.sql")), collapse=" ")
+  #execute query
+  extracted_images <- dbGetQuery(con_database, query)
+  nrow(extracted_images)
+  list_sessions <- extracted_images %>% select(name_session) %>% distinct()
+  directories <- NULL
+  directories <-data.frame(full_path=list.dirs(path=c("/media/julien/Storage_SSD/Data_Deep_Mapping","/home/julien/Desktop/Data/Data_Deep_Mapping"),full.names = TRUE, recursive = TRUE))
+  for(n in 1:nrow(list_sessions)){
+    full_path_directory<- directories  %>% filter(endsWith(x = full_path, suffix = list_sessions$name_session[n]))
+    list_sessions$prefix_path[n] <- gsub(paste0(paste0("/",list_sessions$name_session[n])),"",full_path_directory)
+  }
+  list_sessions
+  extracted_images <- left_join(extracted_images, list_sessions,by = "name_session")  %>% mutate(path = paste0(prefix_path,relative_path,"/",file_name))  %>% select(path,tag,name_session,file_name,photo_name)
+  head(extracted_images)
+  
+  training_images <- "/tmp/training_dataset"
+  all_categories <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
+  copy_images_for_training(wd_copy=training_images, extracted_images,all_categories,crop_images=FALSE)
+  
+  return(extracted_images)
+  
+
+  
+}
+
+# copy_images_for_test <- function(wd_copy){
+#   if(nrow(relevant_images)>0){
+#     dir.create(mainDir)
+#     setwd(mainDir)
+#     for(f in 1:nrow(relevant_images)){
+#       if(length(relevant_images$path[f])>0){
+#         filename <- gsub(paste0(dirname(as.character(relevant_images$path[f])),"/"),"", as.character(relevant_images$path[f]))
+#         command <- paste0("cp ", as.character(relevant_images$path[f])," ./",relevant_images$photo_name[f],"\n")
+#         print(command)
+#         system(command)
+#       }else{
+#         cat(paste0("\n issue with ",relevant_images$path[f],"\n" ))
+#       }
+#       if(crop_images){crop_this_image(filename,mainDir)}
+#     }
+#   }
+# }
