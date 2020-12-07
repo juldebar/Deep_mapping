@@ -1348,6 +1348,18 @@ extraction_annotated_pictures_from_db<- function(con_database,codes_directory,im
   
 }
 
+
+
+publish_annotated_photos_in_gsheet<- function(con_database, google_drive_path){
+  query <- NULL
+  query <- paste(readLines(paste0(codes_directory,"SQL/select_annotated_images_attributes.sql")), collapse=" ")
+  extracted_images <- dbGetQuery(con_database, query)
+  file_name <-"annotated_images_in_database"
+  metadata_gsheet_id <- upload_file_on_drive_repository(google_drive_path,media=extracted_images, file_name=file_name,type="spreadsheet")
+  return(metadata_gsheet_id)
+  
+}
+
 # copy_images_for_test <- function(wd_copy){
 #   if(nrow(relevant_images)>0){
 #     dir.create(mainDir)
