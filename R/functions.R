@@ -1,16 +1,6 @@
 #############################################################################################################
 ############################ LOAD PACKAGES ###################################################
 ########################################################################################################
-library(exifr)
-library(RPostgreSQL)
-library(rgdal)
-library(data.table)
-library(dplyr)
-library(trackeR)
-library(lubridate)
-require(stringr)
-require(tidyr)
-library(googledrive)
 # library(maps)
 # library(reshape)  
 # library(geosphere)
