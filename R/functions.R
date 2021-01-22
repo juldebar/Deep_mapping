@@ -1,6 +1,7 @@
 #############################################################################################################
 ############################ LOAD PACKAGES ###################################################
 ########################################################################################################
+pacman::p_load(googledrive,exifr,DBI, RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,stringr,tidyr,gsheet,dplyr,sf)
 # library(maps)
 # library(reshape)  
 # library(geosphere)
@@ -437,7 +438,7 @@ load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_m
   }
   test <- dbGetQuery(con_database, paste0('SELECT * FROM public.metadata WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
   if(nrow(test)==1){
-    dbGetQuery(con_database, paste0('UPDATE public.metadata SET "TemporalCoverage"=\'',DCMI_metadata$TemporalCoverage,'\', "Data"=\'',DCMI_metadata$Data,'\' WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
+    dbGetQuery(con_database, paste0('UPDATE public.metadata SET "Relation"=\'',DCMI_metadata$Relation,'\', "TemporalCoverage"=\'',DCMI_metadata$TemporalCoverage,'\', "Data"=\'',DCMI_metadata$Data,'\' WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
   }else{
     dbWriteTable(con_database, "metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
     }
@@ -895,15 +896,22 @@ upload_file_on_drive_repository <- function(google_drive_path,media,file_name,ty
   # drive_get(path = google_drive_path, id = file_name, team_drive = NULL, corpus = NULL,verbose = TRUE)
   check <- drive_ls(path = google_drive_path, pattern = file_name, recursive = FALSE)
   check
-  setwd(tempdir())
-  csvfile <- paste0(file_name,".csv")
-  write.csv(media, csvfile,row.names = F)
+
+  if(type=="CSV"){
+    setwd(tempdir())
+    csvfile <- paste0(file_name,".csv")
+    write.csv(media, csvfile,row.names = F)
+    media <- csvfile
+  }
+
   if(nrow(check)>0){
-    google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=csvfile)
+    google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=media)
+    # google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=csvfile)
+    media
     # google_drive_file <- drive_upload(media=file_name, path = google_drive_path,name=file_name)
     
   }else{
-    google_drive_file <- drive_upload(media=csvfile, path = google_drive_path,name=file_name,type = type)
+    google_drive_file <- drive_upload(media=media, path = google_drive_path,name=file_name,type = type)
   }
   # If to update the content or metadata of an existing Drive file, use drive_update()
   google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
@@ -914,9 +922,7 @@ upload_file_on_drive_repository <- function(google_drive_path,media,file_name,ty
   file_id <- google_drive_file$id
   
   return(file_id)
-}
-
-# library("googledrive")
+}# library("googledrive")
 # drive_find(n_max = 30)
 # drive_find(pattern = "test_metadata", type = "folder")
 # drive_find(pattern = "session", type = "folder")
@@ -1070,15 +1076,23 @@ return_dataframe_tag_txt <- function(wd,all_categories){
           tx2  <- gsub(pattern = "algues marron", replace = "Sargassum ilicifolium", x = tx2)
           tx2  <- gsub(pattern = "algue pourrie", replace = "Turbinaria ornata", x = tx2)
           tx2  <- gsub(pattern = "algues pourrie", replace = "Turbinaria ornata", x = tx2)
+          tx2  <- gsub(pattern = "algue pièce", replace = "Padina boryana", x = tx2)
           tx2  <- gsub(pattern = "holoturie noire", replace = "Stichopus chloronotus", x = tx2)
           tx2  <- gsub(pattern = "holoturies", replace = "Holoturian", x = tx2)
           tx2  <- gsub(pattern = "holoturie", replace = "Holoturian", x = tx2)
           tx2  <- gsub(pattern = "idole des maures", replace = "Zanclus cornutus", x = tx2)
+          tx2  <- gsub(pattern = "corail de feu", replace = "Millepora", x = tx2)
           tx2  <- gsub(pattern = "coraux", replace = "coral", x = tx2)
           tx2  <- gsub(pattern = "corail", replace = "coral", x = tx2)
-          tx2  <- gsub(pattern = "corail de feu", replace = "Millepora", x = tx2)
-          tx2  <- gsub(pattern = "sable", replace = "sand", x = tx2)
+          tx2  <- gsub(pattern = "sable", replace = "Sand", x = tx2)
+          tx2  <- gsub(pattern = "sand", replace = "Sand", x = tx2)
           tx2  <- gsub(pattern = "poisson", replace = "fish", x = tx2)
+          tx2  <- gsub(pattern = "poisson", replace = "fish", x = tx2)
+          tx2  <- gsub(pattern = "perroquet", replace = "Scarus ghobban", x = tx2)
+          tx2  <- gsub(pattern = "anémones", replace = "anemone", x = tx2)
+          tx2  <- gsub(pattern = "anémone", replace = "anemone", x = tx2)
+          tx2  <- gsub(pattern = "carangues", replace = "caranx", x = tx2)
+          tx2  <- gsub(pattern = "carangue", replace = "caranx", x = tx2)
           # tx2  <- gsub(pattern = '.*\\/DCIM', replace = paste0(path,"/DCIM"),x = tx2)
           
           # for(dir in 1:nrow(all_categories)){
@@ -1329,6 +1343,7 @@ extraction_annotated_pictures_from_db<- function(con_database,codes_directory,im
   head(extracted_images)
   
   training_images <- "/tmp/training_dataset"
+  dir.create(training_images)
   all_categories <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
   copy_images_for_training(wd_copy=training_images, extracted_images,all_categories,crop_images=FALSE)
   
@@ -1338,6 +1353,10 @@ extraction_annotated_pictures_from_db<- function(con_database,codes_directory,im
   
 }
 
+
+##########################################################################################################################################################################################################################
+######################### publish the list of annotated photos stored in the database in a google sheet ###############################################
+##########################################################################################################################################################################################################################
 
 
 publish_annotated_photos_in_gsheet<- function(con_database, google_drive_path){
@@ -1349,6 +1368,12 @@ publish_annotated_photos_in_gsheet<- function(con_database, google_drive_path){
   return(metadata_gsheet_id)
   
 }
+
+
+##########################################################################################################################################################################################################################
+######################### add quality column to photo description  ###############################################
+##########################################################################################################################################################################################################################
+
 
 # copy_images_for_test <- function(wd_copy){
 #   if(nrow(relevant_images)>0){
@@ -1367,3 +1392,48 @@ publish_annotated_photos_in_gsheet<- function(con_database, google_drive_path){
 #     }
 #   }
 # }
+
+
+##########################################################################################################################################################################################################################
+######################### TURN GPX, TCX, RTK into a CSV / data frame  ###############################################
+##########################################################################################################################################################################################################################
+
+
+
+
+require(rgdal)
+require(sf)
+require(trackeR)
+
+# gpx to wkt
+gpx_to_wkt <- function(gps_file, dTolerance = 0.00005){
+  spatial_data <- rgdal::readOGR(dsn = gps_file, layer="tracks",stringsAsFactors = FALSE)
+  class(spatial_data)
+  spatial_data <- st_read(gps_file,layer = "tracks")
+  session_track <- st_as_text(spatial_data$geometry)
+  # session_track <- st_as_text(st_simplify(spatial_data$geometry, dTolerance = dTolerance))
+  wkt <- session_track
+  return(wkt)
+}
+
+# gps_file="/home/juldebar/Téléchargements/activity_4057551218.gpx"
+# wkt <- gpx_to_wkt(gps_file)
+
+# tcx to wkt
+tcx_to_wkt <- function(gps_file,dTolerance=0.00005){
+  dataframe_gps_file <- readTCX(file=gps_file, timezone = "UTC")
+  dataframe_gps_file
+  gps_points <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
+  session_track <- gps_points %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
+  # simple_session_track <- session_track %>% st_simplify(dTolerance = dTolerance)  %>% st_as_text()
+  wkt <- session_track
+  
+  # session_track <- st_as_text(gps_points$geometry %>% st_cast("LINESTRING"))
+  # simple_session_track <- st_as_text(st_simplify(session_track, dTolerance = 0.00005))
+  
+  return(wkt)
+}
+
+# gps_file <-"/home/juldebar/Téléchargements/activity_4057583961.tcx"
+# wkt <- tcx_to_wkt(gps_file,dTolerance = 0.00005)
+# wkt
