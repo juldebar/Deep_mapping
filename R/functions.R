@@ -438,7 +438,7 @@ load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_m
   }
   test <- dbGetQuery(con_database, paste0('SELECT * FROM public.metadata WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
   if(nrow(test)==1){
-    dbGetQuery(con_database, paste0('UPDATE public.metadata SET "Relation"=\'',DCMI_metadata$Relation,'\', "TemporalCoverage"=\'',DCMI_metadata$TemporalCoverage,'\', "Data"=\'',DCMI_metadata$Data,'\' WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
+    dbGetQuery(con_database, paste0('UPDATE public.metadata SET "Title"=\'',DCMI_metadata$Title,'\', "Creator"=\'',DCMI_metadata$Creator,'\', "Subject"=\'',DCMI_metadata$Subject,'\', "Relation"=\'',DCMI_metadata$Relation,'\', "TemporalCoverage"=\'',DCMI_metadata$TemporalCoverage,'\', "Data"=\'',DCMI_metadata$Data,'\' WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
   }else{
     dbWriteTable(con_database, "metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
     }
@@ -569,10 +569,10 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
 }
 
 #############################################################################################################
-############################ load_data_in_database ###################################################
+############################ load_exif_metadata_in_database ###################################################
 #############################################################################################################
 
-load_data_in_database <- function(con_database, codes_directory, mission_directory,platform){
+load_exif_metadata_in_database <- function(con_database, codes_directory, mission_directory,platform){
   
   
   cat(paste0("Start loading data for mission: ", mission_directory,"\n"))
