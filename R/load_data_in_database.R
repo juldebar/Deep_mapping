@@ -3,10 +3,10 @@ codes_directory <-"~/Desktop/CODES/Deep_mapping/"
 source(paste0(codes_directory,"R/credentials_databases.R"))
 setwd(codes_directory)
 
-configuration_file <- paste0(codes_directory,"geoflow/Deep_mapping_worflow.json")
+# configuration_file <- paste0(codes_directory,"geoflow/Deep_mapping_worflow.json")
 codes_github_repository=codes_directory
 source(paste0(codes_github_repository,"R/functions.R"))
-source(paste0(codes_github_repository,"R/gpx_to_wkt.R"))
+# source(paste0(codes_github_repository,"R/gpx_to_wkt.R"))
 source(paste0(codes_github_repository,"R/get_session_metadata.R"))
 #warning: no slash at the end of the path
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
@@ -40,7 +40,7 @@ for(m in missions){
     for(md in missions_drone){
       setwd(md)
       cat(paste0("Processing mission: ", md,"\n"))
-      metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=md, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images)
+      metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=md, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=upload_to_google_drive)
       load_DCMI_metadata_in_database(con_Reef_database, codes_directory, metadata_this_mission,create_table=FALSE)
       ratio <- load_data_in_database(con_database=con_Reef_database, codes_directory, mission_directory=md, platform)
       }
@@ -58,7 +58,9 @@ for(m in missions){
       file_name <- paste0(session_id,"_DCMI_metadata.csv")
       write.csv(metadata_this_mission,file = file_name,row.names = F)
       # googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
-      metadata_gsheet_id <- upload_file_on_drive_repository(DCMI_metadata_google_drive_path,media=file_name, file_name=file_name,type="spreadsheet")
+      if(upload_to_google_drive){
+        metadata_gsheet_id <- upload_file_on_drive_repository(DCMI_metadata_google_drive_path,media=file_name, file_name=file_name,type="spreadsheet")
+      }
       
       if(load_metadata_in_database){
         cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
@@ -67,29 +69,32 @@ for(m in missions){
       if(load_data_in_database){      
         cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
         ratio <- NULL
-        ratio <- load_data_in_database(con_database=con_Reef_database, codes_directory=codes_directory, mission_directory=m,platform)
+        ratio <- load_exif_metadata_in_database(con_database=con_Reef_database, codes_directory=codes_directory, mission_directory=m,platform)
         # lapply(ratio,class)
       }
       if(load_tags_in_database){      
         cat(paste0("Load tags of photos in the database: ", m,"\n"))
         tags_as_csv <- return_dataframe_tag_txt(m)
         file_name <- paste0(session_id,"_tag.csv")
-        tags_gsheet_id <- upload_file_on_drive_repository(tags_folder_google_drive_path,media=tags_as_csv, file_name,type="spreadsheet")
-        url <-paste0("https://docs.google.com/spreadsheets/d/",tags_gsheet_id)
-        tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(url))
+        if(upload_to_google_drive){
+          tags_gsheet_id <- upload_file_on_drive_repository(tags_folder_google_drive_path,media=tags_as_csv, file_name,type="spreadsheet")
+          url <-paste0("https://docs.google.com/spreadsheets/d/",tags_gsheet_id)
+          tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(url))
+        }
+        
         # query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=tags_file_google_drive)
       }
     }
   
-  metadata_this_mission$Comment <- paste0("Ratio d'images géoréférencées: ",ratio[1]/ratio[2], "(images géoréférencées: ", ratio[1]," pour un total d'images de : ", ratio[2],")")
-  metadata_this_mission$Nb_photos_located <- ratio[1]
-  this_file_name <-paste0("metadata_",session_id,".csv")
-  write.csv(metadata_this_mission,file = this_file_name,row.names = F)
-  if(c==1){
-    metadata_missions <- metadata_this_mission
-  }else{
-    metadata_missions <- rbind(metadata_missions,metadata_this_mission)
-    }
+  # metadata_this_mission$Comment <- paste0("Ratio d'images géoréférencées: ",ratio[1]/ratio[2], "(images géoréférencées: ", ratio[1]," pour un total d'images de : ", ratio[2],")")
+  # metadata_this_mission$Nb_photos_located <- ratio[1]
+  # this_file_name <-paste0("metadata_",session_id,".csv")
+  # write.csv(metadata_this_mission,file = this_file_name,row.names = F)
+  # if(c==1){
+  #   metadata_missions <- metadata_this_mission
+  # }else{
+  #   metadata_missions <- rbind(metadata_missions,metadata_this_mission)
+  #   }
 }
 
 #write metadata table
@@ -116,8 +121,10 @@ dbDisconnect(con_Reef_database)
 google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
 
 # drive_download("Deep_mapping_worflow.json")
-setwd(codes_directory)
-initWorkflow(file = configuration_file)
+setwd("~/Desktop/CODES/Deep_mapping/geoflow")
+configuration_file <- "Deep_mapping_worflow.json"
+
+# initWorkflow(file = configuration_file)
 executeWorkflow(file = configuration_file)
 upload_file_on_drive_repository(google_drive_path,configuration_file)
 
@@ -129,12 +136,12 @@ setwd(tempdir())
 dir.create("candidates_training")
 setwd("./candidates_training")
 # expected_species <- "Sargassum ilicifolium"   "Acropora formosa" "Acropora hyacinthus" "Holoturian"
-expected_species <- "Millepora"
+expected_species <- "slope"
 wd_species <- gsub(" ","_", expected_species)
 dir.create(gsub(" ","_", expected_species))
 training_images <- paste0(tempdir(),'/candidates_training/',wd_species)
-wkt <- "Polygon ((57.32877386673590792 -20.47096597725839473, 57.32865917064748373 -20.47105008772324197, 57.32865917064748373 -20.47123360146472137, 57.32872989990200807 -20.47140373399588498, 57.32885606559927538 -20.47152798809167962, 57.32891150204201836 -20.47153372289610118, 57.32901090531865407 -20.4714591704386244, 57.32903957934075834 -20.4712852147045119, 57.32903002133338788 -20.47109596615861093, 57.32897649649212468 -20.47097553526576519, 57.32886753520811851 -20.47091245241713153, 57.32886753520811851 -20.47091245241713153, 57.32877386673590792 -20.47096597725839473))"
-wkt="none"
+wkt <- "Polygon ((57.33188010929304568 -20.3911917018559663, 57.32982081703826083 -20.39321473682830899, 57.32950400284521919 -20.3942726436252002, 57.32980101615118684 -20.39497791078869326, 57.32986041881238748 -20.39594300799250348, 57.32958320639348671 -20.39633275707297955, 57.32859316204022093 -20.39809589535819967, 57.32754371502575452 -20.3991908868742442, 57.3255438254321632 -20.40160355258031899, 57.32491019704607282 -20.40227166871073194, 57.32393995357987393 -20.40290266461765256, 57.32352413495149079 -20.40435023369625256, 57.32269249769475294 -20.40564932256855002, 57.32263309503355231 -20.40611328022464477, 57.3230885154360692 -20.40633597940312782, 57.32417756422466226 -20.40449870155048728, 57.32459338285302408 -20.40301401656821056, 57.32659327244662961 -20.40134372885816205, 57.32716749817150514 -20.4003786654821333, 57.32980101615118684 -20.39833716534372243, 57.33045444542435121 -20.39614716239569958, 57.33041484365022455 -20.39438400181295918, 57.33051384808555895 -20.3935859330226279, 57.33217712259903465 -20.39113602161886263, 57.33217712259903465 -20.39113602161886263, 57.33188010929304568 -20.3911917018559663))"
+# wkt="none"
 
 # We extract all images which are within a given polygon (if none => all images) and are not annotated yet and copy these images in a folder whose name is the name of expected category
 extracted_images_not_annotated <- spatial_extraction_of_pictures_and_copy_in_tmp_folder(wd=training_images, con_database=con_Reef_database,codes_directory=codes_directory,images_directory=images_directory,wkt=wkt,expected_species=expected_species)
@@ -142,7 +149,7 @@ nrow(extracted_images_not_annotated)
 
 #after selecting and moving manually images with the expected category within another folder with the same name we insert these new annotations in the database
 mime_type = "*.JPG"
-expected_species <- "Millepora"
+expected_species <- "Sand"
 wd_selected_candidates <-paste0("/home/julien/Desktop/Data/candidates/",gsub(" ","_", expected_species))
 wd_selected_candidates
 insert_images_tags_and_labels <- turn_list_of_files_into_csv_annotated(con_database=con_Reef_database,wd_selected_candidates,extracted_images_not_annotated,expected_species=expected_species,mime_type = "*.JPG")
@@ -233,4 +240,100 @@ query <-update_annotations_in_database(con_database=con_Reef_database, images_ta
 create_view_species_occurences(con_database=con_Reef_database,codes_directory=codes_directory,images_directory=images_directory)
 
 
+
+
+test_toto <- publish_annotated_photos_in_gsheet(con_database=con_Reef_database,google_drive_path=tags_folder_google_drive_path)
+tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(paste0("https://docs.google.com/spreadsheets/d/",test_toto)))
+colnames(tags_file_google_drive)
+
+grade_A<-NULL
+grade_A <-data.frame(file_name=c("session_2019_09_20_kite_Le_Morne_avec_Manu_G0069658.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0069659.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0069660.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0072613.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0072616.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0076810.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0076811.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0076812.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077374.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077375.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077408.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077422.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077430.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077434.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077435.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077525.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077526.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077527.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077533.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077533.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077533.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077611.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077612.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077625.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077641.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077661.JPG",
+                                 "session_2019_09_20_kite_Le_Morne_avec_Manu_G0077890.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0027097.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0027103.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0027272.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0027273.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0027274.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0028267.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0029880.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0031555.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0032822.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0032990.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0033033.JPG",
+                                 "session_2019_09_23_kite_lagoon_le_morne_Manu_et_julien_G0033195.JPG",
+                                 "session_2019_09_24_kite_Le_Morne_One_Eye_Manawa_Platin_Rouge_Chameau_G0032676.JPG",
+                                 "session_2019_09_24_kite_Le_Morne_One_Eye_Manawa_Platin_Rouge_Chameau_G0032754.JPG"))
+grade_A$grade <- "A"
+colnames(grade_A)
+colnames(tags_file_google_drive)
+
+joint_annotated_and_database <- left_join(tags_file_google_drive,grade_A,by = "file_name") %>% distinct()
+# %>% mutate(tag =labels$tag_label[l]) 
+write.csv(joint_annotated_and_database,file = "joint_annotated_and_database.csv",row.names = F)
+setwd("/home/julien/Desktop/sandbox/Thalassodendron_ciliatum")
+grade_directories <- joint_annotated_and_database %>% select(grade) %>% distinct()
+
+for(d in grade_directories$grade){
+  if(!is.na(d)){
+    dir.create(d)
+    list_photos <- joint_annotated_and_database %>%  filter(grade==d) %>% select(file_name)
+    for(i in 1:nrow(list_photos)){
+      filename <- list_photos$file_name[i]
+      command <- paste0("mv ", filename,"  ./",d,"\n")
+      cat(command)
+      system(command)
+    }
+  }
+}
+
+
+
+test_toto <- publish_annotated_photos_in_gsheet(con_database=con_Reef_database,google_drive_path=tags_folder_google_drive_path)
+tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(paste0("https://docs.google.com/spreadsheets/d/",test_toto)))
+colnames(tags_file_google_drive)
+
+working_dir <- "/home/julien/Desktop/sandbox/Thalassodendron_ciliatum"
+mime_type = "*.JPG"
+
+setwd(working_dir)
+grade_directories <- NULL
+grade_directories <- data.frame(grade=list.dirs(path=getwd(),full.names = FALSE, recursive = FALSE))
+total <- NULL
+for(d in grade_directories$grade){
+  if(!is.na(d)){
+    setwd(paste0(getwd(),"/",d))
+    list_photos <- data.frame(file_name=list.files(pattern = mime_type, recursive = FALSE))  %>%  mutate(grade=d)
+    list_photos <- left_join(tags_file_google_drive,list_photos,by = "file_name") %>%  filter(grade==d) %>% distinct()
+    total <- rbind(total,list_photos)
+    setwd(working_dir)
+  }
+}
+nrow(total)
+file_name <-"annotated_images_in_database"
+metadata_gsheet_id <- upload_file_on_drive_repository(google_drive_path,media=total, file_name=file_name,type="spreadsheet")
 

@@ -19,7 +19,7 @@ library(prettymapr)
 # metadata <- get_session_metadata(session_directory, google_drive_path,metadata_sessions)
 # metadata <- data.frame(
 #   Identifier=character(),
-#   Description=character(),
+#   Description=character(),metadata_sessions=metadata_this_mission,type_images=type_images)
 #   Title=character(),
 #   Subject=character(),
 #   Creator=character(),
@@ -32,7 +32,7 @@ library(prettymapr)
 #   Rights=character(),  
 #   Source=character(),  
 #   Provenance=character(),
-#   Format=character(),
+#   Format=character(),metadata_sessions=metadata_this_mission,type_images=type_images)
 #   Data=character(),
 #   path=character(),
 #   gps_file_name=character(),
@@ -42,7 +42,7 @@ library(prettymapr)
 #   geometry=character()
 # )
 ################### Function to fill the geoflow data frame with metadata #######################
-get_session_metadata <- function(con_database, session_directory, google_drive_path, metadata_sessions,type_images="gopro"){
+get_session_metadata <- function(con_database, session_directory, google_drive_path, metadata_sessions,type_images="gopro",google_drive_upload=FALSE){
   
   cat(paste0("Extracting metadata for mission: ", session_directory,"\n"))
   
@@ -60,7 +60,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   
   GPS_timestamp <- NULL
   Photo_GPS_timestamp <- NULL
-  ################### Set directories #######################
+  ################### Set directories ####################metadata_sessions=metadata_this_mission,type_images=type_images)###
   if(type_images=="drone"){
     session_id <- paste0(gsub(paste0(dirname(dirname(this_directory)),"/"),"",dirname(this_directory)),"_",gsub(" ","",gsub(paste0(dirname(this_directory),"/"),"",this_directory)))
     pattern = "*.jpg"
@@ -74,7 +74,13 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     # offset=0
     }else{
       session_id <- gsub(" ","",gsub(paste0(dirname(this_directory),"/"),"",this_directory))
-      keywords <- "GENERAL:Mauritius,coral reef,photos,deep learning,kite surfing,coral reef habitats;"
+      activity=NULL
+      if(grepl(pattern = "kite", x=session_id)){activity="Kite surfing"
+      } else if(grepl(pattern = "surf", x=session_id)){activity="Surf"
+      } else if(grepl(pattern = "addle", x=session_id)){activity="Paddle"
+      } else if(grepl(pattern = "snorkelling", x=session_id)){activity="Snorkelling"}
+      
+      keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,";")
       pattern = "*.JPG"
       DCIM_directory <- "DCIM"
       date <- gsub("_","-",substr(session_id,9,18))
@@ -90,9 +96,9 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   #############################
   
   ################### Set static metadata elements #######################
-  title <- gsub("201"," of the 201",gsub("_"," ",session_id))
+  title <- gsub("session 20","Session of the 20",gsub("_"," ",session_id))
   subject <- keywords
-  creator <- "owner:emmanuel.blondel1@gmail.com;\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
+  creator <- "owner:emmanuel.blondel1@gmail.com;\npointOfContact:sylvain.bonhommeau@ifremer.fr;\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
   type <- "dataset"
   language <- "eng"
   provenance <-"statement:This is some data quality statement providing information on the provenance"
@@ -155,8 +161,8 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     for (t in 1:number_row){
       
       gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
-      dataframe_gps_file <-NULL
-      dataframe_gps_file <- return_dataframe_gps_file(con_database, wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id)
+      # dataframe_gps_file <-NULL
+      # dataframe_gps_file <- return_dataframe_gps_file(con_database, wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id,load_in_database=FALSE)
       # #       head(dataframe_gps_file)
       #       xmin <- min(dataframe_gps_file$longitude)
       #       xmax <- max(dataframe_gps_file$longitude)
@@ -217,19 +223,36 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
         pdf_convert(pdf_spatial_extent, pages = NULL,format = "jpeg",dpi = 600,filenames=jpeg_spatial_extent)
         
         cat("\n Upload maps images on google drive \n")
-        pdf_uri <- gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=pdf_spatial_extent,type=NULL)))
-        jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=jpeg_spatial_extent,type=NULL)))
         
       }
+
+      if(google_drive_upload==TRUE){
+        check_pdf_uri<- drive_ls(path = google_drive_path, pattern = pdf_spatial_extent, recursive = FALSE)
+        check_jpeg_uri <-drive_ls(path = google_drive_path, pattern = jpeg_spatial_extent, recursive = FALSE)
+        if(nrow(check_pdf_uri)>0){
+          pdf_uri <-paste0("https://drive.google.com/uc?id=",check_pdf_uri$id)
+          }else{
+          pdf_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=pdf_spatial_extent,file_name=pdf_spatial_extent,type="pdf")))
+        }
+        if(nrow(check_jpeg_uri)>0){
+          jpeg_uri <-paste0("https://drive.google.com/uc?id=",check_jpeg_uri$id)
+        }else{
+          jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=jpeg_spatial_extent,file_name=jpeg_spatial_extent,type="jpeg")))
+        }
+        # pdf_uri
+        # jpeg_uri
+      }
+      
+      
       
     
       cat("\n Set Relation metadata element with google drive urls \n")
       relation <-paste0("thumbnail:",session_id,"@",jpeg_uri)
       relation <-paste0(relation,";\nhttp:map(pdf)@",pdf_uri)
       # data <-paste0("uploadType:dbview;\n:",pdf_uri)
-      data <-paste0('source:Postgis;\nuploadType:dbquery;\nsql:SELECT * FROM "',session_id,
+      data <-paste0('source:Postgis;\nsourceType:dbquery;\nuploadType:dbquery;\nsql:SELECT * FROM "',session_id,
                     '";\nsourceSql:SELECT * FROM "',session_id,
-                    '";\nlayername:',session_id,
+                    '" LIMIT 1;\nlayername:',session_id,
                     ';\nstyle:point;\nattribute:decimalLatitude[decimalLatitude],decimalLongitude[decimalLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make];\nvariable:LightValue[LightValue]')
       
       # data <-paste0("source:file:///tmp/dessin.pdf;\nsourceName:",session_id,";\ntype:other;\nupload:true;")
