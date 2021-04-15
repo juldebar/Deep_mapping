@@ -42,7 +42,7 @@ library(prettymapr)
 #   geometry=character()
 # )
 ################### Function to fill the geoflow data frame with metadata #######################
-get_session_metadata <- function(con_database, session_directory, google_drive_path, metadata_sessions,type_images="gopro",google_drive_upload=FALSE){
+get_session_metadata <- function(con_database, session_directory, google_drive_path, metadata_sessions,type_images="gopro",google_drive_upload){
   
   cat(paste0("Extracting metadata for mission: ", session_directory,"\n"))
   

@@ -40,7 +40,7 @@ for(m in missions){
     for(md in missions_drone){
       setwd(md)
       cat(paste0("Processing mission: ", md,"\n"))
-      metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=md, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=upload_to_google_drive)
+      metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=md, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=TRUE)
       load_DCMI_metadata_in_database(con_Reef_database, codes_directory, metadata_this_mission,create_table=FALSE)
       ratio <- load_data_in_database(con_database=con_Reef_database, codes_directory, mission_directory=md, platform)
       }
@@ -53,7 +53,7 @@ for(m in missions){
       session_id <- gsub(paste0(dirname(m),"/"),"",m)
       
       cat(paste0("Extracting dynamic metadata: ", m,"\n"))
-      metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images)
+      metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=TRUE)
       cat(paste0("Upload metadata on google drive: ", m,"\n"))
       file_name <- paste0(session_id,"_DCMI_metadata.csv")
       write.csv(metadata_this_mission,file = file_name,row.names = F)
@@ -136,16 +136,26 @@ setwd(tempdir())
 dir.create("candidates_training")
 setwd("./candidates_training")
 # expected_species <- "Sargassum ilicifolium"   "Acropora formosa" "Acropora hyacinthus" "Holoturian"
-expected_species <- "slope"
+expected_species <- "kite_lagoon"
 wd_species <- gsub(" ","_", expected_species)
 dir.create(gsub(" ","_", expected_species))
 training_images <- paste0(tempdir(),'/candidates_training/',wd_species)
-wkt <- "Polygon ((57.33188010929304568 -20.3911917018559663, 57.32982081703826083 -20.39321473682830899, 57.32950400284521919 -20.3942726436252002, 57.32980101615118684 -20.39497791078869326, 57.32986041881238748 -20.39594300799250348, 57.32958320639348671 -20.39633275707297955, 57.32859316204022093 -20.39809589535819967, 57.32754371502575452 -20.3991908868742442, 57.3255438254321632 -20.40160355258031899, 57.32491019704607282 -20.40227166871073194, 57.32393995357987393 -20.40290266461765256, 57.32352413495149079 -20.40435023369625256, 57.32269249769475294 -20.40564932256855002, 57.32263309503355231 -20.40611328022464477, 57.3230885154360692 -20.40633597940312782, 57.32417756422466226 -20.40449870155048728, 57.32459338285302408 -20.40301401656821056, 57.32659327244662961 -20.40134372885816205, 57.32716749817150514 -20.4003786654821333, 57.32980101615118684 -20.39833716534372243, 57.33045444542435121 -20.39614716239569958, 57.33041484365022455 -20.39438400181295918, 57.33051384808555895 -20.3935859330226279, 57.33217712259903465 -20.39113602161886263, 57.33217712259903465 -20.39113602161886263, 57.33188010929304568 -20.3911917018559663))"
+wkt <- "Polygon ((57.30956708067661509 -20.46897373530195097, 57.31209394820422887 -20.46940313762690522, 57.31467036215395439 -20.47158318019974743, 57.31285366000992099 -20.4731851811813037, 57.30920374024780983 -20.47100513860846149, 57.30849357486423656 -20.46974996258167323, 57.30849357486423656 -20.46978299352974773, 57.30956708067661509 -20.46897373530195097))"
 # wkt="none"
 
 # We extract all images which are within a given polygon (if none => all images) and are not annotated yet and copy these images in a folder whose name is the name of expected category
 extracted_images_not_annotated <- spatial_extraction_of_pictures_and_copy_in_tmp_folder(wd=training_images, con_database=con_Reef_database,codes_directory=codes_directory,images_directory=images_directory,wkt=wkt,expected_species=expected_species)
 nrow(extracted_images_not_annotated)
+colnames(extracted_images_not_annotated)
+extracted_images_not_annotated$url <- paste0("http://162.38.140.205/Deep_mapping/backup/validated",extracted_images_not_annotated$photo_path)
+colnames(extracted_images_not_annotated)
+
+df <- extracted_images_not_annotated  %>% select(photo_id,session_id, FileName, latitude,longitude,photo_name, url)
+head(df)
+file_name <-paste0("test_set_images_with_CNN",expected_species)
+write.csv(df,file = file_name,row.names = F)
+upload_file_on_drive_repository(google_drive_path=google_drive_path,media=df,file_name=file_name,type="csv")
+
 
 #after selecting and moving manually images with the expected category within another folder with the same name we insert these new annotations in the database
 mime_type = "*.JPG"

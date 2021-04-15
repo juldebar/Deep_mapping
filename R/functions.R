@@ -897,7 +897,7 @@ upload_file_on_drive_repository <- function(google_drive_path,media,file_name,ty
   check <- drive_ls(path = google_drive_path, pattern = file_name, recursive = FALSE)
   check
 
-  if(type=="CSV"){
+  if(type=="csv"){
     setwd(tempdir())
     csvfile <- paste0(file_name,".csv")
     write.csv(media, csvfile,row.names = F)
