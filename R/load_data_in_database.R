@@ -2,7 +2,6 @@
 codes_directory <-"~/Desktop/CODES/Deep_mapping/"
 source(paste0(codes_directory,"R/credentials_databases.R"))
 setwd(codes_directory)
-
 # configuration_file <- paste0(codes_directory,"geoflow/Deep_mapping_worflow.json")
 codes_github_repository=codes_directory
 source(paste0(codes_github_repository,"R/functions.R"))
@@ -10,7 +9,6 @@ source(paste0(codes_github_repository,"R/functions.R"))
 source(paste0(codes_github_repository,"R/get_session_metadata.R"))
 #warning: no slash at the end of the path
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
-
 cat("Connect the database\n")
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
 cat("Replace the database\n")
@@ -22,49 +20,89 @@ missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FA
 # missions <- paste0(images_directory,"/","session_2019_10_12_kite_Le_Morne")
 # missions <- "/media/julien/3362-6161/saved/session_2019_09_12_kite_Le_Morne"
 load_metadata_in_database=TRUE
-load_data_in_database=FALSE
+load_data_in_database=TRUE
 load_tags_in_database=FALSE
-upload_to_google_drive=FALSE
+upload_to_google_drive=TRUE
 
 #iterate on all missions to load the database with data (Dublin Core metadata, GPS data, exif metadata)
 c=0
+metadata_missions <- NULL
 for(m in missions){
-  c <-c+1
-  cat(c)
   metadata_this_mission <- NULL
   if(grepl(pattern = "drone",m)){
+    drone_session_id <- gsub(paste0(dirname(m),"/"),"",m)
     type_images <- "drone"
     platform <- "drone"
     missions_drone <- m
     missions_drone <- list.dirs(path = m, full.names = TRUE, recursive = FALSE)
     for(md in missions_drone){
+      c <-c+1
       setwd(md)
+      metadata_this_mission <- NULL
+      session_id <- paste0(drone_session_id,"_",gsub(paste0(dirname(md),"/"),"",md))
+      
       cat(paste0("Processing mission: ", md,"\n"))
-      metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=md, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=TRUE)
-      load_DCMI_metadata_in_database(con_Reef_database, codes_directory, metadata_this_mission,create_table=FALSE)
-      ratio <- load_data_in_database(con_database=con_Reef_database, codes_directory, mission_directory=md, platform)
+      metadata_this_mission <- get_session_metadata(con_database=con_Reef_database,
+                                                    session_directory=md,
+                                                    google_drive_path,
+                                                    metadata_sessions=metadata_this_mission,
+                                                    type_images=type_images,
+                                                    google_drive_upload=TRUE)
+      file_name <- paste0(session_id,"_DCMI_metadata.csv")
+      write.csv(metadata_this_mission,file = file_name,row.names = F)
+      if(upload_to_google_drive){
+        cat(paste0("Upload metadata on google drive: ", m,"\n"))
+        metadata_gsheet_id <- upload_file_on_drive_repository(DCMI_metadata_google_drive_path,media=file_name, file_name=file_name,type="spreadsheet")
+      }
+      if(load_metadata_in_database){
+        cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
+        load_DCMI_metadata_in_database(con_database=con_Reef_database,
+                                       codes_directory=codes_directory,
+                                       DCMI_metadata=metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],
+                                       create_table=FALSE)
+        
+      }
+      if(load_data_in_database){      
+        cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
+        ratio <- NULL
+        ratio <- load_exif_metadata_in_database(con_database=con_Reef_database,
+                                                codes_directory=codes_directory,
+                                                mission_directory=md,
+                                                platform=platform
+                                                )
+      }
+      metadata_this_mission$Comment <- "no comment"
+      # metadata_this_mission$Nb_photos_located <- ratio[1]
+      this_file_name <-paste0("metadata_",session_id,".csv")
+      write.csv(metadata_this_mission,file = this_file_name,row.names = F)
+      if(c==1){
+        metadata_missions <- metadata_this_mission
+      }else{
+        metadata_missions <- rbind(metadata_missions,metadata_this_mission)
+      }
       }
     }else{
+      c <-c+1
+      cat(c)
+      
       type_images <- "gopro"
       platform <- "kite"
       
       cat(paste0("Processing mission: ", m,"\n"))
       setwd(m)
-      session_id <- gsub(paste0(dirname(m),"/"),"",m)
       
       cat(paste0("Extracting dynamic metadata: ", m,"\n"))
       metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=TRUE)
-      cat(paste0("Upload metadata on google drive: ", m,"\n"))
       file_name <- paste0(session_id,"_DCMI_metadata.csv")
       write.csv(metadata_this_mission,file = file_name,row.names = F)
       # googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
       if(upload_to_google_drive){
+        cat(paste0("Upload metadata on google drive: ", m,"\n"))
         metadata_gsheet_id <- upload_file_on_drive_repository(DCMI_metadata_google_drive_path,media=file_name, file_name=file_name,type="spreadsheet")
       }
-      
       if(load_metadata_in_database){
         cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
-        load_DCMI_metadata_in_database(con_database=con_Reef_database, codes_directory, DCMI_metadata=metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],create_table=FALSE)
+        load_DCMI_metadata_in_database(con_database=con_Reef_database,codes_directory, DCMI_metadata=metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],create_table=FALSE)
       }
       if(load_data_in_database){      
         cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
@@ -84,25 +122,28 @@ for(m in missions){
         
         # query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=tags_file_google_drive)
       }
+      # metadata_this_mission$Comment <- paste0("Ratio d'images géoréférencées: ",ratio[1]/ratio[2], "(images géoréférencées: ", ratio[1]," pour un total d'images de : ", ratio[2],")")
+      metadata_this_mission$Comment <- "no comment"
+      # metadata_this_mission$Nb_photos_located <- ratio[1]
+      this_file_name <-paste0("metadata_",session_id,".csv")
+      write.csv(metadata_this_mission,file = this_file_name,row.names = F)
+      if(c==1){
+        metadata_missions <- metadata_this_mission
+      }else{
+        metadata_missions <- rbind(metadata_missions,metadata_this_mission)
+      }
     }
-  
-  # metadata_this_mission$Comment <- paste0("Ratio d'images géoréférencées: ",ratio[1]/ratio[2], "(images géoréférencées: ", ratio[1]," pour un total d'images de : ", ratio[2],")")
-  # metadata_this_mission$Nb_photos_located <- ratio[1]
-  # this_file_name <-paste0("metadata_",session_id,".csv")
-  # write.csv(metadata_this_mission,file = this_file_name,row.names = F)
-  # if(c==1){
-  #   metadata_missions <- metadata_this_mission
-  # }else{
-  #   metadata_missions <- rbind(metadata_missions,metadata_this_mission)
-  #   }
 }
 
 #write metadata table
 setwd(images_directory)
-file_name <-"metadata_all_sessions.csv"
-write.csv(metadata_missions,file = file_name,row.names = F)
-# googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
-upload_file_on_drive_repository(google_drive_path=google_drive_path,media=file_name,file_name=file_name,type=NULL)
+metadata_file_name <-"metadata_all_sessions_drone.csv"
+write.csv(metadata_missions,file = metadata_file_name,row.names = F)
+# googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=metadata_file_name,media=metadata_file_name)
+if(upload_to_google_drive){
+  metadata_all_sessions_gsheet_id <- upload_file_on_drive_repository(google_drive_path=google_drive_path,media=metadata_file_name,file_name=metadata_file_name,type="spreadsheet")
+}
+
 ratio
 cat(paste0("Ratio of geolocated images / Total number of images : ",ratio[1]/ratio[2]))
 
@@ -136,11 +177,11 @@ setwd(tempdir())
 dir.create("candidates_training")
 setwd("./candidates_training")
 # expected_species <- "Sargassum ilicifolium"   "Acropora formosa" "Acropora hyacinthus" "Holoturian"
-expected_species <- "kite_lagoon"
+expected_species <- "syringodium"
 wd_species <- gsub(" ","_", expected_species)
 dir.create(gsub(" ","_", expected_species))
 training_images <- paste0(tempdir(),'/candidates_training/',wd_species)
-wkt <- "Polygon ((57.30956708067661509 -20.46897373530195097, 57.31209394820422887 -20.46940313762690522, 57.31467036215395439 -20.47158318019974743, 57.31285366000992099 -20.4731851811813037, 57.30920374024780983 -20.47100513860846149, 57.30849357486423656 -20.46974996258167323, 57.30849357486423656 -20.46978299352974773, 57.30956708067661509 -20.46897373530195097))"
+wkt <- "Polygon ((57.3082025349139812 -20.45903267326258046, 57.30754271149632473 -20.45920607165385263, 57.30753466486927294 -20.45989966326117226, 57.30797722935673022 -20.46009567771290349, 57.30868533253664765 -20.45978657788675292, 57.30887040495867524 -20.45935685270452353, 57.30849221348758249 -20.4591156029523944, 57.30849221348758249 -20.4591156029523944, 57.3082025349139812 -20.45903267326258046))"
 # wkt="none"
 
 # We extract all images which are within a given polygon (if none => all images) and are not annotated yet and copy these images in a folder whose name is the name of expected category
@@ -152,16 +193,18 @@ colnames(extracted_images_not_annotated)
 
 df <- extracted_images_not_annotated  %>% select(photo_id,session_id, FileName, latitude,longitude,photo_name, url)
 head(df)
-file_name <-paste0("test_set_images_with_CNN",expected_species)
+file_name <-paste0("test_set_images_with_CNN_",expected_species)
 write.csv(df,file = file_name,row.names = F)
 upload_file_on_drive_repository(google_drive_path=google_drive_path,media=df,file_name=file_name,type="csv")
 
 
 #after selecting and moving manually images with the expected category within another folder with the same name we insert these new annotations in the database
 mime_type = "*.JPG"
-expected_species <- "Sand"
+expected_species <- "Padina_boryana"
 wd_selected_candidates <-paste0("/home/julien/Desktop/Data/candidates/",gsub(" ","_", expected_species))
 wd_selected_candidates
+extracted_images_not_annotated <- spatial_extraction_of_pictures_and_copy_in_tmp_folder(wd=wd_selected_candidates, con_database=con_Reef_database,codes_directory=codes_directory,images_directory=images_directory,wkt=wkt,expected_species=expected_species)
+extracted_images_not_annotated
 insert_images_tags_and_labels <- turn_list_of_files_into_csv_annotated(con_database=con_Reef_database,wd_selected_candidates,extracted_images_not_annotated,expected_species=expected_species,mime_type = "*.JPG")
 
 # => REFRESH VIEW annotation

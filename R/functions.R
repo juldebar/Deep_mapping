@@ -153,7 +153,30 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
             cat(message_done)
             }
       setwd(metadata_directory)
-    }else{
+    }else if(endsWith(this_directory, "data")){
+      setwd(this_directory)
+      files <- list.files(pattern = mime_type ,recursive = TRUE)
+      # new_exif_metadata <-data.frame()
+      
+      if(length((files))>0){
+        
+        cat(paste("\n Metadata extraction for photos in ", this_directory, "\n", sep=" "))
+        exif_metadata <- extract_exif_metadata_in_this_directory(session_id,
+                                                                 images_directory,
+                                                                 this_directory,
+                                                                 template_df,
+                                                                 mime_type = mime_type,
+                                                                 time_zone=time_zone
+                                                                 )
+        lapply(exif_metadata,class)
+        new_exif_metadata <- bind_rows(new_exif_metadata, exif_metadata)
+        # CSV_total <- rbind(CSV_total, new_exif_metadata)
+        CSV_total <- bind_rows(CSV_total, exif_metadata)
+        
+        message_done <- paste("\n References for photos in ", this_directory, " have been extracted !\n", sep=" ")
+        cat(message_done)
+      }
+      }else{
         cat(paste(this_directory, " has been ignored \n",sep=""))
       }
   }
@@ -181,7 +204,7 @@ extract_exif_metadata_in_this_directory <- function(session_id,images_directory,
   parent_directory <- gsub(dirname(dirname(dirname(this_directory))),"",dirname(dirname(this_directory)))
   parent_directory <- gsub("/","",parent_directory)
   
-  files <- list.files(pattern = mime_type ,recursive = TRUE)
+  files <- list.files(pattern = mime_type,recursive = TRUE)
   exif_metadata <- NULL#check if needed
   # exif_metadata <- template_df#check if needed
   # lapply(template_df,class)
@@ -191,8 +214,12 @@ extract_exif_metadata_in_this_directory <- function(session_id,images_directory,
   # exif_metadata <- bind_rows(exif_metadata, template_df)
   
   # print(colnames(exif_metadata))
-  print(lapply(exif_metadata$ExposureIndex[1],class))
+  # print(lapply(exif_metadata$ExposureIndex[1],class))
   # transform(exif_metadata, SourceFile = as.character(SourceFile),ExposureIndex = as.numeric(ExposureIndex))
+  
+  if(is.null(exif_metadata$ExposureIndex)==TRUE){
+    exif_metadata$ExposureIndex <- 0
+  }
   exif_metadata$ExposureIndex <- as.numeric(as.character(exif_metadata$ExposureIndex))
   # lapply(exif_metadata,class)
   
@@ -426,7 +453,6 @@ update_annotations_in_database <- function(con_database, images_tags_and_labels)
 ############################ load_DCMI_metadata_in_database ###################################################
 #############################################################################################################
 
-
 load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_metadata, create_table=FALSE){
   
   if(create_table==TRUE){
@@ -436,11 +462,15 @@ load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_m
     create_table_metadata <- dbGetQuery(con_database,query_create_table_metadata)
     
   }
-  test <- dbGetQuery(con_database, paste0('SELECT * FROM public.metadata WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
+  
+  test <- dbGetQuery(con_database,SQL(paste0('SELECT * FROM public.metadata WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';')) )
   if(nrow(test)==1){
     dbGetQuery(con_database, paste0('UPDATE public.metadata SET "Title"=\'',DCMI_metadata$Title,'\', "Creator"=\'',DCMI_metadata$Creator,'\', "Subject"=\'',DCMI_metadata$Subject,'\', "Relation"=\'',DCMI_metadata$Relation,'\', "TemporalCoverage"=\'',DCMI_metadata$TemporalCoverage,'\', "Data"=\'',DCMI_metadata$Data,'\' WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
   }else{
-    dbWriteTable(con_database, "metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
+    max <- dbGetQuery(con_database,SQL(paste0('SELECT max(id_metadata) FROM public.metadata;')))+1
+    DCMI_metadata$id_metadata <- max
+    DCMI_metadata$Number_of_Pictures <- NULL
+    dbWriteTable(con_database,"metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
     }
   
   existing_rows <- dbGetQuery(con_database, paste0('UPDATE metadata SET geometry = ST_GeomFromText("SpatialCoverage",4326);'))
@@ -452,13 +482,15 @@ load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_m
 ############################ load_exif_metadata_in_database ###################################################
 #############################################################################################################
 
-load_exif_metadata_in_database <- function(con_database, codes_directory, core_exif_metadata, create_table=FALSE){
+load_exif_metadata_in_table_database <- function(con_database, codes_directory, core_exif_metadata, create_table=FALSE){
   if(create_table==TRUE){
     query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_github_repository,"SQL/create_exif_metadata_table.sql")), collapse=" ")
     create_exif_core_metadata_table <- dbGetQuery(con_database,query_create_exif_core_metadata_table)
     dbWriteTable(con_database, "photos_exif_core_metadata", core_exif_metadata, row.names=FALSE, append=TRUE)
   } else {
     photo_id_min <- dbGetQuery(con_database, paste0("SELECT max(photo_id) FROM photos_exif_core_metadata;"))+1
+    # photo_id_min <- dbGetQuery(con_database, SQL(paste0('SELECT max(photo_id) FROM public.photos_exif_core_metadata;')))+1
+    
     if(is.na(photo_id_min)){
       photo_id_min=1
       }
@@ -469,6 +501,7 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, core_e
     dbWriteTable(con_database, "photos_exif_core_metadata", core_exif_metadata, row.names=FALSE, append=TRUE)
   }
   query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column_exif_metadata.sql")), collapse=" ")
+  query_update_table_spatial_column <- gsub("session%",session_id,query_update_table_spatial_column)
   update_Table <- dbGetQuery(con_database,query_update_table_spatial_column)
   return (cat("\n Exif data succesfully loaded in Postgis !\n"))
   
@@ -486,6 +519,7 @@ load_gps_tracks_in_database <- function(con_database, codes_directory, gps_track
     dbWriteTable(con_database, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
   } else {
     dbWriteTable(con_database, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
+    
   }
   query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column.sql")), collapse=" ")
   update_Table <- dbGetQuery(con_database,query_update_table_spatial_column)
@@ -583,7 +617,8 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
   
   # SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE
   if(type_images=="drone"){
-    session_id <- paste0(gsub(paste0(dirname(dirname(mission_directory)),"/"),"",dirname(mission_directory)),"_",gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
+    session_id <- paste0(gsub(paste0(dirname(dirname(mission_directory)),"/"),"",dirname(mission_directory)),
+                         "_",gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
     mime_type = "*.jpg"
     prefix_mission = "Mission"
     images_dir = "./data"
@@ -615,7 +650,14 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
                             colClasses=c(SourceFile="character",ExifToolVersion="numeric",FileName="character",Directory="character",FileSize="integer",FileModifyDate="character",FileAccessDate="character",FileInodeChangeDate="character",FilePermissions="integer",FileType="character",FileTypeExtension="character",MIMEType="character",ExifByteOrder="character",ImageDescription="character",Make="character",Orientation="integer",XResolution="integer",YResolution="integer",ResolutionUnit="integer",Software="character",ModifyDate="character",YCbCrPositioning="integer",ExposureTime="numeric",FNumber="numeric",ExposureProgram="integer",ISO="integer",ExifVersion="character",DateTimeOriginal="POSIXct",CreateDate="character",ComponentsConfiguration="character",CompressedBitsPerPixel="numeric",ShutterSpeedValue="numeric",ApertureValue="numeric",MaxApertureValue="numeric",SubjectDistance="integer",MeteringMode="integer",LightSource="integer",Flash="integer",FocalLength="integer",Warning="character",FlashpixVersion="character",ColorSpace="integer",ExifImageWidth="integer",ExifImageHeight="integer",InteropIndex="character",InteropVersion="character",ExposureIndex="character",SensingMethod="integer",FileSource="integer",SceneType="integer",CustomRendered="integer",ExposureMode="integer",DigitalZoomRatio="integer",FocalLengthIn35mmFormat="integer",SceneCaptureType="integer",GainControl="integer",Contrast="integer",Saturation="integer",DeviceSettingDescription="character",SubjectDistanceRange="integer",SerialNumber="character",GPSLatitudeRef="character",GPSLongitudeRef="character",GPSAltitudeRef="integer",GPSTimeStamp="character",GPSDateStamp="character",Compression="integer",ThumbnailOffset="integer",ThumbnailLength="integer",MPFVersion="character",NumberOfImages="integer",MPImageFlags="integer",MPImageFormat="integer",MPImageType="integer",MPImageLength="integer",MPImageStart="integer",DependentImage1EntryNumber="integer",DependentImage2EntryNumber="integer",ImageUIDList="character",TotalFrames="integer",DeviceName="character",FirmwareVersion="character",CameraSerialNumber="character",Model="character",AutoRotation="character",DigitalZoom="character",ProTune="character",WhiteBalance="character",Sharpness="character",ColorMode="character",AutoISOMax="integer",AutoISOMin="integer",ExposureCompensation="numeric",Rate="character",PhotoResolution="character",HDRSetting="character",ImageWidth="integer",ImageHeight="integer",EncodingProcess="integer",BitsPerSample="integer",ColorComponents="integer",YCbCrSubSampling="character",Aperture="numeric",GPSAltitude="numeric",GPSDateTime="POSIXct",GPSLatitude="numeric",GPSLongitude="numeric",GPSPosition="character",ImageSize="character",PreviewImage="character",Megapixels="integer",ScaleFactor35efl="integer",ShutterSpeed="numeric",ThumbnailImage="character",CircleOfConfusion="character",FOV="numeric",FocalLength35efl="integer",HyperfocalDistance="numeric",LightValue="numeric",session_id="character",session_photo_number="integer",relative_path="character",geometry_postgis="numeric",geometry_gps_correlate="numeric",geometry_native="numeric"),
                             stringsAsFactors = FALSE)
     lapply(template_df,class)
-    all_exif_metadata <- extract_exif_metadata_in_csv(session_id, images_directory = mission_directory, template_df, mime_type,load_metadata_in_database=FALSE,time_zone=dataset_time_zone)
+    all_exif_metadata <- extract_exif_metadata_in_csv(session_id=session_id,
+                                                      images_directory = mission_directory,
+                                                      template_df=template_df,
+                                                      mime_type=mime_type,
+                                                      load_metadata_in_database=FALSE,
+                                                      time_zone=dataset_time_zone
+                                                      )
+      
     lapply(all_exif_metadata,class)
     
   }else{
@@ -663,10 +705,15 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
         # saveRDS(core_exif_metadata, paste("Core_Exif_metadata_",session_id,".RDS",sep=""))
         
         cat(paste0("Load the core exif metadata in the SQL database \n"))
-        load_exif_metadata_in_database(con_database, codes_directory, core_exif_metadata, create_table=FALSE)
-
+        load_exif_metadata_in_table_database(con_database=con_database,
+                                             codes_directory=codes_directory,
+                                             core_exif_metadata=core_exif_metadata,
+                                             create_table=FALSE
+                                             )
+        
         cat(paste0("Check that the SQL database was properly loaded \n"))
-        check_database <- dbGetQuery(con_database, paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 10"))
+        cat(paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 1"),"\n")
+        check_database <- dbGetQuery(con_database, paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 1"))
         check_database
         
         # Check offset from pictures with embedded GPS in the camera
@@ -697,7 +744,7 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
   dataframe_gps_files <- data.frame(session=character(), path=character(), file_name=character())
   
   if(type_images=="drone"){
-    gps_files <- list.files(pattern = "\\.gpx$",ignore.case=TRUE)
+    gps_files <- list.files(pattern = "\\.gpx$",ignore.case=TRUE,recursive = TRUE)
     file.copy(gps_files, "./GPS")
     newRow <- data.frame(session=session_id,path=mission_directory,file_name=gps_files)
     dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
@@ -718,11 +765,22 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
       
       # Use "dataframe_gps_file" to turn the gps file into a data frame
       dataframe_gps_file <-NULL
-      dataframe_gps_file <- return_dataframe_gps_file(con_database, wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id)
+      dataframe_gps_file <- return_dataframe_gps_file(con_database=con_database,
+                                                      wd=codes_directory,
+                                                      gps_file=gps_file,
+                                                      type=file_type,
+                                                      session_id=session_id,
+                                                      load_in_database=FALSE
+                                                      )
       duplicates <- distinct(dataframe_gps_file, time)
       duplicates_number <- nrow(dataframe_gps_file)-nrow(duplicates)
       paste0("the file has :", duplicates_number," duplicates")
-      load_gps_tracks_in_database(con_database, codes_directory, dataframe_gps_file, create_table=FALSE)
+      load_gps_tracks_in_database(con_database=con_database,
+                                  codes_directory=codes_directory,
+                                  gps_tracks=dataframe_gps_file,
+                                  create_table=FALSE
+                                  )
+        
       # generate a thumbnail of the map
       # plot_tcx(gps_file,mission_directory)
       cat("GPS tracks loaded in the database!\n")
@@ -760,9 +818,10 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
   slotNames(track_points)
   existing_rows_session <-NULL
   # if(load_in_database==TRUE){
-  existing_rows_session <- dbGetQuery(con_database, paste0("SELECT COUNT(*) FROM gps_tracks WHERE session_id='",session_id,"';"))
-  existing_rows=dbGetQuery(con_database, paste0("SELECT COUNT(*) FROM gps_tracks;"))
+  existing_rows_session <- dbGetQuery(con_database, SQL(paste0('SELECT COUNT(*) FROM public.gps_tracks WHERE "session_id"=\'',session_id,'\';')) )
+  existing_rows=dbGetQuery(con_database, SQL(paste0('SELECT COUNT(*) FROM public.gps_tracks;')))
   # }
+  
   if(existing_rows_session$count==0){
     # existing_rows=0
     track_points$ogc_fid <-c(existing_rows$count+1:nrow(track_points))
@@ -897,9 +956,9 @@ upload_file_on_drive_repository <- function(google_drive_path,media,file_name,ty
   check <- drive_ls(path = google_drive_path, pattern = file_name, recursive = FALSE)
   check
 
-  if(type=="csv"){
+  if(type=="CSV"){
     setwd(tempdir())
-    csvfile <- paste0(file_name,".csv")
+    if(!grepl(".csv",file_name)){csvfile <- paste0(file_name,".csv")}else{csvfile <- file_name}
     write.csv(media, csvfile,row.names = F)
     media <- csvfile
   }

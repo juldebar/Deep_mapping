@@ -41,6 +41,11 @@ library(prettymapr)
 #   Photo_GPS_timestamp=character(),
 #   geometry=character()
 # )
+# source(paste0(codes_directory,"R/functions.R"))
+# source(paste0(codes_directory,"R/credentials_databases.R"))
+# con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
+# metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=TRUE)
+
 ################### Function to fill the geoflow data frame with metadata #######################
 get_session_metadata <- function(con_database, session_directory, google_drive_path, metadata_sessions,type_images="gopro",google_drive_upload){
   
@@ -58,6 +63,9 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   close(con)
   first_line <- sub('.*session', 'session', first_line)
   
+  files <- NULL
+  Number_of_Pictures <- NULL
+  
   GPS_timestamp <- NULL
   Photo_GPS_timestamp <- NULL
   ################### Set directories ####################metadata_sessions=metadata_this_mission,type_images=type_images)###
@@ -66,9 +74,10 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     pattern = "*.jpg"
     DCIM_directory <- "data"
     date <- "2020-02-15"
-    keywords="GENERAL:drone,coral reef;"
+    keywords="GENERAL:drone,coral reef_"
     photo_calibration_metadata <- read_exif(paste(this_directory, sub(' => .*', '', first_line),sep="/"))
-    
+    directories <- paste(this_directory,DCIM_directory,sep="/")
+
     # Photo_GPS_timestamp <- "2020-01-26 09:28:54"
     # GPS_timestamp <- "2020-01-26 09:28:54"
     # offset=0
@@ -80,12 +89,14 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       } else if(grepl(pattern = "addle", x=session_id)){activity="Paddle"
       } else if(grepl(pattern = "snorkelling", x=session_id)){activity="Snorkelling"}
       
-      keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,";")
+      keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,"_")
       pattern = "*.JPG"
       DCIM_directory <- "DCIM"
       date <- gsub("_","-",substr(session_id,9,18))
       photo_calibration_metadata <- read_exif(paste(gsub(session_id,"",this_directory), sub(' => .*', '', first_line),sep="/"))
       
+      directories <- list.dirs(paste(this_directory,DCIM_directory,sep="/"), recursive = FALSE)
+      directories <- directories[grepl("GOPRO", directories)]
     }
   
   ############# offset ################
@@ -98,23 +109,20 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   ################### Set static metadata elements #######################
   title <- gsub("session 20","Session of the 20",gsub("_"," ",session_id))
   subject <- keywords
-  creator <- "owner:emmanuel.blondel1@gmail.com;\npointOfContact:sylvain.bonhommeau@ifremer.fr;\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
+  creator <- "owner:emmanuel.blondel1@gmail.com_\npointOfContact:sylvain.bonhommeau@ifremer.fr_\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
   type <- "dataset"
   language <- "eng"
   provenance <-"statement:This is some data quality statement providing information on the provenance"
-  source <-"camera;"
+  source <-"camera_"
   format <-gsub("*.","",pattern)
   gps_file <- NULL
   spatial_extent <- NULL
   temporal_extent <- NULL
   Number_of_Pictures <- NULL
-  rights <-"use:terms1;"
+  rights <-"use:terms1_"
   
-  ################### Calculate dynamicmetadata elements #######################
+  ################### Calculate dynamic metadata elements #######################
   ################### Number of Photos #######################
-  files <- NULL
-  directories <- list.dirs(paste(this_directory,DCIM_directory,sep="/"), recursive = FALSE)
-  directories <- directories[grepl("GOPRO", directories)]
   files <- list.files(path = directories, pattern = pattern,recursive = TRUE)
   Number_of_Pictures <- length(files)
   if(Number_of_Pictures>0){
@@ -161,6 +169,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     for (t in 1:number_row){
       
       gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
+      
       # dataframe_gps_file <-NULL
       # dataframe_gps_file <- return_dataframe_gps_file(con_database, wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id,load_in_database=FALSE)
       # #       head(dataframe_gps_file)
@@ -192,6 +201,16 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       
       this_wd <- getwd()
       setwd(as.character(dataframe_gps_files$path[t]))
+      file_name <- paste0("photos_location_",session_id)
+      
+      ######################## store spatial data in a shape file
+      shp_filename <- paste0(sub('\\..*$', '', basename(gps_file)),"_",tolower(file_type))
+      # shp_filename <- file_name
+      if (!file.exists(paste0(shp_filename,".shp")) && type_images!="drone"){
+        shape_file <- write_shp_from_csv(shp_filename)
+        }
+      cat("\n Zip shape file \n")
+      zip(paste0(shp_filename,".zip"), c(paste0(shp_filename,".shp"),paste0(shp_filename,".shx"),paste0(shp_filename,".dbf"),paste0(shp_filename,".prj")))
       
       # gps_points <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
       # bbox <- makebbox(ymax,xmax,ymin,xmin)
@@ -225,10 +244,19 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
         cat("\n Upload maps images on google drive \n")
         
       }
-
+      
+      sql_query <- paste0('SELECT * FROM "',session_id,'"')
+      sql_query_filename <- paste0(session_id,'.sql')
+      fileConn<-file(sql_query_filename)
+      writeLines(sql_query, fileConn)
+      close(fileConn)
+      
       if(google_drive_upload==TRUE){
         check_pdf_uri<- drive_ls(path = google_drive_path, pattern = pdf_spatial_extent, recursive = FALSE)
         check_jpeg_uri <-drive_ls(path = google_drive_path, pattern = jpeg_spatial_extent, recursive = FALSE)
+        check_shp_uri <-drive_ls(path = google_drive_path, pattern = paste0(gps_file,".zip"), recursive = FALSE)
+        check_sql_uri <-drive_ls(path = google_drive_path, pattern = sql_query_filename, recursive = FALSE)
+        
         if(nrow(check_pdf_uri)>0){
           pdf_uri <-paste0("https://drive.google.com/uc?id=",check_pdf_uri$id)
           }else{
@@ -239,35 +267,55 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
         }else{
           jpeg_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=jpeg_spatial_extent,file_name=jpeg_spatial_extent,type="jpeg")))
         }
-        # pdf_uri
-        # jpeg_uri
+        if(nrow(check_shp_uri)>0){
+          shp_uri <-paste0("https://drive.google.com/uc?id=",check_shp_uri$id)
+        }else{
+          # shp_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(google_drive_path=google_drive_path,media=paste0(shp_filename,".zip"),file_name=paste0(shp_filename,".zip"),type="NULL")))
+        }
+        if(nrow(check_sql_uri)>0){
+          sql_uri <-paste0("https://drive.google.com/uc?id=",check_sql_uri$id)
+        }else{
+          sql_uri <-gsub("open\\?id","uc?id",paste0("https://drive.google.com/open?id=",upload_file_on_drive_repository(DCMI_metadata_google_drive_path,media=sql_query_filename, file_name=sql_query_filename,type="text/rtf")))
+        }
+        
       }
       
-      
-      
-    
       cat("\n Set Relation metadata element with google drive urls \n")
-      relation <-paste0("thumbnail:",session_id,"@",jpeg_uri)
-      relation <-paste0(relation,";\nhttp:map(pdf)@",pdf_uri)
-      # data <-paste0("uploadType:dbview;\n:",pdf_uri)
-      data <-paste0('source:Postgis;\nsourceType:dbquery;\nuploadType:dbquery;\nsql:SELECT * FROM "',session_id,
-                    '";\nsourceSql:SELECT * FROM "',session_id,
-                    '" LIMIT 1;\nlayername:',session_id,
-                    ';\nstyle:point;\nattribute:decimalLatitude[decimalLatitude],decimalLongitude[decimalLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make];\nvariable:LightValue[LightValue]')
+      relation <-paste0("thumbnail:",session_id,"[aperçu de la zone géographique]@",jpeg_uri)
+      relation <-paste0(relation,"_\nhttp:map(pdf)@",pdf_uri)
+      # data <-paste0("uploadType:dbview_\n:",pdf_uri)
+
+      data <-paste0(
+        'access:googledrive_\n',
+        'source:',sql_query_filename,'_\n',
+        'sourceType:dbquery_\n',
+        'uploadSource:',session_id,'_\n',
+        'uploadType:dbquery_\n',
+        'sql:SELECT * FROM "',session_id,'"_\n',
+        'featureType:reef_dbquery_\n',
+        'upload:true_\n',
+        'store:Reef_database_\n',
+        'layername:',session_id,'_\n',
+        'geometry:the_geom,Point_\n',
+        'style:point_\n',
+        'attribute:decimalLatitude[decimalLatitude],decimalLongitude[decimalLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make]_\n',
+        'variable:LightValue[LightValue]'
+        )
+  
       
-      # data <-paste0("source:file:///tmp/dessin.pdf;\nsourceName:",session_id,";\ntype:other;\nupload:true;")
       
-      ######################## store spatial data in a shape file
-      # file_name <- paste0("photos_location_",session_id)
-      # if (!file.exists(paste0(file_name,".shp"))){
-      #   shape_file <- write_shp_from_csv(file_name)
-      # }else{
-      #   paste0("\n Le fichier ", file_name,".shp  existe déjà !\n ")
-      # }
+      # data <-paste0('source:Postgis_\nsourceType:dbquery_\nuploadType:dbquery_\nsql:SELECT * FROM "',session_id,
+      #               '"_\nsourceSql:SELECT * FROM "',session_id,
+      #               '" LIMIT 1_\nlayername:',session_id,
+      #               '_\nstyle:point_\nattribute:decimalLatitude[decimalLatitude],decimalLongitude[decimalLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make]_\nvariable:LightValue[LightValue]')
+      # 
+      # data <-paste0("source:file:///tmp/dessin.pdf_\nsourceName:",session_id,"_\ntype:other_\nupload:true_")
+      
+
       
       ######################## write a qgis project to visualize the shape file
       # qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_csv.qgs"
-      qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_shapefile_new.qgs"
+      # qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_shapefile_new.qgs"
       # write_qgis_project(session_id, qgs_template,shape_file,xmin,xmax,ymin,ymax)
       setwd(this_wd)
       
