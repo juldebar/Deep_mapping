@@ -19,10 +19,11 @@ missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FA
 #if only one mission, indicate the specific sub-repository
 # missions <- paste0(images_directory,"/","session_2019_10_12_kite_Le_Morne")
 # missions <- "/media/julien/3362-6161/saved/session_2019_09_12_kite_Le_Morne"
-load_metadata_in_database=TRUE
+create_geoflow_metadata=FALSE
+upload_to_google_drive=FALSE
+load_metadata_in_database=FALSE
 load_data_in_database=TRUE
 load_tags_in_database=FALSE
-upload_to_google_drive=TRUE
 
 #iterate on all missions to load the database with data (Dublin Core metadata, GPS data, exif metadata)
 c=0
@@ -84,17 +85,19 @@ for(m in missions){
     }else{
       c <-c+1
       cat(c)
+      session_id <- gsub(paste0(dirname(m),"/"),"",m)
       
       type_images <- "gopro"
       platform <- "kite"
       
       cat(paste0("Processing mission: ", m,"\n"))
       setwd(m)
-      
-      cat(paste0("Extracting dynamic metadata: ", m,"\n"))
-      metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=TRUE)
-      file_name <- paste0(session_id,"_DCMI_metadata.csv")
-      write.csv(metadata_this_mission,file = file_name,row.names = F)
+      if(create_geoflow_metadata){
+        cat(paste0("Extracting dynamic metadata: ", m,"\n"))
+        metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=TRUE)
+        file_name <- paste0(session_id,"_DCMI_metadata.csv")
+        write.csv(metadata_this_mission,file = file_name,row.names = F)
+      }
       # googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
       if(upload_to_google_drive){
         cat(paste0("Upload metadata on google drive: ", m,"\n"))
@@ -107,7 +110,11 @@ for(m in missions){
       if(load_data_in_database){      
         cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
         ratio <- NULL
-        ratio <- load_exif_metadata_in_database(con_database=con_Reef_database, codes_directory=codes_directory, mission_directory=m,platform)
+        ratio <- load_exif_metadata_in_database(con_database=con_Reef_database,
+                                                codes_directory=codes_directory,
+                                                mission_directory=m,
+                                                platform=platform
+                                                )
         # lapply(ratio,class)
       }
       if(load_tags_in_database){      
