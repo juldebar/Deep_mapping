@@ -21,15 +21,17 @@ library(prettymapr)
 
 
 ################### Set directories #######################
-codes_directory <-"~/Bureau/CODES/Deep_mapping/"
+# codes_directory <-"~/Bureau/CODES/Deep_mapping/"
+codes_directory <-"~/Desktop/CODES/Deep_mapping/"
 setwd(codes_directory)
 source(paste0(codes_directory,"R/functions.R"))
-source(paste0(codes_directory,"R/gpx_to_wkt.R"))
+source(paste0(codes_directory,"R/credentials_databases.R"))
+con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
 
 # working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A/pending/"
 # working_directory <-  "/media/julien/Deep_Mapping_4To/data_deep_mapping/2019/A"
 working_directory <- "/media/juldebar/disk/session_2019_07_10_Le_Morne_ti_reefBastien"
-working_directory <-"/media/juldebar/c7e2c225-7d13-4f42-a08e-cdf9d1a8d6ac/Deep_Mapping/test"
+working_directory <-"/media/julien/Storage_SSD/Data_Deep_Mapping/to_be_tested"
 setwd(working_directory)
 
 sub_directories <- list.dirs(path=working_directory,full.names = TRUE,recursive = FALSE)
@@ -42,8 +44,9 @@ google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
 
 metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), TemporalCoverage=character(),Relation=character(), Rights=character(), Provenance=character(), Data=character(), Number_of_Pictures=integer(), GPS_timestamp=character(),  Photo_GPS_timestamp=character())
 
-for (i in 1:number_sub_directories){
-  this_directory <- sub_directories[i]
+# for (i in 1:number_sub_directories){
+  for (i in 1:1){
+    this_directory <- sub_directories[i]
   setwd(this_directory)
   session_id <- gsub(paste0(dirname(this_directory),"/"),"",this_directory)
   date <- gsub("_","-",substr(session_id,9,18))
@@ -74,7 +77,7 @@ for (i in 1:number_sub_directories){
   Photo_GPS_timestamp <- NULL
   
   ############################################################
-  ################### Number of Photos #######################
+  ################### Counting the number of Photos #######################
   ############################################################
   files <- NULL
   files <- list.files(path = paste(this_directory,"DCIM",sep="/"), pattern = "*.JPG",recursive = TRUE)
@@ -124,7 +127,7 @@ for (i in 1:number_sub_directories){
       
       gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
       dataframe_gps_file <-NULL
-      dataframe_gps_file <- return_dataframe_gps_file(wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id)
+      dataframe_gps_file <- return_dataframe_gps_file(con_Reef_database,wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id)
       # #       head(dataframe_gps_file)
       #       xmin <- min(dataframe_gps_file$longitude)
       #       xmax <- max(dataframe_gps_file$longitude)
@@ -217,7 +220,21 @@ for (i in 1:number_sub_directories){
   ################### CREATE DATAFRAME #######################
   ############################################################
   # metadata_sessions <- data.frame(Identifier=character(), Date=character(), path=character(), gps_file_name=character(), SpatialCoverage=character(), TemporalCoverage=character(),Relation=character(), Rights=character(), Provenance=character(), Data=character(), Number_of_Pictures=integer(), GPS_timestamp=character(),  Photo_GPS_timestamp=character())
-  newRow <- data.frame(Identifier=paste0("id:",session_id,";"),Title=title,	Description=description, Date=date,path=this_directory,gps_file_name=gps_file,SpatialCoverage=spatial_extent, TemporalCoverage=temporal_extent, Relation=relation,Rights=rights, Provenance=provenance, Data=data, Number_of_Pictures=Number_of_Pictures, GPS_timestamp=GPS_timestamp, Photo_GPS_timestamp=Photo_GPS_timestamp)
+  newRow <- data.frame(Identifier=paste0("id:",session_id,";"),
+                       Title=title,
+                       Description=description,
+                       Date=date,
+                       path=this_directory,
+                       gps_file_name=gps_file,
+                       SpatialCoverage=spatial_extent,
+                       TemporalCoverage=temporal_extent,
+                       Relation=relation,
+                       Rights=rights,
+                       Provenance=provenance,
+                       Data=data,
+                       Number_of_Pictures=Number_of_Pictures,
+                       GPS_timestamp=GPS_timestamp,
+                       Photo_GPS_timestamp=Photo_GPS_timestamp)
   metadata_sessions <- rbind(metadata_sessions,newRow)
 }
 
