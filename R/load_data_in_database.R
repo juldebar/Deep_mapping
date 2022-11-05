@@ -1,10 +1,11 @@
 # rm(list=ls())
 codes_directory <-"~/Desktop/CODES/Deep_mapping/"
-source(paste0(codes_directory,"R/credentials_databases.R"))
-setwd(codes_directory)
-# configuration_file <- paste0(codes_directory,"geoflow/Deep_mapping_worflow.json")
 codes_github_repository=codes_directory
 source(paste0(codes_github_repository,"R/functions.R"))
+# source(paste0(codes_directory,"R/credentials_databases.R"))
+source(paste0(codes_directory,"R/credentials.R"))
+setwd(codes_directory)
+# configuration_file <- paste0(codes_directory,"geoflow/Deep_mapping_worflow.json")
 # source(paste0(codes_github_repository,"R/gpx_to_wkt.R"))
 source(paste0(codes_github_repository,"R/get_session_metadata.R"))
 #warning: no slash at the end of the path
@@ -19,9 +20,9 @@ missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FA
 #if only one mission, indicate the specific sub-repository
 # missions <- paste0(images_directory,"/","session_2019_10_12_kite_Le_Morne")
 # missions <- "/media/julien/3362-6161/saved/session_2019_09_12_kite_Le_Morne"
-create_geoflow_metadata=FALSE
+create_geoflow_metadata=TRUE
 upload_to_google_drive=FALSE
-load_metadata_in_database=FALSE
+load_metadata_in_database=TRUE
 load_data_in_database=TRUE
 load_tags_in_database=FALSE
 
@@ -94,7 +95,13 @@ for(m in missions){
       setwd(m)
       if(create_geoflow_metadata){
         cat(paste0("Extracting dynamic metadata: ", m,"\n"))
-        metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=TRUE)
+        metadata_this_mission <- get_session_metadata(con_database=con_Reef_database,
+                                                      session_directory=m,
+                                                      google_drive_path,
+                                                      metadata_sessions=metadata_this_mission,
+                                                      type_images=type_images,
+                                                      google_drive_upload=TRUE
+                                                      )
         file_name <- paste0(session_id,"_DCMI_metadata.csv")
         write.csv(metadata_this_mission,file = file_name,row.names = F)
       }
@@ -105,7 +112,11 @@ for(m in missions){
       }
       if(load_metadata_in_database){
         cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
-        load_DCMI_metadata_in_database(con_database=con_Reef_database,codes_directory, DCMI_metadata=metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],create_table=FALSE)
+        load_DCMI_metadata_in_database(con_database=con_Reef_database,
+                                       codes_directory,
+                                       DCMI_metadata=metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],
+                                       create_table=FALSE
+                                       )
       }
       if(load_data_in_database){      
         cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))

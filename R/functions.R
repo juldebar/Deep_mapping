@@ -1,7 +1,7 @@
 #############################################################################################################
 ############################ LOAD PACKAGES ###################################################
 ########################################################################################################
-pacman::p_load(googledrive,exifr,DBI, RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,stringr,tidyr,gsheet,dplyr,sf)
+pacman::p_load(remotes,rosm,pdftools,googledrive,exifr,DBI, RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,stringr,tidyr,gsheet,dplyr,sf)
 # library(maps)
 # library(reshape)  
 # library(geosphere)
@@ -468,8 +468,10 @@ load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_m
     dbGetQuery(con_database, paste0('UPDATE public.metadata SET "Title"=\'',DCMI_metadata$Title,'\', "Creator"=\'',DCMI_metadata$Creator,'\', "Subject"=\'',DCMI_metadata$Subject,'\', "Relation"=\'',DCMI_metadata$Relation,'\', "TemporalCoverage"=\'',DCMI_metadata$TemporalCoverage,'\', "Data"=\'',DCMI_metadata$Data,'\' WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
   }else{
     max <- dbGetQuery(con_database,SQL(paste0('SELECT max(id_metadata) FROM public.metadata;')))+1
-    DCMI_metadata$id_metadata <- max
+    DCMI_metadata$id_metadata <- max$max
     DCMI_metadata$Number_of_Pictures <- NULL
+    colnames(DCMI_metadata)
+    DCMI_metadata=DCMI_metadata[,c(18,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)]
     dbWriteTable(con_database,"metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
     }
   
@@ -502,8 +504,12 @@ load_exif_metadata_in_table_database <- function(con_database, codes_directory, 
   }
   query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column_exif_metadata.sql")), collapse=" ")
   query_update_table_spatial_column <- gsub("session%",session_id,query_update_table_spatial_column)
-  update_Table <- dbGetQuery(con_database,query_update_table_spatial_column)
-  return (cat("\n Exif data succesfully loaded in Postgis !\n"))
+  queries <- str_split(query_update_table_spatial_column,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+  update_Table <- dbGetQuery(con_database,query)
+    return (cat("\n Exif data succesfully loaded in Postgis !\n"))
+  }
   
   # dbWriteTable(con_database, "photos_exif_core_metadata", All_Core_Exif_metadata[1:10,], row.names=TRUE, append=TRUE)
 }
@@ -515,14 +521,26 @@ load_exif_metadata_in_table_database <- function(con_database, codes_directory, 
 load_gps_tracks_in_database <- function(con_database, codes_directory, gps_tracks, create_table=TRUE){
   if(create_table==TRUE){
     query_create_table <- paste(readLines(paste0(codes_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
-    create_Table <- dbGetQuery(con_database,query_create_table)
+    queries <- str_split(query_create_table,pattern = ";")
+    for(q in 1:lengths(queries)){
+      query <- queries[[1]][q]
+      update_Table <- dbGetQuery(con_database,query)
+      return (cat("\n Exif data succesfully loaded in Postgis !\n"))
+    }
+    # create_Table <- dbGetQuery(con_database,query_create_table)
     dbWriteTable(con_database, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
   } else {
     dbWriteTable(con_database, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
-    
   }
+  
   query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column.sql")), collapse=" ")
-  update_Table <- dbGetQuery(con_database,query_update_table_spatial_column)
+  queries <- str_split(query_update_table_spatial_column,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+    cat("\n query : ")
+    cat(query)
+    update_Table <- dbGetQuery(con_database,query)
+  }
   return (cat("\nGPS data succesfully loaded in Postgis !\n"))
   # return (update_Table)
 }
@@ -534,6 +552,7 @@ load_gps_tracks_in_database <- function(con_database, codes_directory, gps_track
 # Create or replace a SQL materialized view to gather data per dataset / survey
 
 infer_photo_location_from_gps_tracks <- function(con_database, images_directory, codes_directory, session_id, platform, offset, create_view=FALSE){
+  cat("\n Trying to infer photo location")
   original_directory <- getwd()
   setwd(images_directory)
   # query <- NULL
@@ -572,13 +591,13 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
       # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
       query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
       query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
-      query <- paste0(query_drop,'CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
-      # query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
+      dbGetQuery(con_database, query_drop)
+      query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
       query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
       if(offset < 0){      
         query <- gsub("- interval","+ interval",query)
         query <- gsub("778",abs(offset)+1,query)
-      }else{        
+      }else{
         query <- gsub("778",abs(offset)-1,query)
         }
       query <- paste0(query," WITH DATA")
@@ -588,10 +607,15 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
           writeLines(query, fileConn)
           close(fileConn)
           }
-  result <- dbGetQuery(con_database, create_table_from_view)
+  queries <- str_split(create_table_from_view,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+    update_Table <- dbGetQuery(con_database,query)
+  }
   # add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"view_',session_id,'_geom_i\" ; CREATE INDEX \"view_',session_id,'_geom_i\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
-  add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"',session_id,'_geom_idx\" ;  CREATE INDEX \"',session_id,'_geom_idx\" ON \"',session_id,'\" USING GIST (the_geom);'))
-  create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"',session_id,'\";'))
+  drop_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"',session_id,'_geom_idx\" ; '))
+  add_spatial_index <- dbGetQuery(con_database, paste0('CREATE INDEX \"view_',session_id,'_geom_idx\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
+  create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
   # head(create_csv_from_view)
   setwd(paste0(images_directory,"/GPS"))
   filename <- paste0("photos_location_",session_id,".csv")
@@ -608,12 +632,12 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
 
 load_exif_metadata_in_database <- function(con_database, codes_directory, mission_directory,platform){
   
-  
   cat(paste0("Start loading data for mission: ", mission_directory,"\n"))
   
   
   # SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE
-  dataset_time_zone <- "Indian/Mauritius"
+  # dataset_time_zone <- "Indian/Mauritius"
+  dataset_time_zone <- "Indian/Antananarivo"
   
   # SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE
   if(type_images=="drone"){
@@ -700,7 +724,9 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
                                  URL_original_image                             
                                  
         )
-        names(core_exif_metadata)
+        # names(core_exif_metadata)
+        # core_exif_metadata <- core_exif_metadata  %>%  slice_tail(n=100)
+        # nrow(core_exif_metadata)
         # name_file_csv<-paste("Core_Exif_metadata_",session_id,".csv",sep="")
         # saveRDS(core_exif_metadata, paste("Core_Exif_metadata_",session_id,".RDS",sep=""))
         
@@ -788,7 +814,14 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
   }else(cat("No GPS file when looking for TCX or GPX files => RTK ??"))
   
   # INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP
-  photo_location <- infer_photo_location_from_gps_tracks(con_database, mission_directory, codes_directory,session_id, platform=platform, offset=offset,create_view=TRUE)
+  photo_location <- infer_photo_location_from_gps_tracks(con_database,
+                                                         mission_directory,
+                                                         codes_directory,
+                                                         session_id,
+                                                         platform=platform,
+                                                         offset=offset,
+                                                         create_view=TRUE
+                                                         )
   head(photo_location$the_geom,n = 50)
   
   cat("Materialized view has been created!\n")
@@ -1244,20 +1277,26 @@ copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_im
 
 
 #############################################################################################################
-############################ infer_photo_location_from_gps_tracks ###################################################
+############################ create_view_species_occurences ###################################################
 #############################################################################################################
 # Create or replace a SQL materialized view to gather data per dataset / survey
 
 create_view_species_occurences <- function(con_database,codes_directory,images_directory){
   original_directory <- getwd()
   setwd(images_directory)
-  query <- NULL
-  query <- paste(readLines(paste0(codes_directory,"SQL/extract_species_occurences_manual_annotation.sql")), collapse=" ")
+  queries <- NULL
+  queries <- paste(readLines(paste0(codes_directory,"SQL/extract_species_occurences_manual_annotation.sql")), collapse=" ")
   query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_occurences_manual_annotation";')
-  query <- paste0(query_drop,'CREATE MATERIALIZED VIEW "view_occurences_manual_annotation" AS ',query)
-  query <- paste0(query," WITH DATA")
-  dbGetQuery(con_database, query)
-  add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"view_occurences_manual_annotation_geom_idx\" ;  CREATE INDEX \"view_occurences_manual_annotation_geom_idx\" ON \"view_occurences_manual_annotation\" USING GIST (geometry_postgis);'))
+  dbGetQuery(con_database, query_drop)
+  queries <- paste0('CREATE MATERIALIZED VIEW "view_occurences_manual_annotation" AS ',queries)
+  queries <- str_split(queries,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+    update_Table <- dbGetQuery(con_database,query)
+    return (cat("\n Exif data succesfully loaded in Postgis !\n"))
+  }
+  drop_spatial_index <- dbGetQuery(con_database, 'DROP INDEX IF EXISTS \"view_occurences_manual_annotation_geom_idx\" ;' )
+  add_spatial_index <- dbGetQuery(con_database, 'CREATE INDEX \"view_occurences_manual_annotation_geom_idx\" ON \"view_occurences_manual_annotation\" USING GIST (geometry_postgis);')
   create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"view_occurences_manual_annotation\";'))
   setwd(images_directory)
   filename <- "view_occurences_manual_annotation.csv"

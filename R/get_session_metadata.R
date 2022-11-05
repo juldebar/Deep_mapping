@@ -204,14 +204,14 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       file_name <- paste0("photos_location_",session_id)
       
       ######################## store spatial data in a shape file
-      shp_filename <- paste0(sub('\\..*$', '', basename(gps_file)),"_",tolower(file_type))
-      # shp_filename <- file_name
-      if (!file.exists(paste0(shp_filename,".shp")) && type_images!="drone"){
-        shape_file <- write_shp_from_csv(shp_filename)
-        }
-      cat("\n Zip shape file \n")
-      zip(paste0(shp_filename,".zip"), c(paste0(shp_filename,".shp"),paste0(shp_filename,".shx"),paste0(shp_filename,".dbf"),paste0(shp_filename,".prj")))
-      
+      # shp_filename <- paste0(sub('\\..*$', '', basename(gps_file)),"_",tolower(file_type))
+      # # shp_filename <- file_name
+      # if (!file.exists(paste0(shp_filename,".shp")) && type_images!="drone"){
+      #   shape_file <- write_shp_from_csv(file_name=shp_filename)
+      #   }
+      # cat("\n Zip shape file \n")
+      # zip(paste0(shp_filename,".zip"), c(paste0(shp_filename,".shp"),paste0(shp_filename,".shx"),paste0(shp_filename,".dbf"),paste0(shp_filename,".prj")))
+      # 
       # gps_points <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
       # bbox <- makebbox(ymax,xmax,ymin,xmin)
       # bbox <- makebbox(ymax+0.03,xmax+0.03,ymin-0.03,xmin-0.03)
