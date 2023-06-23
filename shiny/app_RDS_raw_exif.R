@@ -17,9 +17,11 @@ library(RPostgreSQL)
 ############################################################ DATA and FILTER ########################################################################################################################################################################
 # data <- readRDS("/media/julien/SSD2TO/Deep_Mapping/new/mada/session_2022_10_31_kite_Ifaty/METADATA/exif/All_Exif_metadata_session_2022_10_31_kite_Ifaty.RDS")  
 # data <- read.csv("/media/julien/SSD2TO/Deep_Mapping/new/mada/session_2022_10_31_kite_Ifaty/GPS/photos_location_session_2022_10_31_kite_Ifaty.csv")  
-layer <- "session_2022_10_31_kite_Ifaty"
+# con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
+layer <- "view_session_2023_drone_nosy_ve_Mission2"
 data_sf <- NULL
-data_sf <-st_read(con_Reef_database, query = "select * from \"view_session_2022_10_31_kite_Ifaty\" WHERE \"LightValue\" > 12 ORDER BY photo_id LIMIT 2000")
+# data_sf <-st_read(con_Reef_database, query = "select * from \"view_session_2022_10_31_kite_Ifaty\" WHERE \"LightValue\" > 12 ORDER BY photo_id LIMIT 2000")
+data_sf <-st_read(con_Reef_database, query = paste0("select * from \"",layer,"\"  LIMIT 2000"))
 # data_sf <- data %>% slice_head(n=1000) %>% select(photo_id,photo_identifier,session_id,session_photo_number,Make,Model,ThumbnailImage,decimalLatitude,decimalLongitude,ThumbnailImage)
 # photo_id,photo_identifier,session_id,session_photo_number,photo_relative_file_path,photos_in_this_segment,list_time_photos,count_photos,cell_number,ratio,segment_wkt,segment_geom,footprintWKT,decimalLatitude,decimalLongitude,the_geom,GPSDateTime,DateTimeOriginal,LightValue,ImageSize,Make,Model,ThumbnailImage,PreviewImage,URL_original_image
 
@@ -57,8 +59,8 @@ ui <- fluidPage(
   navbarPage(title="Data viewer for Coral Reef images",
              tabPanel("Make occurences viewer",
                       div(class="outer",
-                          # tags$head(includeCSS("styles.css")),
-                          tags$head(includeCSS("https://raw.githubusercontent.com/juldebar/MIKAROKA/main/styles.css")),
+                          tags$head(includeCSS("/home/julien/Desktop/CODES/MIKAROKA/styles.css")),
+                          # tags$head(includeCSS("https://raw.githubusercontent.com/juldebar/MIKAROKA/main/styles.css")),
                           leafletOutput("mymap", width="100%", height="100%"),
                           
                           # Shiny versions prior to 0.11 should use class = "modal" instead.
@@ -231,11 +233,13 @@ server <- function(input, output, session) {
     ) %>% setView(lng = st_coordinates(session_track_centroid)[1],
                   lat =st_coordinates(session_track_centroid)[2], zoom = 5
     # https://leaflet-extras.github.io/leaflet-providers/preview/ 
-    ) %>% addProviderTiles(providers$Esri.WorldImagery,
-                           group = "ESRI",
-                           options = providerTileOptions(opacity = 0.95)     
-   # )  %>% addProviderTiles("Esri.OceanBasemap", group = "ESRI"
-    # )  %>% addProviderTiles("Esri.WorldImagery", group = "ESRI2" 
+    # ) %>% addProviderTiles(providers$Esri.WorldImagery,
+    #                        group = "ESRI",
+    #                        options = providerTileOptions(opacity = 0.95)     
+   )  %>% addProviderTiles("Esri.OceanBasemap", group = "ESRI",
+                           options = providerTileOptions(opacity = 0.95) 
+    )  %>% addProviderTiles("Esri.WorldImagery", group = "ESRI2",
+                           options = providerTileOptions(opacity = 0.95) 
     ) %>% addWMSTiles(
       "https://gs.marbec-tools.ird.fr/geoserver/COI/ows",
       layers = "Mangroves_Mada_COI-OCEA-IHSM-ARDA_WGS84-UTM38S_V05-1",
