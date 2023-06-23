@@ -579,12 +579,33 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
   create_table_from_view <-NULL
   
   if(platform =="drone"){
-    cat("/ntoto/n")
+    cat("/n view for drone data/n")
     create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(codes_directory,"SQL/create_table_from_exif_table.sql")), collapse=" "))
     fileConn<-file(paste0('table_',session_id,'.SQL'))
     writeLines(create_table_from_view, fileConn)
     close(fileConn)
+    ##########
+    create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(codes_directory,"SQL/create_table_from_view.sql")), collapse=" "))
+    query <- NULL
+    # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
+    query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
+    query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
+    dbGetQuery(con_database, query_drop)
+    query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
+    query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
+    if(offset < 0){      
+      query <- gsub("- interval","+ interval",query)
+      query <- gsub("778",abs(offset)+1,query)
+    }else{
+      query <- gsub("778",abs(offset)-1,query)
+    }
+    query <- paste0(query," WITH DATA")
+    dbGetQuery(con_database, query)
     
+    fileConn<-file(paste0('view_',session_id,'.SQL'))
+    writeLines(query, fileConn)
+    close(fileConn)
+    #######
     }else{
       create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(codes_directory,"SQL/create_table_from_view.sql")), collapse=" "))
       query <- NULL
@@ -643,7 +664,7 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
   if(type_images=="drone"){
     session_id <- paste0(gsub(paste0(dirname(dirname(mission_directory)),"/"),"",dirname(mission_directory)),
                          "_",gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
-    mime_type = "*.jpg"
+    mime_type = "*.JPG"
     prefix_mission = "Mission"
     images_dir = "./data"
     gps_dir = "./"

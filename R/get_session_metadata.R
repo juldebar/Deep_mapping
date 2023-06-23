@@ -71,7 +71,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   ################### Set directories ####################metadata_sessions=metadata_this_mission,type_images=type_images)###
   if(type_images=="drone"){
     session_id <- paste0(gsub(paste0(dirname(dirname(this_directory)),"/"),"",dirname(this_directory)),"_",gsub(" ","",gsub(paste0(dirname(this_directory),"/"),"",this_directory)))
-    pattern = "*.jpg"
+    pattern = "*.JPG"
     DCIM_directory <- "data"
     date <- "2020-02-15"
     keywords="GENERAL:drone,coral reef_"
@@ -109,12 +109,16 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   ################### Set static metadata elements #######################
   title <- gsub("session 20","Session of the 20",gsub("_"," ",session_id))
   subject <- keywords
+  description <- "abstract:"
   creator <- "owner:emmanuel.blondel1@gmail.com_\npointOfContact:sylvain.bonhommeau@ifremer.fr_\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
   type <- "dataset"
   language <- "eng"
+  # simplified_spatial_extent <-"LINESTRING (43.60036 -23.64388, 43.59685 -23.64484, 43.59815 -23.64696, 43.59785 -23.64713, 43.59655 -23.64499, 43.59624 -23.64515, 43.59754 -23.64728, 43.59724 -23.64744, 43.59594 -23.64531, 43.59562 -23.64546, 43.59692 -23.64759, 43.59663 -23.64775, 43.59533 -23.64563, 43.59502 -23.64577, 43.59631 -23.6479, 43.596 -23.64807, 43.59471 -23.64593, 43.59441 -23.64608, 43.5957 -23.64822, 43.59539 -23.64838, 43.59411 -23.64627, 43.59378 -23.6464, 43.59508 -23.64853, 43.59479 -23.64869, 43.59349 -23.64657, 43.59317 -23.64671, 43.59447 -23.64885, 43.59416 -23.64901, 43.59288 -23.64689, 43.59255 -23.64703, 43.59385 -23.64915, 43.59355 -23.64932, 43.59226 -23.6472, 43.59194 -23.64734, 43.59324 -23.64947, 43.59294 -23.64963, 43.59164 -23.6475, 43.59134 -23.64765, 43.59263 -23.64979, 43.59232 -23.64995, 43.59103 -23.64782, 43.59071 -23.64797, 43.59201 -23.6501)"
+  simplified_spatial_extent <-NULL
   provenance <-"statement:This is some data quality statement providing information on the provenance"
   source <-"camera_"
   format <-gsub("*.","",pattern)
+  relation <- NULL
   gps_file <- NULL
   spatial_extent <- NULL
   temporal_extent <- NULL
@@ -126,7 +130,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   files <- list.files(path = directories, pattern = pattern,recursive = TRUE)
   Number_of_Pictures <- length(files)
   if(Number_of_Pictures>0){
-    description <- paste0("abstract:This dataset is made of ",Number_of_Pictures," pictures which have been collected during the ", title)
+    description <- paste0(description,"This dataset is made of ",Number_of_Pictures," pictures which have been collected during the ", title)
     ############################################################
     ################### TEMPORAL COVERAGE ######################
     ############################################################
@@ -158,7 +162,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     dataframe_gps_files <- return_dataframe_gps_files(this_directory,type=file_type)
   }
   number_row<-nrow(dataframe_gps_files)
-  if(number_row>0){
+  if(!is.null(number_row)){
     cat("\n Build a spatial data frame \n")
     
     xmin <- NULL
@@ -169,19 +173,26 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     for (t in 1:number_row){
       
       gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
+      # gps_file <-"/media/julien/Deep_Mapping_bac/data_deep_mapping/2023/test_geoflow/2023_05_01_Anakao_Prince_Anakao_drone_julien/Mission3_gpx_not_good/GPS/Mission4.gpx"
       
-      # dataframe_gps_file <-NULL
-      # dataframe_gps_file <- return_dataframe_gps_file(con_database, wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id,load_in_database=FALSE)
-      # #       head(dataframe_gps_file)
-      #       xmin <- min(dataframe_gps_file$longitude)
-      #       xmax <- max(dataframe_gps_file$longitude)
-      #       ymin <- min(dataframe_gps_file$latitude)
-      #       ymax <- max(dataframe_gps_file$latitude)
-      #       spatial_extent <- paste("SRID=4326;POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
+      ####################
+      dataframe_gps_file <-NULL
+      dataframe_gps_file <- return_dataframe_gps_file(con_database, wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id,load_in_database=FALSE)
+      #       head(dataframe_gps_file)
+            xmin <- min(dataframe_gps_file$longitude)
+            xmax <- max(dataframe_gps_file$longitude)
+            ymin <- min(dataframe_gps_file$latitude)
+            ymax <- max(dataframe_gps_file$latitude)
+            spatial_extent <- paste("SRID=4326;POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
+            ####################
+            
+            
       if(grepl(pattern = ".tcx",gps_file)){
         spatial_extent <- tcx_to_wkt(gps_file, dTolerance = 0.00005)
-      }else{
+      }else if(grepl(pattern = ".gpx",gps_file)){
         spatial_extent <- gpx_to_wkt(gps_file, dTolerance = 0.00005)
+      }else{
+        cat("no GPS file !!")
       }
       # spatial_extent_geom <- sf::st_as_sfc(spatial_extent,wkt = "geom")
       # spatial_extent_geom <- sf::st_as_sfc(paste0("SRID=4326;",spatial_extent))
@@ -213,9 +224,9 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       # zip(paste0(shp_filename,".zip"), c(paste0(shp_filename,".shp"),paste0(shp_filename,".shx"),paste0(shp_filename,".dbf"),paste0(shp_filename,".prj")))
       # 
       # gps_points <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
-      # bbox <- makebbox(ymax,xmax,ymin,xmin)
-      # bbox <- makebbox(ymax+0.03,xmax+0.03,ymin-0.03,xmin-0.03)
-      bbox <- st_bbox(spatial_extent_geom)
+      bbox <- makebbox(ymax,xmax,ymin,xmin)
+      bbox <- makebbox(ymax+0.03,xmax+0.03,ymin-0.03,xmin-0.03)
+      # bbox <- st_bbox(spatial_extent_geom)
       
       
       # https://cran.r-project.org/web/packages/pdftools/pdftools.pdf
@@ -329,7 +340,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
 ###############################
   ################### CREATE DATAFRAME #######################
   ############################################################
-  cat("\n Create metadata dataframe \n")
+  cat("\n Create metadata dataframe : \n")
   
   newRow <-NULL
   newRow <- data.frame(Identifier=session_id,#Identifier=paste0("id:",session_id),

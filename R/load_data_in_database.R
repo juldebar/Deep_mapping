@@ -2,12 +2,13 @@
 codes_directory <-"~/Desktop/CODES/Deep_mapping/"
 codes_github_repository=codes_directory
 source(paste0(codes_github_repository,"R/functions.R"))
-# source(paste0(codes_directory,"R/credentials_databases.R"))
-source(paste0(codes_directory,"R/credentials.R"))
+source(paste0(codes_directory,"R/functions.R"))
+source(paste0(codes_directory,"R/credentials_databases.R"))
+# source(paste0(codes_directory,"R/credentials.R"))
 setwd(codes_directory)
 # configuration_file <- paste0(codes_directory,"geoflow/Deep_mapping_worflow.json")
 # source(paste0(codes_github_repository,"R/gpx_to_wkt.R"))
-source(paste0(codes_github_repository,"R/get_session_metadata.R"))
+# source(paste0(codes_github_repository,"R/get_session_metadata.R"))
 #warning: no slash at the end of the path
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 cat("Connect the database\n")
@@ -22,8 +23,8 @@ missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FA
 # missions <- "/media/julien/3362-6161/saved/session_2019_09_12_kite_Le_Morne"
 create_geoflow_metadata=TRUE
 upload_to_google_drive=FALSE
-load_metadata_in_database=TRUE
-load_data_in_database=TRUE
+load_metadata_in_database=FALSE
+load_data_in_database=FALSE
 load_tags_in_database=FALSE
 
 #iterate on all missions to load the database with data (Dublin Core metadata, GPS data, exif metadata)
