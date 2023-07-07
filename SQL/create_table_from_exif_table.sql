@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS public."replace_session_id";
+DROP TABLE IF EXISTS public."replace_session_id" CASCADE ;
 
 CREATE TABLE "replace_session_id" AS 
 	SELECT
@@ -42,3 +42,4 @@ COMMENT ON COLUMN "replace_session_id"."decimalLongitude" IS '"decimalLatitude (
 --COMMENT ON COLUMN "replace_session_id"."recordedBy" IS '"recordedBy:A list (concatenated and separated) of names of people, groups, or organizations responsible for recording the original Occurrence. The primary collector or observer, especially one who applies a personal identifier (recordNumber), should be listed first.';
 
 --		"GPSLatitude"|| "GPSLongitude" AS "footprintWKT",
+-- 	"footprintWKT",

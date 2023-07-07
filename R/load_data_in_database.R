@@ -1,31 +1,58 @@
 # rm(list=ls())
-codes_directory <-"~/Desktop/CODES/Deep_mapping/"
-codes_github_repository=codes_directory
-source(paste0(codes_github_repository,"R/functions.R"))
-source(paste0(codes_directory,"R/functions.R"))
-source(paste0(codes_directory,"R/credentials_databases.R"))
-# source(paste0(codes_directory,"R/credentials.R"))
-setwd(codes_directory)
-# configuration_file <- paste0(codes_directory,"geoflow/Deep_mapping_worflow.json")
+# install.packages("pacman")
+pacman::p_load(dotenv,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,pdftools,stringr,tidyr,rosm,gsheet,dplyr,sf)
+
+code_directory <-"~/Desktop/CODES/Deep_mapping/"
+setwd(code_directory)
+dotenv::load_dot_env(".env")
+images_directory=Sys.getenv("IMAGES_DIRECTORY")
+codes_github_repository=Sys.getenv("GITHUB_REPOSITORY")
+#database connection parameters
+Host=Sys.getenv("DB_REEF_LOCALHOST")
+Dbname =Sys.getenv("DB_REEF_NAME_CREATE")
+User=Sys.getenv("DB_REEF_ADMIN")
+Password=Sys.getenv("DB_REEF_ADMIN_PWD")
+DRV=Sys.getenv("DB_DRV")
+
+
+#specify here which google drive folders should be used to store files
+google_drive_path <-  drive_get(id=Sys.getenv("GOOGLE_DRIVE_PATH"))
+google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_path$id)
+# DCMI_metadata_google_drive_path <- drive_get(id="12anx6McwA6xiZeswfF8Y9sGuQSnohWZsUNIhc1fFjnw")
+DCMI_metadata_google_drive_path <- drive_get(id=Sys.getenv("DCMI_METADATA_GOOGLE_DRIVE_PATH"))
+tags_folder_google_drive_path <- drive_get(id=Sys.getenv("TAGS_FOLDER_GOOGLE_DRIVE_PATH"))
+# tags_file_google_drive_path <- drive_get(id="1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM")
+all_categories <-as.data.frame(gsheet::gsheet2tbl(paste0("https://docs.google.com/spreadsheets/d/",Sys.getenv("ALL_CATEGORIES"),"/edit?usp=sharing")))
+
+# all_tags_as_csv <- return_dataframe_tag_txt(images_directory,all_categories = all_categories)
+
+source(paste0(code_directory,"R/functions.R"))
+source(paste0(code_directory,"R/get_session_metadata.R"))
+source(paste0(code_directory,"R/credentials_databases.R"))
 # source(paste0(codes_github_repository,"R/gpx_to_wkt.R"))
-# source(paste0(codes_github_repository,"R/get_session_metadata.R"))
-#warning: no slash at the end of the path
-# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
+# configuration_file <- paste0(code_directory,"geoflow/Deep_mapping_worflow.json")
+
+
+# cat("Create or replace the database\n")
+# create_database(con_Reef_database, codes_github_repository,db_name=Dbname)
+
 cat("Connect the database\n")
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
-cat("Replace the database\n")
-# create_database(con_Reef_database, codes_github_repository)
+# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 
-#if multiple missions, list sub-repositories
-missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FALSE)
-#if only one mission, indicate the specific sub-repository
-# missions <- paste0(images_directory,"/","session_2019_10_12_kite_Le_Morne")
-# missions <- "/media/julien/3362-6161/saved/session_2019_09_12_kite_Le_Morne"
+# Options to activate or not the different steps of the workflow
 create_geoflow_metadata=TRUE
-upload_to_google_drive=FALSE
-load_metadata_in_database=FALSE
-load_data_in_database=FALSE
+upload_to_google_drive=TRUE
+load_metadata_in_database=TRUE
+load_data_in_database=TRUE
 load_tags_in_database=FALSE
+
+#warning: no slash at the end of the path
+#if multiple missions, list sub-repositories
+#if only one mission, indicate the specific sub-repository
+missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FALSE)
+# missions <- paste0(images_directory,"/","session_2019_10_12_kite_Le_Morne")
+
 
 #iterate on all missions to load the database with data (Dublin Core metadata, GPS data, exif metadata)
 c=0
@@ -50,9 +77,18 @@ for(m in missions){
                                                     google_drive_path,
                                                     metadata_sessions=metadata_this_mission,
                                                     type_images=type_images,
-                                                    google_drive_upload=TRUE)
+                                                    google_drive_upload=upload_to_google_drive
+                                                    )
+      
+      if(!dir.exists(file.path(md, "METADATA"))){
+        cat("Create METADATA directory")
+        dir.create(file.path(md, "METADATA"))
+      }
+      setwd("./METADATA")
       file_name <- paste0(session_id,"_DCMI_metadata.csv")
       write.csv(metadata_this_mission,file = file_name,row.names = F)
+      setwd(md)
+
       if(upload_to_google_drive){
         cat(paste0("Upload metadata on google drive: ", m,"\n"))
         metadata_gsheet_id <- upload_file_on_drive_repository(DCMI_metadata_google_drive_path,media=file_name, file_name=file_name,type="spreadsheet")
@@ -60,7 +96,7 @@ for(m in missions){
       if(load_metadata_in_database){
         cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
         load_DCMI_metadata_in_database(con_database=con_Reef_database,
-                                       codes_directory=codes_directory,
+                                       code_directory=code_directory,
                                        DCMI_metadata=metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],
                                        create_table=FALSE)
         
@@ -69,7 +105,7 @@ for(m in missions){
         cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
         ratio <- NULL
         ratio <- load_exif_metadata_in_database(con_database=con_Reef_database,
-                                                codes_directory=codes_directory,
+                                                code_directory=code_directory,
                                                 mission_directory=md,
                                                 platform=platform
                                                 )
@@ -114,7 +150,7 @@ for(m in missions){
       if(load_metadata_in_database){
         cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
         load_DCMI_metadata_in_database(con_database=con_Reef_database,
-                                       codes_directory,
+                                       code_directory,
                                        DCMI_metadata=metadata_this_mission[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)],
                                        create_table=FALSE
                                        )
@@ -123,7 +159,7 @@ for(m in missions){
         cat(paste0("Extract and load exif metadata in the database: ", m,"\n"))
         ratio <- NULL
         ratio <- load_exif_metadata_in_database(con_database=con_Reef_database,
-                                                codes_directory=codes_directory,
+                                                code_directory=code_directory,
                                                 mission_directory=m,
                                                 platform=platform
                                                 )
@@ -153,6 +189,7 @@ for(m in missions){
       }
     }
 }
+
 
 #write metadata table
 setwd(images_directory)
@@ -204,7 +241,7 @@ wkt <- "Polygon ((57.3082025349139812 -20.45903267326258046, 57.3075427114963247
 # wkt="none"
 
 # We extract all images which are within a given polygon (if none => all images) and are not annotated yet and copy these images in a folder whose name is the name of expected category
-extracted_images_not_annotated <- spatial_extraction_of_pictures_and_copy_in_tmp_folder(wd=training_images, con_database=con_Reef_database,codes_directory=codes_directory,images_directory=images_directory,wkt=wkt,expected_species=expected_species)
+extracted_images_not_annotated <- spatial_extraction_of_pictures_and_copy_in_tmp_folder(wd=training_images, con_database=con_Reef_database,code_directory=code_directory,images_directory=images_directory,wkt=wkt,expected_species=expected_species)
 nrow(extracted_images_not_annotated)
 colnames(extracted_images_not_annotated)
 extracted_images_not_annotated$url <- paste0("http://162.38.140.205/Deep_mapping/backup/validated",extracted_images_not_annotated$photo_path)
@@ -222,12 +259,12 @@ mime_type = "*.JPG"
 expected_species <- "Padina_boryana"
 wd_selected_candidates <-paste0("/home/julien/Desktop/Data/candidates/",gsub(" ","_", expected_species))
 wd_selected_candidates
-extracted_images_not_annotated <- spatial_extraction_of_pictures_and_copy_in_tmp_folder(wd=wd_selected_candidates, con_database=con_Reef_database,codes_directory=codes_directory,images_directory=images_directory,wkt=wkt,expected_species=expected_species)
+extracted_images_not_annotated <- spatial_extraction_of_pictures_and_copy_in_tmp_folder(wd=wd_selected_candidates, con_database=con_Reef_database,code_directory=code_directory,images_directory=images_directory,wkt=wkt,expected_species=expected_species)
 extracted_images_not_annotated
 insert_images_tags_and_labels <- turn_list_of_files_into_csv_annotated(con_database=con_Reef_database,wd_selected_candidates,extracted_images_not_annotated,expected_species=expected_species,mime_type = "*.JPG")
 
 # => REFRESH VIEW annotation
-query1 <-   paste(readLines(paste0(codes_directory,"SQL/create_view_spatial_buffer_species.sql")), collapse=" ")
+query1 <-   paste(readLines(paste0(code_directory,"SQL/create_view_spatial_buffer_species.sql")), collapse=" ")
 query1 <-   paste("REFRESH MATERIALIZED VIEW public.view_occurences_manual_annotation")
 dbGetQuery(con_Reef_database,query1)
 
@@ -249,7 +286,7 @@ nrow(tags_file_google_drive)
 copy_images_for_training(training_images, tags_file_google_drive,file_categories=all_categories,crop_images=FALSE)
 
 
-dataframe_from_db <- extraction_annotated_pictures_from_db(con_database=con_Reef_database,codes_directory,images_directory)
+dataframe_from_db <- extraction_annotated_pictures_from_db(con_database=con_Reef_database,code_directory,images_directory)
 file_name <- "all_sessions_tags_from_db"
 all_tags__from_db_gsheet_id <- upload_file_on_drive_repository(google_drive_path=tags_folder_google_drive_path,media=dataframe_from_db, file_name,type="spreadsheet")
 url_db <-paste0("https://docs.google.com/spreadsheets/d/",all_tags__from_db_gsheet_id)
@@ -263,11 +300,11 @@ all_tags <- rbind(tags_file_google_drive,tags_from_db_file_google_drive) %>%  di
 nrow(all_tags)
 # query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=tags_file_google_drive)
 query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=all_tags)
-create_view_species_occurences(con_database=con_Reef_database,codes_directory=codes_directory,images_directory=images_directory)
+create_view_species_occurences(con_database=con_Reef_database,code_directory=code_directory,images_directory=images_directory)
 # all_tags %>%  filter(tag=="Sargassum ilicifolium")
 
 
-query_annotated_pictures_database <-   paste(readLines(paste0(codes_directory,"SQL/count_annotation_by_species.sql")), collapse=" ")
+query_annotated_pictures_database <-   paste(readLines(paste0(code_directory,"SQL/count_annotation_by_species.sql")), collapse=" ")
 summary_annotated_pictures_database <- dbGetQuery(con_Reef_database,query_annotated_pictures_database)
 file_name <- "Annotated_pictures_database"
 all_tags__from_db_gsheet_id <- upload_file_on_drive_repository(google_drive_path=tags_folder_google_drive_path,media=summary_annotated_pictures_database, file_name,type="spreadsheet")
@@ -281,7 +318,7 @@ all_tags__from_db_gsheet_id <- upload_file_on_drive_repository(google_drive_path
 # list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM/edit?usp=sharing"))
 # # list_images_with_tags_and_labels <- as.data.frame(gsheet::gsheet2tbl("https://drive.google.com/open?id=1TkX5P7pr5MEvxr7J78tCMKrSGzqUSG-FXicod9yLCEc"))
 # cat("Update annotations in the database with the content of this google sheet \n")
-# # update_annotations_in_database(con_Reef_database, codes_directory, list_images_with_tags_and_labels, create_table=FALSE)
+# # update_annotations_in_database(con_Reef_database, code_directory, list_images_with_tags_and_labels, create_table=FALSE)
 
 # wd_copy <- "/media/julien/Deep_Mapping_two/trash"
 training_images <- "/tmp/training_dataset"
@@ -309,7 +346,7 @@ distinct_tags_df_images
 copy_images_for_training(training_images, df_images,all_categories,crop_images=crop_images)
 # query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=tags_file_google_drive)
 query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=df_images)
-create_view_species_occurences(con_database=con_Reef_database,codes_directory=codes_directory,images_directory=images_directory)
+create_view_species_occurences(con_database=con_Reef_database,code_directory=code_directory,images_directory=images_directory)
 
 
 

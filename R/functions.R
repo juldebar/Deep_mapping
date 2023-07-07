@@ -322,30 +322,32 @@ rename_exif_csv <- function(images_directory){
 ############################ create_database ###################################################
 #############################################################################################################
 
-create_database <- function(con_database, codes_directory){
+create_database <- function(con_database, code_directory,db_name="Reef_database"){
   
-  query_create_database <- paste(readLines(paste0(codes_directory,"SQL/create_Reef_database.sql")), collapse=" ")
+  query_create_database <- paste(readLines(paste0(code_directory,"SQL/create_Reef_database.sql")), collapse=" ")
+  query_create_database <- gsub("Reef_database",db_name,paste(readLines(paste0(code_directory,"SQL/create_Reef_database.sql")), collapse=" "))
+  
   query_create_database <- gsub("Reef_admin",User,query_create_database)
   create_database <- dbGetQuery(con_database,query_create_database)
   
-  query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_Dublin_Core_metadata.sql")), collapse=" ")
+  query_create_table_metadata <- paste(readLines(paste0(code_directory,"SQL/create_Dublin_Core_metadata.sql")), collapse=" ")
   query_create_table_metadata <- gsub("Reef_admin",User,query_create_table_metadata)
   create_table_metadata <- dbGetQuery(con_database,query_create_table_metadata)
   
-  query_create_table_gps_tracks <- paste(readLines(paste0(codes_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
+  query_create_table_gps_tracks <- paste(readLines(paste0(code_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
   query_create_table_gps_tracks <- gsub("Reef_admin",User,query_create_table_gps_tracks)
   create_table <- dbGetQuery(con_database,query_create_table_gps_tracks)
   
-  query_create_table_exif_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_exif_metadata_table.sql")), collapse=" ")
+  query_create_table_exif_metadata <- paste(readLines(paste0(code_directory,"SQL/create_exif_metadata_table.sql")), collapse=" ")
   query_create_table_exif_metadata <- gsub("Reef_admin",User,query_create_table_exif_metadata)
   create_table_exif_metadata <- dbGetQuery(con_database,query_create_table_exif_metadata)
   
-  query_create_table_label <- paste(readLines(paste0(codes_directory,"SQL/create_label_table.sql")), collapse=" ")
+  query_create_table_label <- paste(readLines(paste0(code_directory,"SQL/create_label_table.sql")), collapse=" ")
   query_create_table_label <- gsub("Reef_admin",User,query_create_table_label)
   create_table_label <- dbGetQuery(con_database,query_create_table_label)
   labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
   tags_to_be_loaded <- labels %>% select(SubName,TagName, Link) %>% distinct() %>% rename(tag_code = TagName, tag_label = SubName, tag_definition=Link) %>% mutate(tag_id = row_number()) %>% relocate(tag_id,tag_code,tag_label,tag_definition)
-  load_labels_in_database(con_database, codes_directory, tags_to_be_loaded, create_table=FALSE)
+  load_labels_in_database(con_database, code_directory, tags_to_be_loaded, create_table=FALSE)
   
 } 
 
@@ -353,10 +355,10 @@ create_database <- function(con_database, codes_directory){
 ############################ load_labels_in_database ###################################################
 #############################################################################################################
 
-load_labels_in_database <- function(con_database, codes_directory, labels, create_table=FALSE){
+load_labels_in_database <- function(con_database, code_directory, labels, create_table=FALSE){
   
   if(create_table==TRUE){
-    query_create_table_label <- paste(readLines(paste0(codes_directory,"SQL/create_label_table.sql")), collapse=" ")
+    query_create_table_label <- paste(readLines(paste0(code_directory,"SQL/create_label_table.sql")), collapse=" ")
     query_create_table_label <- gsub("Reef_admin",User,query_create_table_label)
     create_table_label <- dbGetQuery(con_database,query_create_table_label)
   }
@@ -386,7 +388,7 @@ update_annotations_in_database <- function(con_database, images_tags_and_labels)
   list_photo_identifier <- gsub("\\)","",list_photo_identifier)
   
   #create accordingly the query which will extract all annnotated photos by using as filters the list of different sessions and photos identifiers
-  query_annotated_pictures_exif_metadata <- paste(readLines(paste0(codes_directory,"SQL/select_annotated_pictures_exif_metadata.sql")), collapse=" ")
+  query_annotated_pictures_exif_metadata <- paste(readLines(paste0(code_directory,"SQL/select_annotated_pictures_exif_metadata.sql")), collapse=" ")
   # query_annotated_pictures_exif_metadata <- gsub("list_photos",list_photos,query_annotated_pictures_exif_metadata)
   query_annotated_pictures_exif_metadata <- gsub("list_sessions",list_sessions,query_annotated_pictures_exif_metadata)
   query_annotated_pictures_exif_metadata <- gsub("list_photo_identifier",list_photo_identifier,query_annotated_pictures_exif_metadata)
@@ -453,11 +455,11 @@ update_annotations_in_database <- function(con_database, images_tags_and_labels)
 ############################ load_DCMI_metadata_in_database ###################################################
 #############################################################################################################
 
-load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_metadata, create_table=FALSE){
+load_DCMI_metadata_in_database <- function(con_database, code_directory, DCMI_metadata, create_table=FALSE){
   
   if(create_table==TRUE){
     
-    query_create_table_metadata <- paste(readLines(paste0(codes_directory,"SQL/create_Dublin_Core_metadata.sql")), collapse=" ")
+    query_create_table_metadata <- paste(readLines(paste0(code_directory,"SQL/create_Dublin_Core_metadata.sql")), collapse=" ")
     query_create_table_metadata <- gsub("Reef_admin",User,query_create_table_metadata)
     create_table_metadata <- dbGetQuery(con_database,query_create_table_metadata)
     
@@ -484,7 +486,7 @@ load_DCMI_metadata_in_database <- function(con_database, codes_directory, DCMI_m
 ############################ load_exif_metadata_in_database ###################################################
 #############################################################################################################
 
-load_exif_metadata_in_table_database <- function(con_database, codes_directory, core_exif_metadata, create_table=FALSE){
+load_exif_metadata_in_table_database <- function(con_database, code_directory, core_exif_metadata, create_table=FALSE){
   if(create_table==TRUE){
     query_create_exif_core_metadata_table <- paste(readLines(paste0(codes_github_repository,"SQL/create_exif_metadata_table.sql")), collapse=" ")
     create_exif_core_metadata_table <- dbGetQuery(con_database,query_create_exif_core_metadata_table)
@@ -502,7 +504,7 @@ load_exif_metadata_in_table_database <- function(con_database, codes_directory, 
     # core_exif_metadata <- core_exif_metadata[,c(15,1,2,3,4,5,6,7,8,9,10,11,12,13,14)]
     dbWriteTable(con_database, "photos_exif_core_metadata", core_exif_metadata, row.names=FALSE, append=TRUE)
   }
-  query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column_exif_metadata.sql")), collapse=" ")
+  query_update_table_spatial_column <- paste(readLines(paste0(code_directory,"SQL/add_spatial_column_exif_metadata.sql")), collapse=" ")
   query_update_table_spatial_column <- gsub("session%",session_id,query_update_table_spatial_column)
   queries <- str_split(query_update_table_spatial_column,pattern = ";")
   for(q in 1:lengths(queries)){
@@ -518,9 +520,9 @@ load_exif_metadata_in_table_database <- function(con_database, codes_directory, 
 ############################ load_gps_tracks_in_database ###################################################
 #############################################################################################################
 
-load_gps_tracks_in_database <- function(con_database, codes_directory, gps_tracks, create_table=TRUE){
+load_gps_tracks_in_database <- function(con_database, code_directory, gps_tracks, create_table=TRUE){
   if(create_table==TRUE){
-    query_create_table <- paste(readLines(paste0(codes_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
+    query_create_table <- paste(readLines(paste0(code_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
     queries <- str_split(query_create_table,pattern = ";")
     for(q in 1:lengths(queries)){
       query <- queries[[1]][q]
@@ -533,7 +535,7 @@ load_gps_tracks_in_database <- function(con_database, codes_directory, gps_track
     dbWriteTable(con_database, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
   }
   
-  query_update_table_spatial_column <- paste(readLines(paste0(codes_directory,"SQL/add_spatial_column.sql")), collapse=" ")
+  query_update_table_spatial_column <- paste(readLines(paste0(code_directory,"SQL/add_spatial_column.sql")), collapse=" ")
   queries <- str_split(query_update_table_spatial_column,pattern = ";")
   for(q in 1:lengths(queries)){
     query <- queries[[1]][q]
@@ -551,12 +553,12 @@ load_gps_tracks_in_database <- function(con_database, codes_directory, gps_track
 #############################################################################################################
 # Create or replace a SQL materialized view to gather data per dataset / survey
 
-infer_photo_location_from_gps_tracks <- function(con_database, images_directory, codes_directory, session_id, platform, offset, create_view=FALSE){
+infer_photo_location_from_gps_tracks <- function(con_database, images_directory, code_directory, session_id, platform, offset, create_view=FALSE){
   cat("\n Trying to infer photo location")
   original_directory <- getwd()
   setwd(images_directory)
   # query <- NULL
-  # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
+  # query <- paste(readLines(paste0(code_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
   # query <- gsub(" CREATE MATERIALIZED VIEW IF NOT EXISTS","CREATE MATERIALIZED VIEW IF NOT EXISTS",query)
   # query <- gsub("session_2018_03_24_kite_Le_Morne",session_id,query)
   # if(offset < 0){
@@ -580,37 +582,30 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
   
   if(platform =="drone"){
     cat("/n view for drone data/n")
-    create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(codes_directory,"SQL/create_table_from_exif_table.sql")), collapse=" "))
+    create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(code_directory,"SQL/create_table_from_exif_table.sql")), collapse=" "))
+    
+    queries <- str_split(create_table_from_view,pattern = ";")
+    for(q in 1:lengths(queries)){
+      query <- queries[[1]][q]
+      cat(paste0(query,"\n"))
+      update_Table <- dbGetQuery(con_database,query)
+    }
+    
     fileConn<-file(paste0('table_',session_id,'.SQL'))
     writeLines(create_table_from_view, fileConn)
     close(fileConn)
     ##########
-    create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(codes_directory,"SQL/create_table_from_view.sql")), collapse=" "))
     query <- NULL
-    # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
-    query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
-    query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
+    query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'n CASCADE";')
     dbGetQuery(con_database, query_drop)
-    query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
-    query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
-    if(offset < 0){      
-      query <- gsub("- interval","+ interval",query)
-      query <- gsub("778",abs(offset)+1,query)
-    }else{
-      query <- gsub("778",abs(offset)-1,query)
-    }
-    query <- paste0(query," WITH DATA")
+    query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS SELECT * FROM "',session_id,'" WITH DATA ;')
     dbGetQuery(con_database, query)
-    
-    fileConn<-file(paste0('view_',session_id,'.SQL'))
-    writeLines(query, fileConn)
-    close(fileConn)
     #######
     }else{
-      create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(codes_directory,"SQL/create_table_from_view.sql")), collapse=" "))
+      create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(code_directory,"SQL/create_table_from_view.sql")), collapse=" "))
       query <- NULL
-      # query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
-      query <- paste(readLines(paste0(codes_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
+      # query <- paste(readLines(paste0(code_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
+      query <- paste(readLines(paste0(code_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
       query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
       dbGetQuery(con_database, query_drop)
       query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
@@ -627,11 +622,14 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
           fileConn<-file(paste0('view_',session_id,'.SQL'))
           writeLines(query, fileConn)
           close(fileConn)
+          
+          queries <- str_split(create_table_from_view,pattern = ";")
+          for(q in 1:lengths(queries)){
+            query <- queries[[1]][q]
+            update_Table <- dbGetQuery(con_database,query)
+          
           }
-  queries <- str_split(create_table_from_view,pattern = ";")
-  for(q in 1:lengths(queries)){
-    query <- queries[[1]][q]
-    update_Table <- dbGetQuery(con_database,query)
+
   }
   # add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"view_',session_id,'_geom_i\" ; CREATE INDEX \"view_',session_id,'_geom_i\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
   drop_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"',session_id,'_geom_idx\" ; '))
@@ -651,7 +649,7 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
 ############################ load_exif_metadata_in_database ###################################################
 #############################################################################################################
 
-load_exif_metadata_in_database <- function(con_database, codes_directory, mission_directory,platform){
+load_exif_metadata_in_database <- function(con_database, code_directory, mission_directory,platform){
   
   cat(paste0("Start loading data for mission: ", mission_directory,"\n"))
   
@@ -691,7 +689,7 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
   # 1) extract exif metadata and store it into a CSV or RDS file
   if(!file.exists(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))){
     # extract exif metadata on the fly
-    template_df <- read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),
+    template_df <- read.csv(paste0(code_directory,"CSV/All_Exif_metadata_template.csv"),
                             colClasses=c(SourceFile="character",ExifToolVersion="numeric",FileName="character",Directory="character",FileSize="integer",FileModifyDate="character",FileAccessDate="character",FileInodeChangeDate="character",FilePermissions="integer",FileType="character",FileTypeExtension="character",MIMEType="character",ExifByteOrder="character",ImageDescription="character",Make="character",Orientation="integer",XResolution="integer",YResolution="integer",ResolutionUnit="integer",Software="character",ModifyDate="character",YCbCrPositioning="integer",ExposureTime="numeric",FNumber="numeric",ExposureProgram="integer",ISO="integer",ExifVersion="character",DateTimeOriginal="POSIXct",CreateDate="character",ComponentsConfiguration="character",CompressedBitsPerPixel="numeric",ShutterSpeedValue="numeric",ApertureValue="numeric",MaxApertureValue="numeric",SubjectDistance="integer",MeteringMode="integer",LightSource="integer",Flash="integer",FocalLength="integer",Warning="character",FlashpixVersion="character",ColorSpace="integer",ExifImageWidth="integer",ExifImageHeight="integer",InteropIndex="character",InteropVersion="character",ExposureIndex="character",SensingMethod="integer",FileSource="integer",SceneType="integer",CustomRendered="integer",ExposureMode="integer",DigitalZoomRatio="integer",FocalLengthIn35mmFormat="integer",SceneCaptureType="integer",GainControl="integer",Contrast="integer",Saturation="integer",DeviceSettingDescription="character",SubjectDistanceRange="integer",SerialNumber="character",GPSLatitudeRef="character",GPSLongitudeRef="character",GPSAltitudeRef="integer",GPSTimeStamp="character",GPSDateStamp="character",Compression="integer",ThumbnailOffset="integer",ThumbnailLength="integer",MPFVersion="character",NumberOfImages="integer",MPImageFlags="integer",MPImageFormat="integer",MPImageType="integer",MPImageLength="integer",MPImageStart="integer",DependentImage1EntryNumber="integer",DependentImage2EntryNumber="integer",ImageUIDList="character",TotalFrames="integer",DeviceName="character",FirmwareVersion="character",CameraSerialNumber="character",Model="character",AutoRotation="character",DigitalZoom="character",ProTune="character",WhiteBalance="character",Sharpness="character",ColorMode="character",AutoISOMax="integer",AutoISOMin="integer",ExposureCompensation="numeric",Rate="character",PhotoResolution="character",HDRSetting="character",ImageWidth="integer",ImageHeight="integer",EncodingProcess="integer",BitsPerSample="integer",ColorComponents="integer",YCbCrSubSampling="character",Aperture="numeric",GPSAltitude="numeric",GPSDateTime="POSIXct",GPSLatitude="numeric",GPSLongitude="numeric",GPSPosition="character",ImageSize="character",PreviewImage="character",Megapixels="integer",ScaleFactor35efl="integer",ShutterSpeed="numeric",ThumbnailImage="character",CircleOfConfusion="character",FOV="numeric",FocalLength35efl="integer",HyperfocalDistance="numeric",LightValue="numeric",session_id="character",session_photo_number="integer",relative_path="character",geometry_postgis="numeric",geometry_gps_correlate="numeric",geometry_native="numeric"),
                             stringsAsFactors = FALSE)
     lapply(template_df,class)
@@ -753,7 +751,7 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
         
         cat(paste0("Load the core exif metadata in the SQL database \n"))
         load_exif_metadata_in_table_database(con_database=con_database,
-                                             codes_directory=codes_directory,
+                                             code_directory=code_directory,
                                              core_exif_metadata=core_exif_metadata,
                                              create_table=FALSE
                                              )
@@ -783,66 +781,87 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
   # Use function "dataframe_gps_files" to list all gps files
   setwd(mission_directory)
   
-  if(!dir.exists(file.path(mission_directory, "GPS"))){
-    cat("Create GPS directory")
-    dir.create(file.path(mission_directory, "GPS"))
-  }
+
   dataframe_gps_files <- NULL
-  dataframe_gps_files <- data.frame(session=character(), path=character(), file_name=character())
-  
-  if(type_images=="drone"){
-    gps_files <- list.files(pattern = "\\.gpx$",ignore.case=TRUE,recursive = TRUE)
-    file.copy(gps_files, "./GPS")
-    newRow <- data.frame(session=session_id,path=mission_directory,file_name=gps_files)
-    dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
-  }else{
-    dataframe_gps_files <- return_dataframe_gps_files(mission_directory,type=file_type)
-    number_row<-nrow(dataframe_gps_files)
-    if(is.null(number_row)){
-      file_type<-"GPX"
-      dataframe_gps_files <- return_dataframe_gps_files(mission_directory,type=file_type)
-    }
-  }
   number_row<-nrow(dataframe_gps_files)
   
-  # if more than one (sometimes for some reasons, the same session has multiple GPS tracks) => iterate => difference between end point and start point > frequency
-  if(!is.null(number_row)){
-    for (t in 1:number_row){
-      gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
+  if(!dir.exists(file.path(mission_directory, "GPS"))){
+    cat("\n Create GPS directory\n ")
+    dir.create(file.path(mission_directory, "GPS"))
+  }else{
+    cat("\n Check GPS directory content\n ")
+    dataframe_gps_files <- data.frame(session=character(), path=character(), file_name=character())
+    
+    if(type_images=="drone"){
+      cat("problemos")
+      cat("\n")
+      # gps_files <- list.files(pattern = "\\.gpx$",ignore.case=TRUE,recursive = TRUE)
+      # file.copy(gps_files, "./GPS")
+      # newRow <- data.frame(session=session_id,path=mission_directory,file_name=gps_files)
+      # dataframe_gps_files <- rbind(dataframe_gps_files,newRow)
       
-      # Use "dataframe_gps_file" to turn the gps file into a data frame
-      dataframe_gps_file <-NULL
-      dataframe_gps_file <- return_dataframe_gps_file(con_database=con_database,
-                                                      wd=codes_directory,
-                                                      gps_file=gps_file,
-                                                      type=file_type,
-                                                      session_id=session_id,
-                                                      load_in_database=FALSE
-                                                      )
-      duplicates <- distinct(dataframe_gps_file, time)
-      duplicates_number <- nrow(dataframe_gps_file)-nrow(duplicates)
-      paste0("the file has :", duplicates_number," duplicates")
-      load_gps_tracks_in_database(con_database=con_database,
-                                  codes_directory=codes_directory,
-                                  gps_tracks=dataframe_gps_file,
-                                  create_table=FALSE
-                                  )
-        
-      # generate a thumbnail of the map
-      # plot_tcx(gps_file,mission_directory)
-      cat("GPS tracks loaded in the database!\n")
+      dataframe_gps_files <- return_dataframe_gps_files(mission_directory,type="GPX")
+      number_row<-nrow(dataframe_gps_files)
+      if(is.null(number_row)){
+        file_type<-"GPKG"
+        dataframe_gps_files <- return_dataframe_gps_files(mission_directory,type=file_type)
+        number_row<-nrow(dataframe_gps_files)
+      }
+      if(is.null(number_row)){
+        cat("\n problemos no files in GPS directory")
+        number_row = 0
+      }
+    }else{
+      dataframe_gps_files <- return_dataframe_gps_files(mission_directory,type=file_type)
+      number_row<-nrow(dataframe_gps_files)
+      if(is.null(number_row)){
+        file_type<-"GPX"
+        dataframe_gps_files <- return_dataframe_gps_files(mission_directory,type=file_type)
+        number_row<-nrow(dataframe_gps_files)
+      }
     }
-  }else(cat("No GPS file when looking for TCX or GPX files => RTK ??"))
+    
+    # if more than one (sometimes for some reasons, the same session has multiple GPS tracks) => iterate => difference between end point and start point > frequency
+    if(number_row>0){
+      for (t in 1:number_row){
+        gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
+        
+        # Use "dataframe_gps_file" to turn the gps file into a data frame
+        dataframe_gps_file <-NULL
+        dataframe_gps_file <- return_dataframe_gps_file(con_database=con_database,
+                                                        wd=code_directory,
+                                                        gps_file=gps_file,
+                                                        type=file_type,
+                                                        session_id=session_id,
+                                                        load_in_database=FALSE
+        )
+        duplicates <- distinct(dataframe_gps_file, time)
+        duplicates_number <- nrow(dataframe_gps_file)-nrow(duplicates)
+        paste0("the file has :", duplicates_number," duplicates")
+        load_gps_tracks_in_database(con_database=con_database,
+                                    code_directory=code_directory,
+                                    gps_tracks=dataframe_gps_file,
+                                    create_table=FALSE
+        )
+        
+        # generate a thumbnail of the map
+        # plot_tcx(gps_file,mission_directory)
+        cat("GPS tracks loaded in the database!\n")
+      }
+    }else{
+      cat("No GPS file when looking for TCX or GPX files => RTK ??")
+    }
+    }
   
   # INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP
   photo_location <- infer_photo_location_from_gps_tracks(con_database,
                                                          mission_directory,
-                                                         codes_directory,
+                                                         code_directory,
                                                          session_id,
                                                          platform=platform,
                                                          offset=offset,
                                                          create_view=TRUE
-                                                         )
+  )
   head(photo_location$the_geom,n = 50)
   
   cat("Materialized view has been created!\n")
@@ -851,9 +870,8 @@ load_exif_metadata_in_database <- function(con_database, codes_directory, missio
   paste0(nrow(photo_location), " photos have been located from GPS tracks")
   ratio = nrow(photo_location) / nrow(all_exif_metadata)
   ratio <-c(nrow(photo_location),nrow(all_exif_metadata))
-  nrow(dataframe_gps_file)
-  
   return(ratio)
+  
 }
 
 #############################################################################################################
@@ -865,6 +883,7 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
   track_points=switch(type,
          "RTK" = read.csv(gps_file,stringsAsFactors = FALSE),
          "GPX" = rgdal::readOGR(dsn = gps_file, layer="track_points",stringsAsFactors = FALSE),
+         "GPKG" = rgdal::readOGR(dsn = gps_file),
          "TCX" = readTCX(file=gps_file, timezone = "UTC")
   )
   head(track_points)
@@ -889,11 +908,13 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
   track_points$session_id <- session_id
   head(track_points)
   if(type=="GPX"){track_points$time <- as.POSIXct(track_points@data$time, tz="UTC")}
+  if(type=="GPKG"){track_points$time <- as.POSIXct(track_points@data$DateTimeOriginal, tz="UTC")}
   class(track_points$time)
   attr(track_points$time,"tzone")
   track_points$the_geom <- NA
   
   GPS_tracks_values <- NULL
+  #  @juldebar review the mapping of columns depending on data formats
   
     if(type=="RTK"){
     select_columns = subset(track_points, select = c(ogc_fid,session_id,latitude,longitude,height,GPST,age,the_geom))
@@ -906,7 +927,6 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
     
   } else if(type=="GPX"){
     sapply(track_points@data,class)
-    
     GPS_tracks_values <- dplyr::select(track_points@data,ogc_fid,session_id,time,ele,track_fid,the_geom) %>% mutate(latitude = track_points@coords[,2]) %>% mutate(longitude = track_points@coords[,1])
     GPS_tracks_values= dplyr::rename(GPS_tracks_values, ogc_fid=ogc_fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, the_geom=the_geom)
     GPS_tracks_values <- GPS_tracks_values[,c(1,2,3,7,8,4,5,6)]
@@ -918,10 +938,16 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
     GPS_tracks_values <- dplyr::select(track_points,ogc_fid,session_id, time, latitude,longitude,altitude,heart_rate,the_geom)
     # GPS_tracks_values = dplyr::rename(GPS_tracks_values, ogc_fid=ogc_fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart_rate,the_geom=the_geom)
     write.csv(GPS_tracks_values, gsub(".tcx","_tcx.csv",gps_file),row.names = F)
+  } else if (type=="GPKG"){
+    GPS_tracks_values <- dplyr::select(track_points@data,ogc_fid,session_id,time,GPSAltitude, XResolution,the_geom) %>% mutate(latitude = track_points@coords[,2]) %>% mutate(longitude = track_points@coords[,1])
+    GPS_tracks_values= dplyr::rename(GPS_tracks_values, ogc_fid=ogc_fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=GPSAltitude, heart_rate= XResolution, the_geom=the_geom)
+    GPS_tracks_values <- GPS_tracks_values[,c(1,2,3,7,8,4,5,6)]
+    write.csv(GPS_tracks_values, gsub(".gpkg","_gpx.csv",gps_file),row.names = F) 
   }
   
+  
   head(GPS_tracks_values)
-  if(load_in_database==TRUE){load_gps_tracks_in_database(con_database, codes_directory, GPS_tracks_values, create_table=FALSE)}
+  if(load_in_database==TRUE){load_gps_tracks_in_database(con_database, code_directory, GPS_tracks_values, create_table=FALSE)}
   # dbWriteSpatial(con_database, track_points, schemaname="public", tablename="pays", replace=T,srid=4326)
   
   return(GPS_tracks_values)
@@ -932,11 +958,13 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
 ############################ RETRIEVE TCX FILES ###################################################
 #############################################################################################################
 return_dataframe_gps_files <- function(wd,type="TCX"){
+  
   setwd(wd)
   dataframe_gps_files <- NULL
   dataframe_gps_files <- data.frame(session=character(), path=character(), file_name=character())
   sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
-  sub_directories  
+  sub_directories
+  
   for (i in sub_directories){
     if (substr(i, nchar(i)-3, nchar(i))=="/GPS"){
       setwd(i)
@@ -944,7 +972,10 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
       cat(paste0("\n Processing GPS repository => ",i,"\n"))
       cat(paste0("\n Name session => ",name_session,"\n"))
       cat("\n List tcx files \n")
-      if (type=="TCX"){pattern = "\\.tcx$"} else if (type=="GPX"){pattern = "\\.gpx$"} else if (type=="RTK"){pattern = "\\.rtk$"}
+      if (type=="TCX"){pattern = "\\.tcx$"
+      } else if (type=="GPX"){pattern = "\\.gpx$"
+      } else if (type=="GPKG"){pattern = "\\.gpkg$"
+      } else if (type=="RTK"){pattern = "\\.rtk$"}
       files <- list.files(pattern = pattern,ignore.case=TRUE)
       gps_files <- files
       cat("\n Names of spatial data files \n")
@@ -957,8 +988,8 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
       }else{
         dataframe_gps_files <-NULL
         }
-    }
-    else {
+    } else {
+      cat("\n not a  GPS directory ??")
       # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
       # cat("nada \n")
       # cat(substr(i, nchar(i)-2, nchar(i)))
@@ -986,6 +1017,26 @@ st_write(plot_locations, shape_file)
 
 return(shape_file)
 
+}
+
+
+write_gpx_from_rds <- function(file_name){
+  rds_file <- paste0 (file_name,".RDS")
+  gpkg_file <- paste0 (file_name,".gpkg")
+  df <- readRDS(rds_file)
+  spatial_df <- select(df, -c(ThumbnailImage,PreviewImage))
+  plot_locations <- st_as_sf(spatial_df, coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
+  st_write(plot_locations,gpkg_file,delete_dsn = TRUE)
+  
+  
+  # gpx_file <- paste0 (file_name,".gpx")
+  # st_write(select(plot_locations,GPSDateTime,GPs), gpx_file,driver = "GPX")
+  # writeOGR(plot_locations,dsn=gpx_file,layer="track<_points", driver="GPX",overwrite_layer = T,GPX_USE_EXTENSIONS=YES)
+  # plot(plot_locations)
+  shape_file <- paste0 (file_name,".shp")
+  st_write(plot_locations, shape_file)
+  return(plot_locations)
+  
 }
 
 ########################################################################################################################
@@ -1302,11 +1353,11 @@ copy_images_for_training <- function(wd_copy, all_images,file_categories,crop_im
 #############################################################################################################
 # Create or replace a SQL materialized view to gather data per dataset / survey
 
-create_view_species_occurences <- function(con_database,codes_directory,images_directory){
+create_view_species_occurences <- function(con_database,code_directory,images_directory){
   original_directory <- getwd()
   setwd(images_directory)
   queries <- NULL
-  queries <- paste(readLines(paste0(codes_directory,"SQL/extract_species_occurences_manual_annotation.sql")), collapse=" ")
+  queries <- paste(readLines(paste0(code_directory,"SQL/extract_species_occurences_manual_annotation.sql")), collapse=" ")
   query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_occurences_manual_annotation";')
   dbGetQuery(con_database, query_drop)
   queries <- paste0('CREATE MATERIALIZED VIEW "view_occurences_manual_annotation" AS ',queries)
@@ -1332,13 +1383,13 @@ create_view_species_occurences <- function(con_database,codes_directory,images_d
 #############################################################################################################
 # Create or replace a SQL materialized view to gather data per dataset / survey
 
-update_inferred_geometry <- function(con_database,codes_directory,images_directory){
+update_inferred_geometry <- function(con_database,code_directory,images_directory){
   original_directory <- getwd()
   setwd(images_directory)
   query_sessions <-   dbGetQuery(con_database, 'SELECT DISTINCT session_id from public."photos_exif_core_metadata" ORDER BY session_id ASC')
   for(i in 1:nrow(query_sessions)){
     query <- NULL
-    query <- paste(readLines(paste0(codes_directory,"SQL/update_gps_geometry_colum.sql")), collapse=" ")
+    query <- paste(readLines(paste0(code_directory,"SQL/update_gps_geometry_colum.sql")), collapse=" ")
     query <- gsub("session_2018_01_14_kite_Le_Morne",query_sessions$session_id[i],query)
     print(paste0(query,"\n"))
     dbGetQuery(con_database, query)
@@ -1350,13 +1401,13 @@ update_inferred_geometry <- function(con_database,codes_directory,images_directo
 ##########################################################################################################################################################################################################################
 ######################### extract pictures by WKT area and copy them in a temp folder to foster annation ###############################################
 ##########################################################################################################################################################################################################################
-spatial_extraction_of_pictures_and_copy_in_tmp_folder<- function(wd, con_database,codes_directory=codes_directory,images_directory,wkt,expected_species){
+spatial_extraction_of_pictures_and_copy_in_tmp_folder<- function(wd, con_database,code_directory=code_directory,images_directory,wkt,expected_species){
   
   setwd(wd)
   
   #write query to extract all pictures within the given wkt / spatial area
   query <- NULL
-  query <- paste(readLines(paste0(codes_directory,"SQL/select_pictures_by_area.sql")), collapse=" ")
+  query <- paste(readLines(paste0(code_directory,"SQL/select_pictures_by_area.sql")), collapse=" ")
   # query <- "SELECT photo_path,session_id,\"FileName\",photo_name,photo_id,map_photo_id FROM public.species_within_buffer;"
   if(wkt=='none'){
     query <- gsub("WHERE","--WHERE",query)
@@ -1443,10 +1494,10 @@ turn_list_of_files_into_csv_annotated<- function(con_database,wd_selected_candid
 ##########################################################################################################################################################################################################################
 ######################### extract pictures by WKT area and copy them in a temp folder to foster annation ###############################################
 ##########################################################################################################################################################################################################################
-extraction_annotated_pictures_from_db<- function(con_database,codes_directory,images_directory){
+extraction_annotated_pictures_from_db<- function(con_database,code_directory,images_directory){
   
   query <- NULL
-  query <- paste(readLines(paste0(codes_directory,"SQL/select_annotated_pictures.sql")), collapse=" ")
+  query <- paste(readLines(paste0(code_directory,"SQL/select_annotated_pictures.sql")), collapse=" ")
   #execute query
   extracted_images <- dbGetQuery(con_database, query)
   nrow(extracted_images)
@@ -1480,7 +1531,7 @@ extraction_annotated_pictures_from_db<- function(con_database,codes_directory,im
 
 publish_annotated_photos_in_gsheet<- function(con_database, google_drive_path){
   query <- NULL
-  query <- paste(readLines(paste0(codes_directory,"SQL/select_annotated_images_attributes.sql")), collapse=" ")
+  query <- paste(readLines(paste0(code_directory,"SQL/select_annotated_images_attributes.sql")), collapse=" ")
   extracted_images <- dbGetQuery(con_database, query)
   file_name <-"annotated_images_in_database"
   metadata_gsheet_id <- upload_file_on_drive_repository(google_drive_path,media=extracted_images, file_name=file_name,type="spreadsheet")

@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS public."replace_session_id";
+DROP TABLE IF EXISTS public."replace_session_id" CASCADE;
 
 CREATE TABLE "replace_session_id" AS 
 	SELECT

@@ -161,8 +161,14 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     file_type<-"GPX"
     dataframe_gps_files <- return_dataframe_gps_files(this_directory,type=file_type)
   }
-  number_row<-nrow(dataframe_gps_files)
-  if(!is.null(number_row)){
+  if(is.null(dataframe_gps_files)){
+    cat("\n Search GPKG instead of GPX \n")
+    file_type<-"GPKG"
+    dataframe_gps_files <- return_dataframe_gps_files(this_directory,type=file_type)
+  }
+  number_row <- nrow(dataframe_gps_files)
+  
+  if(number_row>0){
     cat("\n Build a spatial data frame \n")
     
     xmin <- NULL
@@ -189,11 +195,17 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
             
       if(grepl(pattern = ".tcx",gps_file)){
         spatial_extent <- tcx_to_wkt(gps_file, dTolerance = 0.00005)
-      }else if(grepl(pattern = ".gpx",gps_file)){
+      } else if(grepl(pattern = ".gpx",gps_file)){
         spatial_extent <- gpx_to_wkt(gps_file, dTolerance = 0.00005)
-      }else{
-        cat("no GPS file !!")
-      }
+      } else if(grepl(pattern = ".gpkg",gps_file)){
+          cat("\n victory")
+          spatial_data <- rgdal::readOGR(dsn = gps_file,stringsAsFactors = FALSE)
+          spatial_data <- st_as_sf(spatial_data)
+          spatial_extent <- spatial_data %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
+          
+        }else{
+          cat("\n no GPS file found !!")
+        }
       # spatial_extent_geom <- sf::st_as_sfc(spatial_extent,wkt = "geom")
       # spatial_extent_geom <- sf::st_as_sfc(paste0("SRID=4326;",spatial_extent))
       spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
@@ -226,7 +238,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       # gps_points <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
       bbox <- makebbox(ymax,xmax,ymin,xmin)
       bbox <- makebbox(ymax+0.03,xmax+0.03,ymin-0.03,xmin-0.03)
-      # bbox <- st_bbox(spatial_extent_geom)
+      bbox <- st_bbox(spatial_extent_geom)
       
       
       # https://cran.r-project.org/web/packages/pdftools/pdftools.pdf
@@ -332,10 +344,32 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       
     }
   }else{
-    cat("No GPS file when looking for TCX or GPX or RTK files")
+    cat("No GPS file when looking for TCX or GPX or RTK or GPKG files")
     cat(paste0("\n Pas de dossier'GPS' dans ", this_directory,"\n"))
-    gps_file <- "No GPS file"
-    spatial_extent <- "No GPS file"
+    cat("Create GPS directory")
+    dir.create(file.path(this_directory, "GPS"))
+    # Check if RDS exist first ??
+    if(!file.exists(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))){
+      df <- extract_exif_metadata_in_csv(session_id,
+                                         this_directory,
+                                         template_df=read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),
+                                                              colClasses=c(SourceFile="character",ExifToolVersion="numeric",FileName="character",Directory="character",FileSize="integer",FileModifyDate="character",FileAccessDate="character",FileInodeChangeDate="character",FilePermissions="integer",FileType="character",FileTypeExtension="character",MIMEType="character",ExifByteOrder="character",ImageDescription="character",Make="character",Orientation="integer",XResolution="integer",YResolution="integer",ResolutionUnit="integer",Software="character",ModifyDate="character",YCbCrPositioning="integer",ExposureTime="numeric",FNumber="numeric",ExposureProgram="integer",ISO="integer",ExifVersion="character",DateTimeOriginal="POSIXct",CreateDate="character",ComponentsConfiguration="character",CompressedBitsPerPixel="numeric",ShutterSpeedValue="numeric",ApertureValue="numeric",MaxApertureValue="numeric",SubjectDistance="integer",MeteringMode="integer",LightSource="integer",Flash="integer",FocalLength="integer",Warning="character",FlashpixVersion="character",ColorSpace="integer",ExifImageWidth="integer",ExifImageHeight="integer",InteropIndex="character",InteropVersion="character",ExposureIndex="character",SensingMethod="integer",FileSource="integer",SceneType="integer",CustomRendered="integer",ExposureMode="integer",DigitalZoomRatio="integer",FocalLengthIn35mmFormat="integer",SceneCaptureType="integer",GainControl="integer",Contrast="integer",Saturation="integer",DeviceSettingDescription="character",SubjectDistanceRange="integer",SerialNumber="character",GPSLatitudeRef="character",GPSLongitudeRef="character",GPSAltitudeRef="integer",GPSTimeStamp="character",GPSDateStamp="character",Compression="integer",ThumbnailOffset="integer",ThumbnailLength="integer",MPFVersion="character",NumberOfImages="integer",MPImageFlags="integer",MPImageFormat="integer",MPImageType="integer",MPImageLength="integer",MPImageStart="integer",DependentImage1EntryNumber="integer",DependentImage2EntryNumber="integer",ImageUIDList="character",TotalFrames="integer",DeviceName="character",FirmwareVersion="character",CameraSerialNumber="character",Model="character",AutoRotation="character",DigitalZoom="character",ProTune="character",WhiteBalance="character",Sharpness="character",ColorMode="character",AutoISOMax="integer",AutoISOMin="integer",ExposureCompensation="numeric",Rate="character",PhotoResolution="character",HDRSetting="character",ImageWidth="integer",ImageHeight="integer",EncodingProcess="integer",BitsPerSample="integer",ColorComponents="integer",YCbCrSubSampling="character",Aperture="numeric",GPSAltitude="numeric",GPSDateTime="POSIXct",GPSLatitude="numeric",GPSLongitude="numeric",GPSPosition="character",ImageSize="character",PreviewImage="character",Megapixels="integer",ScaleFactor35efl="integer",ShutterSpeed="numeric",ThumbnailImage="character",CircleOfConfusion="character",FOV="numeric",FocalLength35efl="integer",HyperfocalDistance="numeric",LightValue="numeric",session_id="character",session_photo_number="integer",relative_path="character",geometry_postgis="numeric",geometry_gps_correlate="numeric",geometry_native="numeric"),
+                                                              stringsAsFactors = FALSE),
+                                         mime_type=pattern,
+                                         load_metadata_in_database=FALSE,
+                                         time_zone="Indian/Mauritius")
+    }else{
+      # read existing exif metadata from RDS file
+      df <- readRDS(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
+    }
+    setwd(paste0(this_directory, "/GPS"))
+    spatial_df <- select(df, -c(ThumbnailImage,PreviewImage))
+    plot_locations <- st_as_sf(spatial_df, coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
+    st_write(plot_locations,paste0 (session_id,".gpkg"),delete_dsn = TRUE)
+    
+    # write_gpx_from_rds("test")
+    # gps_file <- "No GPS file"
+    # spatial_extent <- "No GPS file"
   }
 ###############################
   ################### CREATE DATAFRAME #######################
