@@ -9,21 +9,19 @@ library(sf)
 library(geojsonio)
 library(DT)
 library(plotly)
-
-library(leaflet)
-library(sf)
-library(dplyr)
+library(dotenv)
 ############################################################ DATA and FILTER ########################################################################################################################################################################
+# dotenv::load_dot_env(".env")
 Host=Sys.getenv("DB_REEF_HOST")
 Dbname =Sys.getenv("DB_REEF_NAME")
-User=Sys.getenv("DB_REEF_USER")
-Password=Sys.getenv("DB_REEF_PWD")
+User=Sys.getenv("DB_REEF_ADMIN")
+Password=Sys.getenv("DB_REEF_ADMIN_PWD")
 DRV=Sys.getenv("DB_DRV")
 cat("Connect the database\n")
 con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
 
 # layer <- "view_occurences_manual_annotation"
-layer <- SQL("2019_10_11_Le_Morne_drone_kite_lagoon_Mission1")
+layer <- SQL("view_2023_06_29_Maloudja_drone_julien_Mission2")
 
 
 sql_query <- paste0('select *, "datasetID" AS species_name  FROM "',layer,'" --  LIMIT 538')
