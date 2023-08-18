@@ -28,16 +28,23 @@ all_categories <-as.data.frame(gsheet::gsheet2tbl(paste0("https://docs.google.co
 
 source(paste0(code_directory,"R/functions.R"))
 source(paste0(code_directory,"R/get_session_metadata.R"))
-source(paste0(code_directory,"R/credentials_databases.R"))
+# source(paste0(code_directory,"R/credentials_databases.R"))
 # source(paste0(codes_github_repository,"R/gpx_to_wkt.R"))
 # configuration_file <- paste0(code_directory,"geoflow/Deep_mapping_worflow.json")
 
 
-# cat("Create or replace the database\n")
-# create_database(con_Reef_database, codes_github_repository,db_name=Dbname)
 
+
+#Disconnect database
+dbDisconnect(con_Reef_database)
 cat("Connect the database\n")
-con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
+con_Reef_database <- DBI::dbConnect(drv = RPostgres::Postgres(),dbname=Dbname, host=Host, user=User,password=Password)
+# cat("Create or replace the database\n")
+# create_database(con_database=con_Reef_database,
+#                 code_directory=codes_github_repository,
+#                 db_name=Dbname
+#                 )
+  
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 
 # Options to activate or not the different steps of the workflow
@@ -74,7 +81,7 @@ for(m in missions){
       cat(paste0("Processing mission: ", md,"\n"))
       metadata_this_mission <- get_session_metadata(con_database=con_Reef_database,
                                                     session_directory=md,
-                                                    google_drive_path,
+                                                    google_drive_path=google_drive_path,
                                                     metadata_sessions=metadata_this_mission,
                                                     type_images=type_images,
                                                     google_drive_upload=upload_to_google_drive
@@ -87,12 +94,17 @@ for(m in missions){
       setwd("./METADATA")
       file_name <- paste0(session_id,"_DCMI_metadata.csv")
       write.csv(metadata_this_mission,file = file_name,row.names = F)
-      setwd(md)
 
       if(upload_to_google_drive){
         cat(paste0("Upload metadata on google drive: ", m,"\n"))
-        metadata_gsheet_id <- upload_file_on_drive_repository(DCMI_metadata_google_drive_path,media=file_name, file_name=file_name,type="spreadsheet")
+        metadata_gsheet_id <- upload_file_on_drive_repository(google_drive_path=DCMI_metadata_google_drive_path,
+                                                              media=file_name,
+                                                              file_name=file_name,
+                                                              type="spreadsheet"
+                                                              )
       }
+      setwd(md)
+      
       if(load_metadata_in_database){
         cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
         load_DCMI_metadata_in_database(con_database=con_Reef_database,
@@ -145,7 +157,11 @@ for(m in missions){
       # googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
       if(upload_to_google_drive){
         cat(paste0("Upload metadata on google drive: ", m,"\n"))
-        metadata_gsheet_id <- upload_file_on_drive_repository(DCMI_metadata_google_drive_path,media=file_name, file_name=file_name,type="spreadsheet")
+        metadata_gsheet_id <- upload_file_on_drive_repository(google_drive_path=DCMI_metadata_google_drive_path,
+                                                              media=file_name,
+                                                              file_name=file_name,
+                                                              type="spreadsheet"
+                                                              )
       }
       if(load_metadata_in_database){
         cat(paste0("Loading dynamic metadata in the database: ", m,"\n"))
@@ -189,7 +205,8 @@ for(m in missions){
       }
     }
 }
-
+#Disconnect database
+dbDisconnect(con_Reef_database)
 
 #write metadata table
 setwd(images_directory)
