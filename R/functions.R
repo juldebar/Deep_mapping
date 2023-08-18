@@ -326,25 +326,46 @@ create_database <- function(con_database, code_directory,db_name="Reef_database"
   
   query_create_database <- paste(readLines(paste0(code_directory,"SQL/create_Reef_database.sql")), collapse=" ")
   query_create_database <- gsub("Reef_database",db_name,paste(readLines(paste0(code_directory,"SQL/create_Reef_database.sql")), collapse=" "))
-  
   query_create_database <- gsub("Reef_admin",User,query_create_database)
-  create_database <- dbGetQuery(con_database,query_create_database)
+  queries <- str_split(query_create_database,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+    update_Table <- dbGetQuery(con_database,query)
+  }
   
   query_create_table_metadata <- paste(readLines(paste0(code_directory,"SQL/create_Dublin_Core_metadata.sql")), collapse=" ")
   query_create_table_metadata <- gsub("Reef_admin",User,query_create_table_metadata)
-  create_table_metadata <- dbGetQuery(con_database,query_create_table_metadata)
+  queries <- str_split(query_create_table_metadata,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+    update_Table <- dbGetQuery(con_database,query)
+  }
+  
   
   query_create_table_gps_tracks <- paste(readLines(paste0(code_directory,"SQL/create_table_GPS_tracks.sql")), collapse=" ")
   query_create_table_gps_tracks <- gsub("Reef_admin",User,query_create_table_gps_tracks)
-  create_table <- dbGetQuery(con_database,query_create_table_gps_tracks)
+  queries <- str_split(query_create_table_gps_tracks,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+    update_Table <- dbGetQuery(con_database,query)
+  }
   
   query_create_table_exif_metadata <- paste(readLines(paste0(code_directory,"SQL/create_exif_metadata_table.sql")), collapse=" ")
   query_create_table_exif_metadata <- gsub("Reef_admin",User,query_create_table_exif_metadata)
-  create_table_exif_metadata <- dbGetQuery(con_database,query_create_table_exif_metadata)
+  queries <- str_split(query_create_table_exif_metadata,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+    update_Table <- dbGetQuery(con_database,query)
+  }
   
   query_create_table_label <- paste(readLines(paste0(code_directory,"SQL/create_label_table.sql")), collapse=" ")
   query_create_table_label <- gsub("Reef_admin",User,query_create_table_label)
-  create_table_label <- dbGetQuery(con_database,query_create_table_label)
+  queries <- str_split(query_create_table_label,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+    update_Table <- dbGetQuery(con_database,query)
+  }
+  
   labels <- as.data.frame(gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1mBQiokVvVwz3ofDGwQFKr3Q4EGnn8nSrA1MEzaFIOpc/edit?usp=sharing"))
   tags_to_be_loaded <- labels %>% select(SubName,TagName, Link) %>% distinct() %>% rename(tag_code = TagName, tag_label = SubName, tag_definition=Link) %>% mutate(tag_id = row_number()) %>% relocate(tag_id,tag_code,tag_label,tag_definition)
   load_labels_in_database(con_database, code_directory, tags_to_be_loaded, create_table=FALSE)
@@ -470,11 +491,12 @@ load_DCMI_metadata_in_database <- function(con_database, code_directory, DCMI_me
     dbGetQuery(con_database, paste0('UPDATE public.metadata SET "Title"=\'',DCMI_metadata$Title,'\', "Creator"=\'',DCMI_metadata$Creator,'\', "Subject"=\'',DCMI_metadata$Subject,'\', "Relation"=\'',DCMI_metadata$Relation,'\', "TemporalCoverage"=\'',DCMI_metadata$TemporalCoverage,'\', "Data"=\'',DCMI_metadata$Data,'\' WHERE "Identifier"=\'',DCMI_metadata$Identifier,'\';'))
   }else{
     max <- dbGetQuery(con_database,SQL(paste0('SELECT max(id_metadata) FROM public.metadata;')))+1
-    DCMI_metadata$id_metadata <- max$max
-    DCMI_metadata$Number_of_Pictures <- NULL
+    if(is.na(max$max[1])){max=1}else{max=max$max[1]}
+    DCMI_metadata$id_metadata <- max
     colnames(DCMI_metadata)
     DCMI_metadata=DCMI_metadata[,c(18,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)]
-    dbWriteTable(con_database,"metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
+    DCMI_metadata$Number_of_Pictures <- NA
+    DBI::dbWriteTable(con_database,"metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
     }
   
   existing_rows <- dbGetQuery(con_database, paste0('UPDATE metadata SET geometry = ST_GeomFromText("SpatialCoverage",4326);'))
@@ -596,7 +618,7 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
     close(fileConn)
     ##########
     query <- NULL
-    query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'n CASCADE";')
+    query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,' CASCADE";')
     dbGetQuery(con_database, query_drop)
     query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS SELECT * FROM "',session_id,'" WITH DATA ;')
     dbGetQuery(con_database, query)
@@ -632,8 +654,13 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
 
   }
   # add_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"view_',session_id,'_geom_i\" ; CREATE INDEX \"view_',session_id,'_geom_i\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
-  drop_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"',session_id,'_geom_idx\" ; '))
-  add_spatial_index <- dbGetQuery(con_database, paste0('CREATE INDEX \"view_',session_id,'_geom_idx\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
+  spatial_index <- paste0('view_',session_id,'_geom_idx')
+  if(nchar(spatial_index)>63){
+    nb_underscore <- str_split(spatial_index,pattern="_")
+    spatial_index <- paste(nb_underscore[[1]][1],nb_underscore[[1]][2],nb_underscore[[1]][3],nb_underscore[[1]][4],nb_underscore[[1]][5],nb_underscore[[1]][length(nb_underscore[[1]])-2],'geom_idx',sep="_")
+    }
+  drop_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"',spatial_index,'\" ; '))
+  add_spatial_index <- dbGetQuery(con_database, paste0('CREATE INDEX \"',spatial_index,'\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
   create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
   # head(create_csv_from_view)
   setwd(paste0(images_directory,"/GPS"))
@@ -1059,7 +1086,7 @@ upload_file_on_drive_repository <- function(google_drive_path,media,file_name,ty
   # check <- drive_find(pattern = file_name)
   # drive_get(path = google_drive_path, id = file_name, team_drive = NULL, corpus = NULL,verbose = TRUE)
   check <- drive_ls(path = google_drive_path, pattern = file_name, recursive = FALSE)
-  check
+  # check
 
   if(type=="CSV"){
     setwd(tempdir())
@@ -1071,12 +1098,13 @@ upload_file_on_drive_repository <- function(google_drive_path,media,file_name,ty
   if(nrow(check)>0){
     google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=media)
     # google_drive_file <- drive_update(file=as_id(check$id[1]), name=file_name, media=csvfile)
-    media
+    # media
     # google_drive_file <- drive_upload(media=file_name, path = google_drive_path,name=file_name)
     
   }else{
     google_drive_file <- drive_upload(media=media, path = google_drive_path,name=file_name,type = type)
   }
+  
   # If to update the content or metadata of an existing Drive file, use drive_update()
   google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_file$id)
   google_drive_file %>% drive_reveal("permissions")
