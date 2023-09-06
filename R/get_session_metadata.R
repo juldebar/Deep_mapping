@@ -41,8 +41,8 @@ library(prettymapr)
 #   Photo_GPS_timestamp=character(),
 #   geometry=character()
 # )
-# source(paste0(codes_directory,"R/functions.R"))
-# source(paste0(codes_directory,"R/credentials_databases.R"))
+# source(paste0(code_directory,"R/functions.R"))
+# source(paste0(code_directory,"R/credentials_databases.R"))
 # con_Reef_database <- dbConnect(drv = DRV,dbname=Dbname, host=Host, user=User,password=Password)
 # metadata_this_mission <- get_session_metadata(con_database=con_Reef_database, session_directory=m, google_drive_path,metadata_sessions=metadata_this_mission,type_images=type_images,google_drive_upload=TRUE)
 
@@ -72,7 +72,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   if(type_images=="drone"){
     session_id <- paste0(gsub(paste0(dirname(dirname(this_directory)),"/"),"",dirname(this_directory)),"_",gsub(" ","",gsub(paste0(dirname(this_directory),"/"),"",this_directory)))
     pattern = "*.JPG"
-    DCIM_directory <- "data"
+    DCIM_directory <- "DCIM"
     date <- "2020-02-15"
     keywords="GENERAL:drone,coral reef_"
     photo_calibration_metadata <- read_exif(paste(this_directory, sub(' => .*', '', first_line),sep="/"))
@@ -94,7 +94,9 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       DCIM_directory <- "DCIM"
       date <- gsub("_","-",substr(session_id,9,18))
       photo_calibration_metadata <- read_exif(paste(gsub(session_id,"",this_directory), sub(' => .*', '', first_line),sep="/"))
+      # saveRDS(photo_calibration_metadata, paste("toto",session_id,".RDS",sep=""))
       
+      photo_calibration_metadata$DateTimeOriginal
       directories <- list.dirs(paste(this_directory,DCIM_directory,sep="/"), recursive = FALSE)
       directories <- directories[grepl("GOPRO", directories)]
     }
@@ -103,7 +105,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   Photo_GPS_timestamp<- as.POSIXct(photo_calibration_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
   GPS_timestamp <- sub('.* => ', '', first_line)
   GPS_timestamp <- sub('secs\").*', 'secs\")', GPS_timestamp)
-  offset <- GPS_timestamp
+  # offset <- GPS_timestamp
   #############################
   
   ################### Set static metadata elements #######################
@@ -183,7 +185,13 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       
       ####################
       dataframe_gps_file <-NULL
-      dataframe_gps_file <- return_dataframe_gps_file(con_database, wd=codes_directory, gps_file=gps_file, type=file_type, session_id=session_id,load_in_database=FALSE)
+      dataframe_gps_file <- return_dataframe_gps_file(con_database, 
+                                                      wd=code_directory, 
+                                                      gps_file=gps_file, 
+                                                      type=file_type,
+                                                      session_id=session_id,
+                                                      load_in_database=FALSE
+                                                      )
       #       head(dataframe_gps_file)
             xmin <- min(dataframe_gps_file$longitude)
             xmax <- max(dataframe_gps_file$longitude)
@@ -198,7 +206,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       } else if(grepl(pattern = ".gpx",gps_file)){
         spatial_extent <- gpx_to_wkt(gps_file, dTolerance = 0.00005)
       } else if(grepl(pattern = ".gpkg",gps_file)){
-          cat("\n victory")
+          cat("\n GPKG file ! ")
           spatial_data <- rgdal::readOGR(dsn = gps_file,stringsAsFactors = FALSE)
           spatial_data <- st_as_sf(spatial_data)
           spatial_extent <- spatial_data %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
@@ -238,7 +246,8 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       # gps_points <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
       bbox <- makebbox(ymax,xmax,ymin,xmin)
       bbox <- makebbox(ymax+0.03,xmax+0.03,ymin-0.03,xmin-0.03)
-      bbox <- st_bbox(spatial_extent_geom)
+      # @juldebar => marche pas si petite surface ?
+      # bbox <- st_bbox(spatial_extent_geom)
       
       
       # https://cran.r-project.org/web/packages/pdftools/pdftools.pdf
@@ -246,7 +255,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       jpeg_uri <-NULL
       pdf_spatial_extent <- paste0(session_id,".pdf")
       jpeg_spatial_extent <- paste0(session_id,".jpeg")
-      if (!file.exists(pdf_spatial_extent)){
+      if (!file.exists(pdf_spatial_extent) && google_drive_upload==TRUE ){
         ######################## write a pdf and a jpeg file to get an overview of the spat https://cran.r-project.org/web/packages/rosm/rosm.pdf
         pdf(pdf_spatial_extent)
         if(grepl("odrigue",session_id)){
@@ -260,6 +269,8 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
         }
         # prettymap(bmaps.plot(bbox, type = "Aerial",zoomin=-1,stoponlargerequest=FALSE),res=300, scale.style="ticks", scale.tick.cex=0.5)
         # osm.points(spatial_extent_geom$longitude,dataframe_gps_file$latitude, col="yellow",pch=18, cex=0.5)
+        
+        #Add a layer with GPS points
         osm.points(longitude,latitude, col="yellow",pch=18, cex=0.5)
         dev.off()
         pdf_convert(pdf_spatial_extent, pages = NULL,format = "jpeg",dpi = 600,filenames=jpeg_spatial_extent)
@@ -352,7 +363,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     if(!file.exists(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))){
       df <- extract_exif_metadata_in_csv(session_id,
                                          this_directory,
-                                         template_df=read.csv(paste0(codes_directory,"CSV/All_Exif_metadata_template.csv"),
+                                         template_df=read.csv(paste0(code_directory,"CSV/All_Exif_metadata_template.csv"),
                                                               colClasses=c(SourceFile="character",ExifToolVersion="numeric",FileName="character",Directory="character",FileSize="integer",FileModifyDate="character",FileAccessDate="character",FileInodeChangeDate="character",FilePermissions="integer",FileType="character",FileTypeExtension="character",MIMEType="character",ExifByteOrder="character",ImageDescription="character",Make="character",Orientation="integer",XResolution="integer",YResolution="integer",ResolutionUnit="integer",Software="character",ModifyDate="character",YCbCrPositioning="integer",ExposureTime="numeric",FNumber="numeric",ExposureProgram="integer",ISO="integer",ExifVersion="character",DateTimeOriginal="POSIXct",CreateDate="character",ComponentsConfiguration="character",CompressedBitsPerPixel="numeric",ShutterSpeedValue="numeric",ApertureValue="numeric",MaxApertureValue="numeric",SubjectDistance="integer",MeteringMode="integer",LightSource="integer",Flash="integer",FocalLength="integer",Warning="character",FlashpixVersion="character",ColorSpace="integer",ExifImageWidth="integer",ExifImageHeight="integer",InteropIndex="character",InteropVersion="character",ExposureIndex="character",SensingMethod="integer",FileSource="integer",SceneType="integer",CustomRendered="integer",ExposureMode="integer",DigitalZoomRatio="integer",FocalLengthIn35mmFormat="integer",SceneCaptureType="integer",GainControl="integer",Contrast="integer",Saturation="integer",DeviceSettingDescription="character",SubjectDistanceRange="integer",SerialNumber="character",GPSLatitudeRef="character",GPSLongitudeRef="character",GPSAltitudeRef="integer",GPSTimeStamp="character",GPSDateStamp="character",Compression="integer",ThumbnailOffset="integer",ThumbnailLength="integer",MPFVersion="character",NumberOfImages="integer",MPImageFlags="integer",MPImageFormat="integer",MPImageType="integer",MPImageLength="integer",MPImageStart="integer",DependentImage1EntryNumber="integer",DependentImage2EntryNumber="integer",ImageUIDList="character",TotalFrames="integer",DeviceName="character",FirmwareVersion="character",CameraSerialNumber="character",Model="character",AutoRotation="character",DigitalZoom="character",ProTune="character",WhiteBalance="character",Sharpness="character",ColorMode="character",AutoISOMax="integer",AutoISOMin="integer",ExposureCompensation="numeric",Rate="character",PhotoResolution="character",HDRSetting="character",ImageWidth="integer",ImageHeight="integer",EncodingProcess="integer",BitsPerSample="integer",ColorComponents="integer",YCbCrSubSampling="character",Aperture="numeric",GPSAltitude="numeric",GPSDateTime="POSIXct",GPSLatitude="numeric",GPSLongitude="numeric",GPSPosition="character",ImageSize="character",PreviewImage="character",Megapixels="integer",ScaleFactor35efl="integer",ShutterSpeed="numeric",ThumbnailImage="character",CircleOfConfusion="character",FOV="numeric",FocalLength35efl="integer",HyperfocalDistance="numeric",LightValue="numeric",session_id="character",session_photo_number="integer",relative_path="character",geometry_postgis="numeric",geometry_gps_correlate="numeric",geometry_native="numeric"),
                                                               stringsAsFactors = FALSE),
                                          mime_type=pattern,

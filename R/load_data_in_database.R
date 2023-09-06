@@ -1,28 +1,39 @@
 # rm(list=ls())
 # install.packages("pacman")
-pacman::p_load(dotenv,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,pdftools,stringr,tidyr,rosm,gsheet,dplyr,sf)
+pacman::p_load(stringr,dotenv,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,pdftools,stringr,tidyr,rosm,gsheet,dplyr,sf)
 
-code_directory <-"~/Desktop/CODES/Deep_mapping/"
+# Options to activate or not the different steps of the workflow
+create_geoflow_metadata=TRUE
+upload_to_google_drive=FALSE
+load_metadata_in_database=TRUE
+load_data_in_database=TRUE
+load_tags_in_database=FALSE
+
+code_directory <-"~/Desktop/CODE/Deep_mapping/"
 setwd(code_directory)
 dotenv::load_dot_env(".env")
-images_directory=Sys.getenv("IMAGES_DIRECTORY")
+# images_directories=str_split(string = Sys.getenv("IMAGES_DIRECTORIES"),pattern = ",")
+images_directories=str_split(string = Sys.getenv("IMAGES_DIRECTORY"),pattern = ",")
 codes_github_repository=Sys.getenv("GITHUB_REPOSITORY")
 #database connection parameters
 Host=Sys.getenv("DB_REEF_LOCALHOST")
-Dbname =Sys.getenv("DB_REEF_NAME_CREATE")
+Dbname =Sys.getenv("DB_REEF_NAME")
 User=Sys.getenv("DB_REEF_ADMIN")
 Password=Sys.getenv("DB_REEF_ADMIN_PWD")
 DRV=Sys.getenv("DB_DRV")
 
-
-#specify here which google drive folders should be used to store files
-google_drive_path <-  drive_get(id=Sys.getenv("GOOGLE_DRIVE_PATH"))
-google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_path$id)
-# DCMI_metadata_google_drive_path <- drive_get(id="12anx6McwA6xiZeswfF8Y9sGuQSnohWZsUNIhc1fFjnw")
-DCMI_metadata_google_drive_path <- drive_get(id=Sys.getenv("DCMI_METADATA_GOOGLE_DRIVE_PATH"))
-tags_folder_google_drive_path <- drive_get(id=Sys.getenv("TAGS_FOLDER_GOOGLE_DRIVE_PATH"))
-# tags_file_google_drive_path <- drive_get(id="1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM")
-all_categories <-as.data.frame(gsheet::gsheet2tbl(paste0("https://docs.google.com/spreadsheets/d/",Sys.getenv("ALL_CATEGORIES"),"/edit?usp=sharing")))
+google_drive_path <- NULL
+if(upload_to_google_drive){
+  #specify here which google drive folders should be used to store files
+  google_drive_path <-  drive_get(id=Sys.getenv("GOOGLE_DRIVE_PATH"))
+  google_drive_file_url <- paste0("https://drive.google.com/open?id=",google_drive_path$id)
+  # DCMI_metadata_google_drive_path <- drive_get(id="12anx6McwA6xiZeswfF8Y9sGuQSnohWZsUNIhc1fFjnw")
+  DCMI_metadata_google_drive_path <- drive_get(id=Sys.getenv("DCMI_METADATA_GOOGLE_DRIVE_PATH"))
+  tags_folder_google_drive_path <- drive_get(id=Sys.getenv("TAGS_FOLDER_GOOGLE_DRIVE_PATH"))
+  # tags_file_google_drive_path <- drive_get(id="1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM")
+  all_categories <-as.data.frame(gsheet::gsheet2tbl(paste0("https://docs.google.com/spreadsheets/d/",Sys.getenv("ALL_CATEGORIES"),"/edit?usp=sharing")))
+}
+  
 
 # all_tags_as_csv <- return_dataframe_tag_txt(images_directory,all_categories = all_categories)
 
@@ -39,25 +50,28 @@ source(paste0(code_directory,"R/get_session_metadata.R"))
 dbDisconnect(con_Reef_database)
 cat("Connect the database\n")
 con_Reef_database <- DBI::dbConnect(drv = RPostgres::Postgres(),dbname=Dbname, host=Host, user=User,password=Password)
-# cat("Create or replace the database\n")
-# create_database(con_database=con_Reef_database,
-#                 code_directory=codes_github_repository,
-#                 db_name=Dbname
-#                 )
-  
-# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
+cat("Create or replace the database\n")
+# @juldebar => check if database exist to create it
+# query_db="select exists( SELECT datname FROM pg_catalog.pg_database WHERE lower(datname) = lower('Reef_database_sandbox'));"
+# db_exists <- dbGetQuery(con_Reef_database, query_db)
+# if(!db_exists){
+  cat("create db")
+  create_database(con_database=con_Reef_database,
+                  code_directory=codes_github_repository,
+                  db_name=Dbname
+  )
+# }
 
-# Options to activate or not the different steps of the workflow
-create_geoflow_metadata=TRUE
-upload_to_google_drive=TRUE
-load_metadata_in_database=TRUE
-load_data_in_database=TRUE
-load_tags_in_database=FALSE
+# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 
 #warning: no slash at the end of the path
 #if multiple missions, list sub-repositories
 #if only one mission, indicate the specific sub-repository
-missions <- list.dirs(path = images_directory, full.names = TRUE, recursive = FALSE)
+missions <-c()
+for(rep in 1:length(images_directories[[1]])){
+  cat(images_directories[[1]][rep])
+    missions <- c(missions, list.dirs(path = images_directories[[1]][rep], full.names = TRUE, recursive = FALSE))
+}  
 # missions <- paste0(images_directory,"/","session_2019_10_12_kite_Le_Morne")
 
 
@@ -66,6 +80,7 @@ c=0
 metadata_missions <- NULL
 for(m in missions){
   metadata_this_mission <- NULL
+  images_directory <-sub(x = m,pattern = gsub(paste0(dirname(m),"/"),"",m),"")
   if(grepl(pattern = "drone",m)){
     drone_session_id <- gsub(paste0(dirname(m),"/"),"",m)
     type_images <- "drone"
@@ -149,7 +164,7 @@ for(m in missions){
                                                       google_drive_path,
                                                       metadata_sessions=metadata_this_mission,
                                                       type_images=type_images,
-                                                      google_drive_upload=TRUE
+                                                      google_drive_upload=upload_to_google_drive
                                                       )
         file_name <- paste0(session_id,"_DCMI_metadata.csv")
         write.csv(metadata_this_mission,file = file_name,row.names = F)
