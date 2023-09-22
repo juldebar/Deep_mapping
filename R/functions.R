@@ -153,7 +153,7 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
             cat(message_done)
             }
       setwd(metadata_directory)
-    }else if(endsWith(this_directory, "data")){
+    }else if(endsWith(this_directory, "DCIM") && grepl(pattern= "drone",this_directory)==TRUE  && grepl(pattern= "GCP",this_directory)==FALSE){
       setwd(this_directory)
       files <- list.files(pattern = mime_type ,recursive = TRUE)
       # new_exif_metadata <-data.frame()
@@ -180,11 +180,13 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
         cat(paste(this_directory, " has been ignored \n",sep=""))
       }
   }
+  # nrow(CSV_total)
   
   setwd(metadata_directory)
   name_file_csv<-paste("All_Exif_metadata_",session_id,".csv",sep="")
   # write.csv(CSV_total, name_file_csv,row.names = F)
-  saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,".RDS",sep=""))
+  write.csv(CSV_total, "metadata.csv",row.names = F)
+  saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,"",sep=""))
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
   return(CSV_total)
@@ -505,7 +507,7 @@ load_DCMI_metadata_in_database <- function(con_database, code_directory, DCMI_me
 }
 
 #############################################################################################################
-############################ load_exif_metadata_in_database ###################################################
+############################ load_exif_metadata_in_table_database ###################################################
 #############################################################################################################
 
 load_exif_metadata_in_table_database <- function(con_database, code_directory, core_exif_metadata, create_table=FALSE){
@@ -549,7 +551,7 @@ load_gps_tracks_in_database <- function(con_database, code_directory, gps_tracks
     for(q in 1:lengths(queries)){
       query <- queries[[1]][q]
       update_Table <- dbGetQuery(con_database,query)
-      return (cat("\n Exif data succesfully loaded in Postgis !\n"))
+      return (cat("\n GPS tracks table created !\n"))
     }
     # create_Table <- dbGetQuery(con_database,query_create_table)
     dbWriteTable(con_database, "gps_tracks", gps_tracks, row.names=FALSE, append=TRUE)
@@ -565,7 +567,7 @@ load_gps_tracks_in_database <- function(con_database, code_directory, gps_tracks
     cat(query)
     update_Table <- dbGetQuery(con_database,query)
   }
-  return (cat("\nGPS data succesfully loaded in Postgis !\n"))
+  return (cat("\n GPS data succesfully loaded in Postgis !\n"))
   # return (update_Table)
 }
 
@@ -603,7 +605,7 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
   create_table_from_view <-NULL
   
   if(platform =="drone"){
-    cat("/n view for drone data/n")
+    cat("\n Create table from exif for drone data :\n")
     create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(code_directory,"SQL/create_table_from_exif_table.sql")), collapse=" "))
     
     queries <- str_split(create_table_from_view,pattern = ";")
@@ -617,22 +619,37 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
     writeLines(create_table_from_view, fileConn)
     close(fileConn)
     ##########
+    cat("\n Create view from table for drone data :\n")
+    
     query <- NULL
-    query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,' CASCADE";')
+    query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'" CASCADE;')
+    cat(paste0("\n query_drop",query_drop))
+    cat("\n query drop \n")
+    cat(query_drop)
+    cat("\n query drop  end \n")
+    
     dbGetQuery(con_database, query_drop)
     query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS SELECT * FROM "',session_id,'" WITH DATA ;')
     dbGetQuery(con_database, query)
     #######
     }else{
+      cat("/n view for gopro data/n")
       create_table_from_view <- gsub("replace_session_id",session_id,paste(readLines(paste0(code_directory,"SQL/create_table_from_view.sql")), collapse=" "))
       query <- NULL
       # query <- paste(readLines(paste0(code_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_new.sql")), collapse=" ")
       query <- paste(readLines(paste0(code_directory,"SQL/template_interpolation_between_closest_GPS_POINTS_V3.sql")), collapse=" ")
-      query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'";')
+      # query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'" CASCADE;')
+      query_drop <- paste0('DROP MATERIALIZED VIEW IF EXISTS "view_',session_id,'" CASCADE;')
+      cat(paste0("\ query_drop",query_drop))
       dbGetQuery(con_database, query_drop)
       query <- paste0('CREATE MATERIALIZED VIEW "view_',session_id,'" AS ',query)
       query <- gsub("session_2019_02_16_kite_Le_Morne_la_Pointe",session_id,query)
-      if(offset < 0){      
+      cat(paste0("/n The offset for the view is : ",as.character(offset),"/n"))
+     
+      #' @juldebar check offset content before
+      offset <- offset[1]
+      if(offset < 0){   
+        cat(paste0("/n The offset for the view is : ",as.character(offset),"/n"))
         query <- gsub("- interval","+ interval",query)
         query <- gsub("778",abs(offset)+1,query)
       }else{
@@ -665,7 +682,14 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
   # head(create_csv_from_view)
   setwd(paste0(images_directory,"/GPS"))
   filename <- paste0("photos_location_",session_id,".csv")
+  filename <- paste0("metadata_enriched",".csv")
   write.csv(create_csv_from_view, filename,row.names = F)
+  # tmp = read.csv("../METADATA/exif/metadata.csv")
+  # tmp$GPSLongitude <- create_csv_from_view$decimalLongitude
+  # tmp$GPSLatitude <- create_csv_from_view$decimalLatitude
+  # left_join(create_csv_from_view,tmp,by = "FileName") %>% distinct()
+  # write.csv(tmp,pastecreate_csv_from_view0("metadata",".csv"),row.names = F)
+  
   # shape_file <- write_shp_from_csv(file_name)
   setwd(original_directory)
   
@@ -691,7 +715,7 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
                          "_",gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
     mime_type = "*.JPG"
     prefix_mission = "Mission"
-    images_dir = "./data"
+    images_dir = "./DCIM"
     gps_dir = "./"
     file_type<-"GPX"
     offset <- 0
@@ -703,18 +727,12 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
     gps_dir = "GPS"
     images_dir = "./DCIM"
     file_type<-"TCX" #  "GPX"  "TCX" "RTK"
-    
-    # Calculate offset between timestamps of the camera and GPS
-    con <- file(paste0(mission_directory,"/LABEL/tag.txt"),"r")
-    first_line <- readLines(con,n=1)
-    close(con)
-    offset <- as.numeric(eval(parse(text = sub(".*=> ","",first_line))))
   }
   
   # EXTRACT exif metadata elements & store them in a CSV file & LOAD THEM INTO POSTGRES DATABASE
   all_exif_metadata <-NULL
   # 1) extract exif metadata and store it into a CSV or RDS file
-  if(!file.exists(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))){
+  if(!file.exists(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,""))){
     # extract exif metadata on the fly
     template_df <- read.csv(paste0(code_directory,"CSV/All_Exif_metadata_template.csv"),
                             colClasses=c(SourceFile="character",ExifToolVersion="numeric",FileName="character",Directory="character",FileSize="integer",FileModifyDate="character",FileAccessDate="character",FileInodeChangeDate="character",FilePermissions="integer",FileType="character",FileTypeExtension="character",MIMEType="character",ExifByteOrder="character",ImageDescription="character",Make="character",Orientation="integer",XResolution="integer",YResolution="integer",ResolutionUnit="integer",Software="character",ModifyDate="character",YCbCrPositioning="integer",ExposureTime="numeric",FNumber="numeric",ExposureProgram="integer",ISO="integer",ExifVersion="character",DateTimeOriginal="POSIXct",CreateDate="character",ComponentsConfiguration="character",CompressedBitsPerPixel="numeric",ShutterSpeedValue="numeric",ApertureValue="numeric",MaxApertureValue="numeric",SubjectDistance="integer",MeteringMode="integer",LightSource="integer",Flash="integer",FocalLength="integer",Warning="character",FlashpixVersion="character",ColorSpace="integer",ExifImageWidth="integer",ExifImageHeight="integer",InteropIndex="character",InteropVersion="character",ExposureIndex="character",SensingMethod="integer",FileSource="integer",SceneType="integer",CustomRendered="integer",ExposureMode="integer",DigitalZoomRatio="integer",FocalLengthIn35mmFormat="integer",SceneCaptureType="integer",GainControl="integer",Contrast="integer",Saturation="integer",DeviceSettingDescription="character",SubjectDistanceRange="integer",SerialNumber="character",GPSLatitudeRef="character",GPSLongitudeRef="character",GPSAltitudeRef="integer",GPSTimeStamp="character",GPSDateStamp="character",Compression="integer",ThumbnailOffset="integer",ThumbnailLength="integer",MPFVersion="character",NumberOfImages="integer",MPImageFlags="integer",MPImageFormat="integer",MPImageType="integer",MPImageLength="integer",MPImageStart="integer",DependentImage1EntryNumber="integer",DependentImage2EntryNumber="integer",ImageUIDList="character",TotalFrames="integer",DeviceName="character",FirmwareVersion="character",CameraSerialNumber="character",Model="character",AutoRotation="character",DigitalZoom="character",ProTune="character",WhiteBalance="character",Sharpness="character",ColorMode="character",AutoISOMax="integer",AutoISOMin="integer",ExposureCompensation="numeric",Rate="character",PhotoResolution="character",HDRSetting="character",ImageWidth="integer",ImageHeight="integer",EncodingProcess="integer",BitsPerSample="integer",ColorComponents="integer",YCbCrSubSampling="character",Aperture="numeric",GPSAltitude="numeric",GPSDateTime="POSIXct",GPSLatitude="numeric",GPSLongitude="numeric",GPSPosition="character",ImageSize="character",PreviewImage="character",Megapixels="integer",ScaleFactor35efl="integer",ShutterSpeed="numeric",ThumbnailImage="character",CircleOfConfusion="character",FOV="numeric",FocalLength35efl="integer",HyperfocalDistance="numeric",LightValue="numeric",session_id="character",session_photo_number="integer",relative_path="character",geometry_postgis="numeric",geometry_gps_correlate="numeric",geometry_native="numeric"),
@@ -732,12 +750,18 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
     
   }else{
     # read existing exif metadata from RDS file
-    all_exif_metadata <- readRDS(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
+    all_exif_metadata <- readRDS(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,""))
   }
   cat(paste0("Adding attributes \n"))
   
-  all_exif_metadata$PreviewImage <- paste0("base64:",base64enc::base64encode("https://upload.wikimedia.org/wikipedia/commons/7/7f/Logo_IRD_2016_BLOC_FR_COUL.png"))
+  # all_exif_metadata$PreviewImage <- paste0("base64:",base64enc::base64encode("https://upload.wikimedia.org/wikipedia/commons/7/7f/Logo_IRD_2016_BLOC_FR_COUL.png"))
+  # all_exif_metadata$PreviewImage <- paste0("base64:",base64enc::base64encode("/home/user/toto.png"))
+  all_exif_metadata$PreviewImage <- ""
+  all_exif_metadata$ThumbnailImage <- ""
+  #' @juldebar => create the real link!
+  URL_base <- "http://thredds.oreme.org/tmp/Deep_mapping/"
   all_exif_metadata$URL_original_image <-"http://thredds.oreme.org/tmp/Deep_mapping/session_2017_11_19_paddle_Black_Rocks_G0028305.JPG"
+  # all_exif_metadata$URL_original_image <-paste0(URL_base,"TO DO")
   
   cat(paste0("Extracting Core exif metadata \n"))
   core_exif_metadata <-NULL
@@ -774,7 +798,7 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
         # core_exif_metadata <- core_exif_metadata  %>%  slice_tail(n=100)
         # nrow(core_exif_metadata)
         # name_file_csv<-paste("Core_Exif_metadata_",session_id,".csv",sep="")
-        # saveRDS(core_exif_metadata, paste("Core_Exif_metadata_",session_id,".RDS",sep=""))
+        # saveRDS(core_exif_metadata, paste("Core_Exif_metadata_",session_id,"",sep=""))
         
         cat(paste0("Load the core exif metadata in the SQL database \n"))
         load_exif_metadata_in_table_database(con_database=con_database,
@@ -784,9 +808,32 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
                                              )
         
         cat(paste0("Check that the SQL database was properly loaded \n"))
-        cat(paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 1"),"\n")
+        query_check <- paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 1")
+        cat(query_check)
         check_database <- dbGetQuery(con_database, paste0("SELECT * FROM photos_exif_core_metadata WHERE session_id='",session_id,"' LIMIT 1"))
         check_database
+        
+        
+        # Calculate offset between timestamps of the camera and GPS
+        con <- file(paste0(mission_directory,"/LABEL/tag.txt"),"r")
+        first_line <- readLines(con,n=1)
+        close(con)
+        # offset <- as.numeric(eval(parse(text = sub(".*=> ","",first_line))))
+        photo_relative_file_path <- paste0("/",sub(".JPG.*","",first_line),".JPG")
+        query <- paste0("SELECT * FROM public.photos_exif_core_metadata WHERE (relative_path || '/' || \"FileName\")='",photo_relative_file_path,"'")
+        photo_db_timestamp <- dbGetQuery(con_database, query)
+        
+        if(type_images!="drone"){
+          
+        cat("toto offset begin\n")
+        cat(paste0(query,"\n"))
+        GPS_timestamp <- sub(".,.*","",sub(".*,\"","",first_line))
+        offset = difftime(as.character(photo_db_timestamp$DateTimeOriginal),GPS_timestamp,units="secs")
+        cat(as.character(offset))
+        cat(as.numeric(offset))
+        cat("/n The offset is : ",as.character(offset),"/n")
+        offset=as.numeric(offset)
+        cat("toto offset end\n")
         
         # Check offset from pictures with embedded GPS in the camera
         offset_db <-NULL
@@ -797,7 +844,7 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
         # Check first if GPS data is embedded in the camera (model not gopro session 5)
         # offset_db <-difftime(check_offset_from_pictures$DateTimeOriginal,check_offset_from_pictures$GPSDateTime,units="secs")
         # offset_db
-        
+        }
       }else{
         cat("no pictures in this session ! \n")
       }
@@ -846,6 +893,11 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
         dataframe_gps_files <- return_dataframe_gps_files(mission_directory,type=file_type)
         number_row<-nrow(dataframe_gps_files)
       }
+      if(is.null(number_row)){
+        file_type<-"GPKG"
+        dataframe_gps_files <- return_dataframe_gps_files(mission_directory,type=file_type)
+        number_row<-nrow(dataframe_gps_files)
+      }
     }
     
     # if more than one (sometimes for some reasons, the same session has multiple GPS tracks) => iterate => difference between end point and start point > frequency
@@ -881,10 +933,12 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
     }
   
   # INFER LOCATION OF PHOTOS FROM GPS TRACKS TIMESTAMP
-  photo_location <- infer_photo_location_from_gps_tracks(con_database,
-                                                         mission_directory,
-                                                         code_directory,
-                                                         session_id,
+  cat("/n Infer and offset is : ",as.character(offset),"/n")
+  
+  photo_location <- infer_photo_location_from_gps_tracks(con_database=con_database,
+                                                         images_directory=mission_directory,
+                                                         code_directory=code_directory,
+                                                         session_id=session_id,
                                                          platform=platform,
                                                          offset=offset,
                                                          create_view=TRUE
@@ -928,8 +982,8 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
   }else{
     # start <- as.integer(existing_rows_session+1)
     # end <- as.integer(existing_rows_session+nrow(track_points))
-    start <- as.integer(existing_rows+1)
-    end <- as.integer(existing_rows+nrow(track_points))
+    start <- as.integer(existing_rows$count+1)
+    end <- as.integer(existing_rows$count+nrow(track_points))
     track_points$ogc_fid <-c(start:end)
   }
   track_points$session_id <- session_id
@@ -974,7 +1028,11 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
   
   
   head(GPS_tracks_values)
-  if(load_in_database==TRUE){load_gps_tracks_in_database(con_database, code_directory, GPS_tracks_values, create_table=FALSE)}
+  if(load_in_database==TRUE){load_gps_tracks_in_database(con_database,
+                                                         code_directory,
+                                                         GPS_tracks_values,
+                                                         create_table=FALSE)
+    }
   # dbWriteSpatial(con_database, track_points, schemaname="public", tablename="pays", replace=T,srid=4326)
   
   return(GPS_tracks_values)
@@ -990,7 +1048,6 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
   dataframe_gps_files <- NULL
   dataframe_gps_files <- data.frame(session=character(), path=character(), file_name=character())
   sub_directories <- list.dirs(path=wd,full.names = TRUE,recursive = TRUE)
-  sub_directories
   
   for (i in sub_directories){
     if (substr(i, nchar(i)-3, nchar(i))=="/GPS"){
@@ -998,7 +1055,7 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
       name_session <- gsub(paste(dirname(dirname(i)),"/",sep=""),"",dirname(i))
       cat(paste0("\n Processing GPS repository => ",i,"\n"))
       cat(paste0("\n Name session => ",name_session,"\n"))
-      cat("\n List tcx files \n")
+      cat("\n List GPS files \n")
       if (type=="TCX"){pattern = "\\.tcx$"
       } else if (type=="GPX"){pattern = "\\.gpx$"
       } else if (type=="GPKG"){pattern = "\\.gpkg$"
@@ -1016,7 +1073,7 @@ return_dataframe_gps_files <- function(wd,type="TCX"){
         dataframe_gps_files <-NULL
         }
     } else {
-      cat("\n not a  GPS directory ??")
+      cat(paste0(i,"\n not a  GPS directory ??"))
       # cat(paste("Ignored / no GPS tracks in ", i, "\n",sep=""))
       # cat("nada \n")
       # cat(substr(i, nchar(i)-2, nchar(i)))
@@ -1048,7 +1105,7 @@ return(shape_file)
 
 
 write_gpx_from_rds <- function(file_name){
-  rds_file <- paste0 (file_name,".RDS")
+  rds_file <- paste0 (file_name,"")
   gpkg_file <- paste0 (file_name,".gpkg")
   df <- readRDS(rds_file)
   spatial_df <- select(df, -c(ThumbnailImage,PreviewImage))

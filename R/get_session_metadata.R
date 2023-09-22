@@ -56,15 +56,32 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   setwd(this_directory)
   sub_directories <- list.dirs(path=this_directory,full.names = TRUE,recursive = FALSE)
   number_sub_directories <-length(sub_directories)
+  pattern = "*.JPG"
+  files <- NULL
+  Number_of_Pictures <- NULL
+  directories <- paste(this_directory,"DCIM",sep="/")
+  files <- list.files(path = directories, pattern = pattern,recursive = TRUE)
+  Number_of_Pictures <- length(files)
+  
+  # first_picture_metadata <- read_exif(paste(directories[1], gsub(".*/","",files[1]),sep="/"))
+  first_picture_metadata <- read_exif(paste(directories[1], files[1],sep="/"))
+  # last_picture_metadata <- read_exif(paste(directories[length(directories)],gsub(".*/","",files[Number_of_Pictures]),sep="/"))
+  last_picture_metadata <- read_exif(paste(directories[length(directories)],files[Number_of_Pictures],sep="/"))
+  start_date<- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+  end_date<- as.POSIXct(last_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+  acquisition_time <- difftime(start_date, end_date, units="mins")
   
   #extract camera offset information
+  if(!dir.exists("LABEL")){
+    dir.create("LABEL")
+    file_path = paste(this_directory,"LABEL","tag.txt",sep="/")
+    line1 <- paste0(gsub(".*.DCIM","DCIM",first_picture_metadata$SourceFile)," => difftime(\"", start_date,"\", \"",start_date,"\", units=\"secs\")")
+    writeLines (line1, file_path) #3
+  }
   con <- file(paste(this_directory,"LABEL","tag.txt",sep="/"),"r")
   first_line <- readLines(con,n=1)
   close(con)
   first_line <- sub('.*session', 'session', first_line)
-  
-  files <- NULL
-  Number_of_Pictures <- NULL
   
   GPS_timestamp <- NULL
   Photo_GPS_timestamp <- NULL
@@ -89,6 +106,8 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       } else if(grepl(pattern = "addle", x=session_id)){activity="Paddle"
       } else if(grepl(pattern = "snorkelling", x=session_id)){activity="Snorkelling"}
       
+      # keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,"_")
+      # keywords_spatial <- paste0("GENERAL: Mauritius_")
       keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,"_")
       pattern = "*.JPG"
       DCIM_directory <- "DCIM"
@@ -116,34 +135,47 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   type <- "dataset"
   language <- "eng"
   # simplified_spatial_extent <-"LINESTRING (43.60036 -23.64388, 43.59685 -23.64484, 43.59815 -23.64696, 43.59785 -23.64713, 43.59655 -23.64499, 43.59624 -23.64515, 43.59754 -23.64728, 43.59724 -23.64744, 43.59594 -23.64531, 43.59562 -23.64546, 43.59692 -23.64759, 43.59663 -23.64775, 43.59533 -23.64563, 43.59502 -23.64577, 43.59631 -23.6479, 43.596 -23.64807, 43.59471 -23.64593, 43.59441 -23.64608, 43.5957 -23.64822, 43.59539 -23.64838, 43.59411 -23.64627, 43.59378 -23.6464, 43.59508 -23.64853, 43.59479 -23.64869, 43.59349 -23.64657, 43.59317 -23.64671, 43.59447 -23.64885, 43.59416 -23.64901, 43.59288 -23.64689, 43.59255 -23.64703, 43.59385 -23.64915, 43.59355 -23.64932, 43.59226 -23.6472, 43.59194 -23.64734, 43.59324 -23.64947, 43.59294 -23.64963, 43.59164 -23.6475, 43.59134 -23.64765, 43.59263 -23.64979, 43.59232 -23.64995, 43.59103 -23.64782, 43.59071 -23.64797, 43.59201 -23.6501)"
-  simplified_spatial_extent <-NULL
+  simplified_spatial_extent <-"NULL"
   provenance <-"statement:This is some data quality statement providing information on the provenance"
   source <-"camera_"
-  format <-gsub("*.","",pattern)
-  relation <- NULL
-  gps_file <- NULL
-  spatial_extent <- NULL
-  temporal_extent <- NULL
-  Number_of_Pictures <- NULL
+  format <-gsub("*. ","",pattern)
+  relation <- "Seatizen Web site@http://blabla_"
+  gps_file <- "NULL"
+  # spatial_extent <- NULL
+  # temporal_extent <- NULL
+  spatial_extent <- "NULL"
+  temporal_extent <- "NULL"
+  Number_of_Pictures <- Number_of_Pictures
   rights <-"use:terms1_"
+  data_column <-""
   
   ################### Calculate dynamic metadata elements #######################
   ################### Number of Photos #######################
-  files <- list.files(path = directories, pattern = pattern,recursive = TRUE)
-  Number_of_Pictures <- length(files)
+
   if(Number_of_Pictures>0){
-    description <- paste0(description,"This dataset is made of ",Number_of_Pictures," pictures which have been collected during the ", title)
+    df_countries=read.csv(paste0(code_directory,"CSV/countries.csv"))
+    code_country=substr(str_split(string = session_id,pattern = "_")[[1]][2], 1, 3)
+    this_country <- df_countries %>% filter(df_countries$alpha.3==code_country)
+    
+    description <- paste0(description,
+                          "This dataset is made of ",Number_of_Pictures," pictures which have been collected in ",
+                          this_country$name, ". The length of the data acquisition was : ", round(abs(acquisition_time))," minutes.")
+    
+
+    # https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv
     ############################################################
     ################### TEMPORAL COVERAGE ######################
     ############################################################
     cat("\n Metadata TEMPORAL COVERAGE \n")
     
     # geoflow entities data structure => 2007-03-01T13:00:00Z/2008-05-11T15:30:00Z
-    first_picture_metadata <- read_exif(paste(directories[1], files[1],sep="/"))
-    last_picture_metadata <- read_exif(paste(directories[length(directories)],files[Number_of_Pictures],sep="/"))
-    start_date<- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+    # first_picture_metadata <- read_exif(paste(directories[1], gsub(".*/,",files[1]),sep="/"))
+    # first_picture_metadata <- read_exif(paste(directories[1], gsub(".*/","",files[1]),sep="/"))
+    # last_picture_metadata <- read_exif(paste(directories[length(directories)],gsub(".*/","",files[Number_of_Pictures]),sep="/"))
+    # start_date<- as.POSIXct(first_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+    # end_date<- as.POSIXct(last_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
+    # acquisition_time <- difftime(start_date, end_date, units="mins")
     start_date<-paste0(gsub(" ","T",start_date),"Z")
-    end_date<- as.POSIXct(last_picture_metadata$DateTimeOriginal, "%Y:%m:%d %H:%M:%OS", tz="UTC")
     end_date<-paste0(gsub(" ","T",end_date),"Z")
     temporal_extent <- paste0(start_date,"/",end_date)
     }else{
@@ -170,7 +202,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   }
   number_row <- nrow(dataframe_gps_files)
   
-  if(number_row>0){
+  if(number_row>0 && !is.null(number_row) ){
     cat("\n Build a spatial data frame \n")
     
     xmin <- NULL
@@ -213,10 +245,14 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
           
         }else{
           cat("\n no GPS file found !!")
+          
+          
         }
       # spatial_extent_geom <- sf::st_as_sfc(spatial_extent,wkt = "geom")
       # spatial_extent_geom <- sf::st_as_sfc(paste0("SRID=4326;",spatial_extent))
       spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
+      # spatial_extent_area <- sf::st_as_sfc(spatial_extent)
+      # spatial_extent_length <- sf::st_as_sfc(spatial_extent)
       simplified_spatial_extent <- sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005)  %>% st_as_text()
       
       # class(spatial_extent_geom)
@@ -319,7 +355,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       relation <-paste0(relation,"_\nhttp:map(pdf)@",pdf_uri)
       # data <-paste0("uploadType:dbview_\n:",pdf_uri)
 
-      data <-paste0(
+      data_column <-paste0(
         'access:googledrive_\n',
         'source:',sql_query_filename,'_\n',
         'sourceType:dbquery_\n',
@@ -338,12 +374,12 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   
       
       
-      # data <-paste0('source:Postgis_\nsourceType:dbquery_\nuploadType:dbquery_\nsql:SELECT * FROM "',session_id,
+      # data_column <-paste0('source:Postgis_\nsourceType:dbquery_\nuploadType:dbquery_\nsql:SELECT * FROM "',session_id,
       #               '"_\nsourceSql:SELECT * FROM "',session_id,
       #               '" LIMIT 1_\nlayername:',session_id,
       #               '_\nstyle:point_\nattribute:decimalLatitude[decimalLatitude],decimalLongitude[decimalLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make]_\nvariable:LightValue[LightValue]')
       # 
-      # data <-paste0("source:file:///tmp/dessin.pdf_\nsourceName:",session_id,"_\ntype:other_\nupload:true_")
+      # data_column <-paste0("source:file:///tmp/dessin.pdf_\nsourceName:",session_id,"_\ntype:other_\nupload:true_")
       
 
       
@@ -358,7 +394,10 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
     cat("No GPS file when looking for TCX or GPX or RTK or GPKG files")
     cat(paste0("\n Pas de dossier'GPS' dans ", this_directory,"\n"))
     cat("Create GPS directory")
-    dir.create(file.path(this_directory, "GPS"))
+    if(!dir.exists(file.path(this_directory, "GPS"))){
+      dir.create(file.path(this_directory, "GPS"))
+    }
+    
     # Check if RDS exist first ??
     if(!file.exists(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))){
       df <- extract_exif_metadata_in_csv(session_id,
@@ -371,13 +410,23 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
                                          time_zone="Indian/Mauritius")
     }else{
       # read existing exif metadata from RDS file
-      df <- readRDS(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
+      df <- readRDS(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id))
     }
     setwd(paste0(this_directory, "/GPS"))
-    spatial_df <- select(df, -c(ThumbnailImage,PreviewImage))
+    nrow_spatial_df_before <- nrow(df)
+    spatial_df <- select(df, -c(ThumbnailImage,PreviewImage)) %>% filter(!is.na(GPSLatitude) & !is.null(GPSLatitude) & GPSLatitude!=0)
+    nrow_spatial_df_after <- nrow(spatial_df)
+    removed_images <- nrow_spatial_df_before-nrow_spatial_df_after
+    cat(paste0("\n",removed_images, " images have been removed !!!! Either NA or Null values for GPS data \n"))
+    
     plot_locations <- st_as_sf(spatial_df, coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
     st_write(plot_locations,paste0 (session_id,".gpkg"),delete_dsn = TRUE)
     
+    spatial_extent <- plot_locations %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
+    spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
+    simplified_spatial_extent <- sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005)  %>% st_as_text()
+    mean_altitude <- mean(spatial_df$GPSAltitude)
+    description <- paste0(description, ". The mean altidtude of this flight is : ", round(mean_altitude))
     # write_gpx_from_rds("test")
     # gps_file <- "No GPS file"
     # spatial_extent <- "No GPS file"
@@ -388,7 +437,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
   cat("\n Create metadata dataframe : \n")
   
   newRow <-NULL
-  newRow <- data.frame(Identifier=session_id,#Identifier=paste0("id:",session_id),
+  newRow <-data.frame(Identifier=session_id,#Identifier=paste0("id:",session_id),
                        Description=description,
                        Title=title,
                        Subject=subject,
@@ -403,7 +452,7 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
                        Source=source,
                        Provenance=provenance,
                        Format=format,
-                       Data=data,
+                       Data=data_column,
                        # path=this_directory,
                        # GPS_timestamp=GPS_timestamp, # ??
                        # Photo_GPS_timestamp=Photo_GPS_timestamp, # ??

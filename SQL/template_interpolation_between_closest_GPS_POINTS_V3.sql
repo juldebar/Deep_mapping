@@ -21,9 +21,9 @@ SELECT
 	photos_exif_core_metadata."ImageSize",
 	photos_exif_core_metadata."Make",
 	photos_exif_core_metadata."Model",
+	photos_exif_core_metadata."URL_original_image",
 	photos_exif_core_metadata."ThumbnailImage",
-	photos_exif_core_metadata."PreviewImage",
-	photos_exif_core_metadata."URL_original_image"
+	photos_exif_core_metadata."PreviewImage"
 
 FROM 
 	photos_exif_core_metadata, 

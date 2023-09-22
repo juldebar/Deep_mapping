@@ -3,6 +3,7 @@
 pacman::p_load(stringr,dotenv,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,pdftools,stringr,tidyr,rosm,gsheet,dplyr,sf)
 
 # Options to activate or not the different steps of the workflow
+create_SQL_database=TRUE
 create_geoflow_metadata=TRUE
 upload_to_google_drive=FALSE
 load_metadata_in_database=TRUE
@@ -12,6 +13,7 @@ load_tags_in_database=FALSE
 code_directory <-"~/Desktop/CODE/Deep_mapping/"
 setwd(code_directory)
 dotenv::load_dot_env(".env")
+
 # images_directories=str_split(string = Sys.getenv("IMAGES_DIRECTORIES"),pattern = ",")
 images_directories=str_split(string = Sys.getenv("IMAGES_DIRECTORY"),pattern = ",")
 codes_github_repository=Sys.getenv("GITHUB_REPOSITORY")
@@ -55,12 +57,13 @@ cat("Create or replace the database\n")
 # query_db="select exists( SELECT datname FROM pg_catalog.pg_database WHERE lower(datname) = lower('Reef_database_sandbox'));"
 # db_exists <- dbGetQuery(con_Reef_database, query_db)
 # if(!db_exists){
+if(create_SQL_database==TRUE){
   cat("create db")
   create_database(con_database=con_Reef_database,
                   code_directory=codes_github_repository,
                   db_name=Dbname
   )
-# }
+}
 
 # set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 
@@ -79,7 +82,7 @@ for(rep in 1:length(images_directories[[1]])){
 c=0
 metadata_missions <- NULL
 for(m in missions){
-  metadata_this_mission <- NULL
+  metadata_this_mission <- data.frame()
   images_directory <-sub(x = m,pattern = gsub(paste0(dirname(m),"/"),"",m),"")
   if(grepl(pattern = "drone",m)){
     drone_session_id <- gsub(paste0(dirname(m),"/"),"",m)
@@ -206,7 +209,9 @@ for(m in missions){
           tags_file_google_drive <- as.data.frame(gsheet::gsheet2tbl(url))
         }
         
-        # query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=tags_file_google_drive)
+        query <-update_annotations_in_database(con_database=con_Reef_database, images_tags_and_labels=tags_file_google_drive)
+        query <-update_annotations_in_database(con_database=con_Reef_database, 
+                                               images_tags_and_labels=tags_as_csv)
       }
       # metadata_this_mission$Comment <- paste0("Ratio d'images géoréférencées: ",ratio[1]/ratio[2], "(images géoréférencées: ", ratio[1]," pour un total d'images de : ", ratio[2],")")
       metadata_this_mission$Comment <- "no comment"
