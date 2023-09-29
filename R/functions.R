@@ -127,7 +127,9 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
     this_directory <- sub_directories[i]
       
     # if (endsWith(this_directory, "GOPRO") || endsWith(this_directory, "data")==TRUE || grepl(pattern= "BEFORE",this_directory)==FALSE || grepl(pattern= "AFTER",this_directory)==FALSE){
-    if (endsWith(this_directory, "GOPRO") && grepl(pattern= "BEFORE",this_directory)==FALSE && grepl(pattern= "AFTER",this_directory)==FALSE){
+    if (endsWith(this_directory, "GOPRO") && 
+        grepl(pattern= "BEFORE",this_directory)==FALSE && 
+        grepl(pattern= "AFTER",this_directory)==FALSE){
       
       setwd(this_directory)
       files <- list.files(pattern = mime_type ,recursive = TRUE)
@@ -153,7 +155,9 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
             cat(message_done)
             }
       setwd(metadata_directory)
-    }else if(endsWith(this_directory, "DCIM") && grepl(pattern= "drone",this_directory)==TRUE  && grepl(pattern= "GCP",this_directory)==FALSE){
+    }else if(endsWith(this_directory, "DCIM") && 
+             grepl(pattern= "drone",this_directory)==TRUE  && 
+             grepl(pattern= "GCP",this_directory)==FALSE){
       setwd(this_directory)
       files <- list.files(pattern = mime_type ,recursive = TRUE)
       # new_exif_metadata <-data.frame()
@@ -185,7 +189,7 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
   setwd(metadata_directory)
   name_file_csv<-paste("All_Exif_metadata_",session_id,".csv",sep="")
   # write.csv(CSV_total, name_file_csv,row.names = F)
-  write.csv(CSV_total, "metadata.csv",row.names = F)
+  # write.csv(CSV_total, "metadata.csv",row.names = F)
   saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,"",sep=""))
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
@@ -679,16 +683,33 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
   drop_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"',spatial_index,'\" ; '))
   add_spatial_index <- dbGetQuery(con_database, paste0('CREATE INDEX \"',spatial_index,'\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
   create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
-  # head(create_csv_from_view)
-  setwd(paste0(images_directory,"/GPS"))
-  filename <- paste0("photos_location_",session_id,".csv")
-  filename <- paste0("metadata_enriched",".csv")
-  write.csv(create_csv_from_view, filename,row.names = F)
-  # tmp = read.csv("../METADATA/exif/metadata.csv")
-  # tmp$GPSLongitude <- create_csv_from_view$decimalLongitude
-  # tmp$GPSLatitude <- create_csv_from_view$decimalLatitude
-  # left_join(create_csv_from_view,tmp,by = "FileName") %>% distinct()
-  # write.csv(tmp,pastecreate_csv_from_view0("metadata",".csv"),row.names = F)
+  create_csv_from_view$FileName <- sub(".*GOPRO/","",create_csv_from_view$photo_relative_file_path)
+  setwd(paste0(images_directory,"/METADATA"))
+  filename <- "metadata.csv"
+  
+  if(!file.exists(filename)){
+    metadata_image = readRDS(paste0("./exif/All_Exif_metadata_",session_id))
+    # Column DateCreated, DateTimeDigitized, GPSDate, GPSTime,GPSRoll,GPSPitch,GPSTrack,MaximumShutterAngle,SubSecDateTimeOriginal,GPSMapDatum doesn't exist
+    newdf <- left_join(create_csv_from_view,metadata_image,by = "FileName",suffix=c("","")) %>% 
+      dplyr::select(photo_id,photo_identifier,session_id,photo_relative_file_path,session_photo_number,decimalLatitude, decimalLongitude, ApertureValue,Compression,Contrast,CreateDate,
+                                     DateTimeOriginal,DigitalZoomRatio,ExifImageHeight,ExifImageWidth,ExifToolVersion,
+                                     ExifVersion,ExposureCompensation,ExposureMode,ExposureProgram,
+                                     FileName,FileSize,FileType,FileTypeExtension,FNumber,
+                                     FocalLength,FocalLength35efl,FocalLengthIn35mmFormat,FOV,GPSAltitude,GPSAltitudeRef,
+                                     GPSDateTime,GPSLatitude,GPSLatitudeRef,GPSLongitude,GPSLongitudeRef,
+                                     GPSPosition,GPSTimeStamp,ImageHeight,ImageWidth,
+                                     LightValue,Make,MaxApertureValue,Megapixels,MeteringMode,MIMEType,
+                                     Model,Saturation,ScaleFactor35efl,SceneCaptureType,SceneType,SensingMethod,Sharpness,
+                                     ShutterSpeed,Software,ThumbnailImage,ThumbnailLength,ThumbnailOffset,
+                                     WhiteBalance,XResolution,YResolution,GPSLatitude,GPSLongitude) %>% 
+      dplyr::rename(GPSLatitude_native=GPSLatitude, GPSLongitude_native=GPSLongitude) %>% 
+      dplyr::rename(GPSLatitude=decimalLatitude, GPSLongitude=decimalLongitude)  %>%
+      st_as_sf(coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
+    
+    st_write(newdf,sub(".csv",paste0("_",session_id,".gpkg"),filename),delete_dsn = TRUE)
+    write.csv(select(newdf, -c(ThumbnailImage)),filename,row.names = F)
+    
+  }
   
   # shape_file <- write_shp_from_csv(file_name)
   setwd(original_directory)
@@ -738,6 +759,7 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
                             colClasses=c(SourceFile="character",ExifToolVersion="numeric",FileName="character",Directory="character",FileSize="integer",FileModifyDate="character",FileAccessDate="character",FileInodeChangeDate="character",FilePermissions="integer",FileType="character",FileTypeExtension="character",MIMEType="character",ExifByteOrder="character",ImageDescription="character",Make="character",Orientation="integer",XResolution="integer",YResolution="integer",ResolutionUnit="integer",Software="character",ModifyDate="character",YCbCrPositioning="integer",ExposureTime="numeric",FNumber="numeric",ExposureProgram="integer",ISO="integer",ExifVersion="character",DateTimeOriginal="POSIXct",CreateDate="character",ComponentsConfiguration="character",CompressedBitsPerPixel="numeric",ShutterSpeedValue="numeric",ApertureValue="numeric",MaxApertureValue="numeric",SubjectDistance="integer",MeteringMode="integer",LightSource="integer",Flash="integer",FocalLength="integer",Warning="character",FlashpixVersion="character",ColorSpace="integer",ExifImageWidth="integer",ExifImageHeight="integer",InteropIndex="character",InteropVersion="character",ExposureIndex="character",SensingMethod="integer",FileSource="integer",SceneType="integer",CustomRendered="integer",ExposureMode="integer",DigitalZoomRatio="integer",FocalLengthIn35mmFormat="integer",SceneCaptureType="integer",GainControl="integer",Contrast="integer",Saturation="integer",DeviceSettingDescription="character",SubjectDistanceRange="integer",SerialNumber="character",GPSLatitudeRef="character",GPSLongitudeRef="character",GPSAltitudeRef="integer",GPSTimeStamp="character",GPSDateStamp="character",Compression="integer",ThumbnailOffset="integer",ThumbnailLength="integer",MPFVersion="character",NumberOfImages="integer",MPImageFlags="integer",MPImageFormat="integer",MPImageType="integer",MPImageLength="integer",MPImageStart="integer",DependentImage1EntryNumber="integer",DependentImage2EntryNumber="integer",ImageUIDList="character",TotalFrames="integer",DeviceName="character",FirmwareVersion="character",CameraSerialNumber="character",Model="character",AutoRotation="character",DigitalZoom="character",ProTune="character",WhiteBalance="character",Sharpness="character",ColorMode="character",AutoISOMax="integer",AutoISOMin="integer",ExposureCompensation="numeric",Rate="character",PhotoResolution="character",HDRSetting="character",ImageWidth="integer",ImageHeight="integer",EncodingProcess="integer",BitsPerSample="integer",ColorComponents="integer",YCbCrSubSampling="character",Aperture="numeric",GPSAltitude="numeric",GPSDateTime="POSIXct",GPSLatitude="numeric",GPSLongitude="numeric",GPSPosition="character",ImageSize="character",PreviewImage="character",Megapixels="integer",ScaleFactor35efl="integer",ShutterSpeed="numeric",ThumbnailImage="character",CircleOfConfusion="character",FOV="numeric",FocalLength35efl="integer",HyperfocalDistance="numeric",LightValue="numeric",session_id="character",session_photo_number="integer",relative_path="character",geometry_postgis="numeric",geometry_gps_correlate="numeric",geometry_native="numeric"),
                             stringsAsFactors = FALSE)
     lapply(template_df,class)
+    
     all_exif_metadata <- extract_exif_metadata_in_csv(session_id=session_id,
                                                       images_directory = mission_directory,
                                                       template_df=template_df,
@@ -817,15 +839,19 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
         # Calculate offset between timestamps of the camera and GPS
         con <- file(paste0(mission_directory,"/LABEL/tag.txt"),"r")
         first_line <- readLines(con,n=1)
+        first_line <- sub(", ",",",first_line)
         close(con)
         # offset <- as.numeric(eval(parse(text = sub(".*=> ","",first_line))))
         photo_relative_file_path <- paste0("/",sub(".JPG.*","",first_line),".JPG")
-        query <- paste0("SELECT * FROM public.photos_exif_core_metadata WHERE (relative_path || '/' || \"FileName\")='",photo_relative_file_path,"'")
+        file_name <- strsplit(photo_relative_file_path,"/")[[1]][length(strsplit(photo_relative_file_path,"/")[[1]])]
+        # query <- paste0("SELECT * FROM public.photos_exif_core_metadata WHERE \"FileName\"='",file_name,"'  LIMIT 1")
+        query <- paste0("SELECT * FROM public.photos_exif_core_metadata WHERE session_id='",session_id,"' AND \"FileName\"='",file_name,"'  LIMIT 1")
+        # query <- paste0("SELECT * FROM public.photos_exif_core_metadata WHERE (relative_path || '/' || \"FileName\")='",photo_relative_file_path,"'")
         photo_db_timestamp <- dbGetQuery(con_database, query)
         
         if(type_images!="drone"){
           
-        cat("toto offset begin\n")
+        cat("Check offset begin\n")
         cat(paste0(query,"\n"))
         GPS_timestamp <- sub(".,.*","",sub(".*,\"","",first_line))
         offset = difftime(as.character(photo_db_timestamp$DateTimeOriginal),GPS_timestamp,units="secs")
@@ -1112,7 +1138,6 @@ write_gpx_from_rds <- function(file_name){
   plot_locations <- st_as_sf(spatial_df, coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
   st_write(plot_locations,gpkg_file,delete_dsn = TRUE)
   
-  
   # gpx_file <- paste0 (file_name,".gpx")
   # st_write(select(plot_locations,GPSDateTime,GPs), gpx_file,driver = "GPX")
   # writeOGR(plot_locations,dsn=gpx_file,layer="track<_points", driver="GPX",overwrite_layer = T,GPX_USE_EXTENSIONS=YES)
@@ -1353,17 +1378,14 @@ return_dataframe_tag_txt <- function(wd,all_categories){
           writeLines(tx2, con=fileName_bis)
           
           fileName_ter <-  gsub(pattern = ".csv", replace = "_ter.csv", x = fileName)
-          # csv_file <- readLines(con <- file(fileName_bis))
           csv_file <- read.csv(fileName_bis,sep = ",")
           csv_file$path <- gsub(pattern = '.*\\/DCIM', replace = paste0(path_session,"/DCIM"),x = csv_file$path)
           csv_file$name_session <- gsub("/","",name_session)
           csv_file$file_name <-gsub(pattern = '.*\\/G0',"G0",csv_file$path)
           csv_file$photo_name=paste0(csv_file$name_session,"_",csv_file$file_name)
 
-          # writeLines(csv_file,con=fileName_ter)
           write.table(x = csv_file,file = fileName_ter, sep=",",row.names = FALSE)
-          # system(paste0("rm ",fileName))
-          # system(paste0("rm ",fileName_bis))
+          # system(paste0("rm ",fileName_ter))
         }
       } else {
         cat("\ These repositories CHECK\n")

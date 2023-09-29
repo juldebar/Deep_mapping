@@ -118,6 +118,8 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       photo_calibration_metadata$DateTimeOriginal
       directories <- list.dirs(paste(this_directory,DCIM_directory,sep="/"), recursive = FALSE)
       directories <- directories[grepl("GOPRO", directories)]
+      file.copy(photo_calibration_metadata$SourceFile, directories[1])
+      
     }
   
   ############# offset ################
