@@ -328,4 +328,11 @@ seedNumb | Input | Integer | -911 | - | Select the seed number to use for the ru
 XXX | ... | ... | ... | ... | ...
 -->
 
+3) Launch RStudio
+
+- Load required libray and load environment file:
+```
+library(dotenv)
+load_dot_env(file = ".env")
+```
 
