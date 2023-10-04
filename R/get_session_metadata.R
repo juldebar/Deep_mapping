@@ -104,21 +104,27 @@ get_session_metadata <- function(con_database, session_directory, google_drive_p
       if(grepl(pattern = "kite", x=session_id)){activity="Kite surfing"
       } else if(grepl(pattern = "surf", x=session_id)){activity="Surf"
       } else if(grepl(pattern = "addle", x=session_id)){activity="Paddle"
-      } else if(grepl(pattern = "snorkelling", x=session_id)){activity="Snorkelling"}
+      } else if(grepl(pattern = "scuba", x=session_id)){activity="Snorkelling"}
       
       # keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,"_")
       # keywords_spatial <- paste0("GENERAL: Mauritius_")
       keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,"_")
       pattern = "*.JPG"
       DCIM_directory <- "DCIM"
+      #' @juldebar => check
       date <- gsub("_","-",substr(session_id,9,18))
-      photo_calibration_metadata <- read_exif(paste(gsub(session_id,"",this_directory), sub(' => .*', '', first_line),sep="/"))
+      photo_calibration_metadata <- read_exif(paste0(gsub(session_id,"",this_directory), sub(' => .*', '', first_line)))
+      photo_directory <- sub('/G00.*', '',paste0(gsub(session_id,"",this_directory), sub(' => .*', '', first_line)))
       # saveRDS(photo_calibration_metadata, paste("toto",session_id,".RDS",sep=""))
       
       photo_calibration_metadata$DateTimeOriginal
       directories <- list.dirs(paste(this_directory,DCIM_directory,sep="/"), recursive = FALSE)
       directories <- directories[grepl("GOPRO", directories)]
+      if (endsWith(photo_directory, "GOPRO") && 
+          (grepl(pattern= "BEFORE",photo_directory)==TRUE ||
+          grepl(pattern= "AFTER",photo_directory)==TRUE)){
       file.copy(photo_calibration_metadata$SourceFile, directories[1])
+      }
       
     }
   

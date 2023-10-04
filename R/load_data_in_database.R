@@ -1,9 +1,9 @@
-# rm(list=ls())
+rm(list=ls())
 # install.packages("pacman")
 pacman::p_load(stringr,dotenv,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,pdftools,stringr,tidyr,rosm,gsheet,dplyr,sf)
 
 # Options to activate or not the different steps of the workflow
-create_SQL_database=TRUE
+create_SQL_database=FALSE
 create_geoflow_metadata=TRUE
 upload_to_google_drive=FALSE
 load_metadata_in_database=TRUE
@@ -49,7 +49,7 @@ source(paste0(code_directory,"R/get_session_metadata.R"))
 
 
 #Disconnect database
-dbDisconnect(con_Reef_database)
+# dbDisconnect(con_Reef_database)
 cat("Connect the database\n")
 con_Reef_database <- DBI::dbConnect(drv = RPostgres::Postgres(),dbname=Dbname, host=Host, user=User,password=Password)
 cat("Create or replace the database\n")
