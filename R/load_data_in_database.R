@@ -3,7 +3,7 @@ rm(list=ls())
 pacman::p_load(stringr,dotenv,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,pdftools,stringr,tidyr,rosm,gsheet,dplyr,sf)
 
 # Options to activate or not the different steps of the workflow
-create_SQL_database=FALSE
+create_SQL_database=TRUE
 create_geoflow_metadata=TRUE
 upload_to_google_drive=FALSE
 load_metadata_in_database=TRUE
