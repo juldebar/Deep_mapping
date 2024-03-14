@@ -1,4 +1,4 @@
-setwd("/media/julien/Backup_Total_12T/Backup_Deep_Mapping/Underwater/rename")
+setwd("/home/user/Desktop/Data/ok")
 dirlist<-list.dirs(recursive = FALSE)
 country_code <- "_MDG-"
 # sapply(dirlist[is.pattern],FUN=function(eachPath){ 

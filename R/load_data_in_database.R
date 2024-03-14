@@ -10,9 +10,9 @@ load_metadata_in_database=TRUE
 load_data_in_database=TRUE
 load_tags_in_database=FALSE
 
-code_directory <-"~/Desktop/CODES/Deep_mapping/"
+code_directory <-"~/Desktop/CODE/Deep_mapping/"
 setwd(code_directory)
-dotenv::load_dot_env(".env2")
+dotenv::load_dot_env(".env")
 
 # images_directories=str_split(string = Sys.getenv("IMAGES_DIRECTORIES"),pattern = ",")
 images_directories=str_split(string = Sys.getenv("IMAGES_DIRECTORY"),pattern = ",")
