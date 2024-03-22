@@ -190,7 +190,7 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
   name_file_csv<-paste("All_Exif_metadata_",session_id,".csv",sep="")
   # write.csv(CSV_total, name_file_csv,row.names = F)
   # write.csv(CSV_total, "metadata.csv",row.names = F)
-  saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,"",sep=""))
+  saveRDS(CSV_total, paste("All_Exif_metadata_",session_id,".RDS",sep=""))
   
   # return(nrow(read.csv("Core_Exif_metadata.csv")))
   return(CSV_total)
@@ -683,24 +683,29 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
   drop_spatial_index <- dbGetQuery(con_database, paste0('DROP INDEX IF EXISTS \"',spatial_index,'\" ; '))
   add_spatial_index <- dbGetQuery(con_database, paste0('CREATE INDEX \"',spatial_index,'\" ON \"view_',session_id,'\" USING GIST (the_geom);'))
   create_csv_from_view <- dbGetQuery(con_database, paste0('SELECT * FROM \"view_',session_id,'\";'))
-  create_csv_from_view$FileName <- sub(".*GOPRO/","",create_csv_from_view$photo_relative_file_path)
+  # if(grepl(pattern = "GOPRO",create_csv_from_view$photo_relative_file_path[1])) {create_csv_from_view$FileName <- sub(".*GOPRO/","",create_csv_from_view$photo_relative_file_path)}
+  # if(grepl(pattern = "UAV",create_csv_from_view$photo_relative_file_path[1])){create_csv_from_view$FileName <- sub(".*GOPRO/","",create_csv_from_view$photo_relative_file_path)}
   setwd(paste0(images_directory,"/METADATA"))
   filename <- "metadata.csv"
   
   if(!file.exists(filename)){
-    metadata_image = readRDS(paste0("./exif/All_Exif_metadata_",session_id))
+    metadata_image = readRDS(paste0("./exif/All_Exif_metadata_",session_id,".RDS"))
     # Column DateCreated, DateTimeDigitized, GPSDate, GPSTime,GPSRoll,GPSPitch,GPSTrack,MaximumShutterAngle,SubSecDateTimeOriginal,GPSMapDatum doesn't exist
+    # Column ApertureValue , GPSTimeStamp ,SensingMethod
     newdf <- left_join(create_csv_from_view,metadata_image,by = "FileName",suffix=c("","")) %>% 
-      dplyr::select(photo_id,photo_identifier,session_id,photo_relative_file_path,session_photo_number,decimalLatitude, decimalLongitude, ApertureValue,Compression,Contrast,CreateDate,
-                                     DateTimeOriginal,DigitalZoomRatio,ExifImageHeight,ExifImageWidth,ExifToolVersion,
+      dplyr::select(photo_id,session_id,photo_relative_file_path,session_photo_number,decimalLatitude, decimalLongitude, Compression,Contrast,CreateDate,
+                    # dplyr::select(photo_id,photo_identifier,session_id,photo_relative_file_path,session_photo_number,decimalLatitude, decimalLongitude, ApertureValue,Compression,Contrast,CreateDate,
+                                  DateTimeOriginal,DigitalZoomRatio,ExifImageHeight,ExifImageWidth,ExifToolVersion,
                                      ExifVersion,ExposureCompensation,ExposureMode,ExposureProgram,
                                      FileName,FileSize,FileType,FileTypeExtension,FNumber,
                                      FocalLength,FocalLength35efl,FocalLengthIn35mmFormat,FOV,GPSAltitude,GPSAltitudeRef,
                                      GPSDateTime,GPSLatitude,GPSLatitudeRef,GPSLongitude,GPSLongitudeRef,
-                                     GPSPosition,GPSTimeStamp,ImageHeight,ImageWidth,
-                                     LightValue,Make,MaxApertureValue,Megapixels,MeteringMode,MIMEType,
-                                     Model,Saturation,ScaleFactor35efl,SceneCaptureType,SceneType,SensingMethod,Sharpness,
-                                     ShutterSpeed,Software,ThumbnailImage,ThumbnailLength,ThumbnailOffset,
+                    # GPSPosition,GPSTimeStamp,ImageHeight,ImageWidth,
+                    GPSPosition,ImageHeight,ImageWidth,
+                    LightValue,Make,MaxApertureValue,Megapixels,MeteringMode,MIMEType,
+                    # Model,Saturation,ScaleFactor35efl,SceneCaptureType,SceneType,SensingMethod,Sharpness,
+                    Model,Saturation,ScaleFactor35efl,SceneCaptureType,SceneType,Sharpness,
+                    ShutterSpeed,Software,ThumbnailImage,ThumbnailLength,ThumbnailOffset,
                                      WhiteBalance,XResolution,YResolution,GPSLatitude,GPSLongitude) %>% 
       dplyr::rename(GPSLatitude_native=GPSLatitude, GPSLongitude_native=GPSLongitude) %>% 
       dplyr::rename(GPSLatitude=decimalLatitude, GPSLongitude=decimalLongitude)  %>%
@@ -721,7 +726,7 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
 ############################ load_exif_metadata_in_database ###################################################
 #############################################################################################################
 
-load_exif_metadata_in_database <- function(con_database, code_directory, mission_directory,platform){
+load_exif_metadata_in_database <- function(con_database, session_id,code_directory, mission_directory,platform){
   
   cat(paste0("Start loading data for mission: ", mission_directory,"\n"))
   
@@ -732,8 +737,8 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
   
   # SET DIRECTORIES & LOAD SOURCES & CONNECT DATABASE
   if(type_images=="drone"){
-    session_id <- paste0(gsub(paste0(dirname(dirname(mission_directory)),"/"),"",dirname(mission_directory)),
-                         "_",gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
+    # session_id <- paste0(gsub(paste0(dirname(dirname(mission_directory)),"/"),"",dirname(mission_directory)),
+    #                      "_",gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
     mime_type = "*.JPG"
     prefix_mission = "Mission"
     images_dir = "./DCIM"
@@ -742,7 +747,7 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
     offset <- 0
     
   }else if(type_images=="gopro"){
-    session_id <- gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory))
+    # session_id <- gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory))
     mime_type = "*.JPG"
     prefix_mission = "session_"
     gps_dir = "GPS"
@@ -772,17 +777,18 @@ load_exif_metadata_in_database <- function(con_database, code_directory, mission
     
   }else{
     # read existing exif metadata from RDS file
-    all_exif_metadata <- readRDS(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,""))
+    all_exif_metadata <- readRDS(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
   }
   cat(paste0("Adding attributes \n"))
   
   # all_exif_metadata$PreviewImage <- paste0("base64:",base64enc::base64encode("https://upload.wikimedia.org/wikipedia/commons/7/7f/Logo_IRD_2016_BLOC_FR_COUL.png"))
   # all_exif_metadata$PreviewImage <- paste0("base64:",base64enc::base64encode("/home/user/toto.png"))
-  all_exif_metadata$PreviewImage <- ""
-  all_exif_metadata$ThumbnailImage <- ""
+  # all_exif_metadata$PreviewImage <- ""
+  # all_exif_metadata$ThumbnailImage <- ""
   #' @juldebar => create the real link!
-  URL_base <- "http://thredds.oreme.org/tmp/Deep_mapping/"
-  all_exif_metadata$URL_original_image <-"http://thredds.oreme.org/tmp/Deep_mapping/session_2017_11_19_paddle_Black_Rocks_G0028305.JPG"
+  # URL_base <- "http://thredds.oreme.org/tmp/Deep_mapping/"
+  # all_exif_metadata$URL_original_image <-"http://thredds.oreme.org/tmp/Deep_mapping/session_2017_11_19_paddle_Black_Rocks_G0028305.JPG"
+  all_exif_metadata$URL_original_image <-""
   # all_exif_metadata$URL_original_image <-paste0(URL_base,"TO DO")
   
   cat(paste0("Extracting Core exif metadata \n"))
@@ -1131,8 +1137,8 @@ return(shape_file)
 
 
 write_gpx_from_rds <- function(file_name){
-  rds_file <- paste0 (file_name,"")
-  gpkg_file <- paste0 (file_name,".gpkg")
+  rds_file <- paste0(file_name,".RDS")
+  gpkg_file <- paste0(file_name,".gpkg")
   df <- readRDS(rds_file)
   spatial_df <- select(df, -c(ThumbnailImage,PreviewImage))
   plot_locations <- st_as_sf(spatial_df, coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
