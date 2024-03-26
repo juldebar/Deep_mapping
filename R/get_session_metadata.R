@@ -235,6 +235,7 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
             ymax <- max(dataframe_gps_file$latitude)
             spatial_extent <- paste("SRID=4326;POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
             ####################
+
             
             
       if(grepl(pattern = ".tcx",gps_file)){
@@ -399,6 +400,58 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
       # qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_csv.qgs"
       # qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_shapefile_new.qgs"
       # write_qgis_project(session_id, qgs_template,shape_file,xmin,xmax,ymin,ymax)
+      # get_session_metadata <- function(con_database, session_id, session_directory, google_drive_path, metadata_sessions,type_images="gopro",google_drive_upload){
+        
+      
+      template_project="QGIS/template_project.qgs"
+      pattern_root_path="/media/julien/SSD2TO/Deep_Mapping/drone/Madagascar/clean/2023/20230430_MDG-Nosy-Ve_UAV-01/20230430_MDG-Nosy-Ve_UAV-01_2/METADATA/"
+      # pattern_root_path=gsub("//","/",paste0(session_directory,"/METADATA/"))
+      pattern_root_path=gsub("//","/",pattern_root_path)
+      pattern_session_id="20230430_MDG-Nosy-Ve_UAV-01_2"
+      this_session_id=session_id
+      pattern_relative_path= paste0(session_id,".gpkg")
+      xmin_pattern="43.58705305555560017"
+      ymin_pattern="-23.64932419444440015"
+      xmax_pattern="43.60034630555559687"
+      ymax_pattern="-23.64387211111110076"
+      
+      con <- file(paste0(code_directory,template_project),"r")
+      lines <- readLines(con)
+      close(con)
+      # new_lines <- gsub(pattern_root_path,"./",lines)
+      new_lines <- gsub(pattern_root_path,"",lines)
+      new_lines <- gsub(pattern_session_id,this_session_id,new_lines)
+      new_lines <- gsub(paste0(pattern_session_id,"_bf7f0265_413b_4f39_b0eb_360675cdfa89"),paste0(this_session_id,"_bf7f0265_413b_4f39_b0eb_360675cdfa89"),new_lines)
+      
+      gpkg_file <- sub("20230430_MDG-Nosy-Ve_UAV-01",substr(this_session_id, 1, (nchar(this_session_id)-2)),gsub(pattern_session_id,this_session_id,paste0(pattern_root_path,"metadata_",pattern_relative_path)))
+      if(file.exists(gpkg_file)){
+        # setwd(dirname(gpkg_file))
+        spatial_data <- rgdal::readOGR(dsn = gpkg_file,stringsAsFactors = FALSE)
+        spatial_data <- st_as_sf(spatial_data)
+        bbox <- st_bbox(spatial_data)
+      }else{
+        spatial_extent <- paste("SRID=4326;POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
+        spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
+        bbox <- st_bbox(spatial_extent_geom)
+      }
+
+      new_lines <- gsub(xmin_pattern,bbox$xmin,new_lines)
+      new_lines <- gsub(xmax_pattern,bbox$xmax,new_lines)
+      new_lines <- gsub(ymin_pattern,bbox$ymin,new_lines)
+      new_lines <- gsub(ymax_pattern,bbox$ymax,new_lines)
+      
+      new_lines <- gsub("this_xmin",as.character(bbox$xmin-buffer),new_lines)
+      new_lines <- gsub("this_xmax",as.character(bbox$xmax+buffer),new_lines)
+      new_lines <- gsub("this_ymin",as.character(bbox$ymin-buffer),new_lines)
+      new_lines <- gsub("this_ymax",as.character(bbox$ymax+buffer),new_lines)
+      
+      QGIS_project_filename <- paste0("../METADATA/",this_session_id,"_project.qgs")
+      
+      fileConn<-file(QGIS_project_filename)
+      writeLines(new_lines, fileConn)
+      close(fileConn)
+      
+      
       setwd(this_wd)
       
     }

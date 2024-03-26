@@ -156,7 +156,7 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
             }
       setwd(metadata_directory)
     }else if(endsWith(this_directory, "DCIM") && 
-             grepl(pattern= "drone",this_directory)==TRUE  && 
+             grepl(pattern= "UAV",this_directory)==TRUE  && 
              grepl(pattern= "GCP",this_directory)==FALSE){
       setwd(this_directory)
       files <- list.files(pattern = mime_type ,recursive = TRUE)
@@ -165,10 +165,11 @@ extract_exif_metadata_in_csv <- function(session_id,images_directory,template_df
       if(length((files))>0){
         
         cat(paste("\n Metadata extraction for photos in ", this_directory, "\n", sep=" "))
-        exif_metadata <- extract_exif_metadata_in_this_directory(session_id,
-                                                                 images_directory,
-                                                                 this_directory,
-                                                                 template_df,
+        # session_id,images_directory, this_directory,template_df, mime_type = "*.JPG", time_zone="Indian/Mauritius"
+        exif_metadata <- extract_exif_metadata_in_this_directory(session_id=session_id,
+                                                                 images_directory=images_directory,
+                                                                 this_directory=this_directory,
+                                                                 template_df=template_df,
                                                                  mime_type = mime_type,
                                                                  time_zone=time_zone
                                                                  )
@@ -231,7 +232,8 @@ extract_exif_metadata_in_this_directory <- function(session_id,images_directory,
   
   exif_metadata$session_id = session_id
   exif_metadata$session_photo_number <-c(1:nrow(exif_metadata))
-  exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
+  # exif_metadata$relative_path = gsub(dirname(images_directory),"",this_directory)
+  exif_metadata$relative_path =  paste0(gsub(paste0(images_directories,"/"),"",this_directory),"/",exif_metadata$SourceFile)
   # # IF THERE IS NO EMBEDDED GPS DATA WE ADD EXPECTED COLUMNS WITH DEFAULT VALUES ("NA")
   if(is.null(exif_metadata$GPSDateTime)==TRUE){
     exif_metadata$GPSDateTime <-NA
@@ -740,7 +742,6 @@ load_exif_metadata_in_database <- function(con_database, session_id,code_directo
     # session_id <- paste0(gsub(paste0(dirname(dirname(mission_directory)),"/"),"",dirname(mission_directory)),
     #                      "_",gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory)))
     mime_type = "*.JPG"
-    prefix_mission = "Mission"
     images_dir = "./DCIM"
     gps_dir = "./"
     file_type<-"GPX"
@@ -749,7 +750,6 @@ load_exif_metadata_in_database <- function(con_database, session_id,code_directo
   }else if(type_images=="gopro"){
     # session_id <- gsub(" ","",gsub(paste0(dirname(mission_directory),"/"),"",mission_directory))
     mime_type = "*.JPG"
-    prefix_mission = "session_"
     gps_dir = "GPS"
     images_dir = "./DCIM"
     file_type<-"TCX" #  "GPX"  "TCX" "RTK"
@@ -758,12 +758,12 @@ load_exif_metadata_in_database <- function(con_database, session_id,code_directo
   # EXTRACT exif metadata elements & store them in a CSV file & LOAD THEM INTO POSTGRES DATABASE
   all_exif_metadata <-NULL
   # 1) extract exif metadata and store it into a CSV or RDS file
-  if(!file.exists(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,""))){
+  if(!file.exists(paste0(mission_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))){
     # extract exif metadata on the fly
     template_df <- read.csv(paste0(code_directory,"CSV/All_Exif_metadata_template.csv"),
                             colClasses=c(SourceFile="character",ExifToolVersion="numeric",FileName="character",Directory="character",FileSize="integer",FileModifyDate="character",FileAccessDate="character",FileInodeChangeDate="character",FilePermissions="integer",FileType="character",FileTypeExtension="character",MIMEType="character",ExifByteOrder="character",ImageDescription="character",Make="character",Orientation="integer",XResolution="integer",YResolution="integer",ResolutionUnit="integer",Software="character",ModifyDate="character",YCbCrPositioning="integer",ExposureTime="numeric",FNumber="numeric",ExposureProgram="integer",ISO="integer",ExifVersion="character",DateTimeOriginal="POSIXct",CreateDate="character",ComponentsConfiguration="character",CompressedBitsPerPixel="numeric",ShutterSpeedValue="numeric",ApertureValue="numeric",MaxApertureValue="numeric",SubjectDistance="integer",MeteringMode="integer",LightSource="integer",Flash="integer",FocalLength="integer",Warning="character",FlashpixVersion="character",ColorSpace="integer",ExifImageWidth="integer",ExifImageHeight="integer",InteropIndex="character",InteropVersion="character",ExposureIndex="character",SensingMethod="integer",FileSource="integer",SceneType="integer",CustomRendered="integer",ExposureMode="integer",DigitalZoomRatio="integer",FocalLengthIn35mmFormat="integer",SceneCaptureType="integer",GainControl="integer",Contrast="integer",Saturation="integer",DeviceSettingDescription="character",SubjectDistanceRange="integer",SerialNumber="character",GPSLatitudeRef="character",GPSLongitudeRef="character",GPSAltitudeRef="integer",GPSTimeStamp="character",GPSDateStamp="character",Compression="integer",ThumbnailOffset="integer",ThumbnailLength="integer",MPFVersion="character",NumberOfImages="integer",MPImageFlags="integer",MPImageFormat="integer",MPImageType="integer",MPImageLength="integer",MPImageStart="integer",DependentImage1EntryNumber="integer",DependentImage2EntryNumber="integer",ImageUIDList="character",TotalFrames="integer",DeviceName="character",FirmwareVersion="character",CameraSerialNumber="character",Model="character",AutoRotation="character",DigitalZoom="character",ProTune="character",WhiteBalance="character",Sharpness="character",ColorMode="character",AutoISOMax="integer",AutoISOMin="integer",ExposureCompensation="numeric",Rate="character",PhotoResolution="character",HDRSetting="character",ImageWidth="integer",ImageHeight="integer",EncodingProcess="integer",BitsPerSample="integer",ColorComponents="integer",YCbCrSubSampling="character",Aperture="numeric",GPSAltitude="numeric",GPSDateTime="POSIXct",GPSLatitude="numeric",GPSLongitude="numeric",GPSPosition="character",ImageSize="character",PreviewImage="character",Megapixels="integer",ScaleFactor35efl="integer",ShutterSpeed="numeric",ThumbnailImage="character",CircleOfConfusion="character",FOV="numeric",FocalLength35efl="integer",HyperfocalDistance="numeric",LightValue="numeric",session_id="character",session_photo_number="integer",relative_path="character",geometry_postgis="numeric",geometry_gps_correlate="numeric",geometry_native="numeric"),
                             stringsAsFactors = FALSE)
-    lapply(template_df,class)
+    # lapply(template_df,class)
     
     all_exif_metadata <- extract_exif_metadata_in_csv(session_id=session_id,
                                                       images_directory = mission_directory,
@@ -773,7 +773,7 @@ load_exif_metadata_in_database <- function(con_database, session_id,code_directo
                                                       time_zone=dataset_time_zone
                                                       )
       
-    lapply(all_exif_metadata,class)
+    # lapply(all_exif_metadata,class)
     
   }else{
     # read existing exif metadata from RDS file
