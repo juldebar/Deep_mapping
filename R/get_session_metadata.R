@@ -1,17 +1,3 @@
-############################################################
-################### Packages #######################
-############################################################
-library(googledrive)
-library(trackeR)
-library(dplyr)
-library(exifr)
-library(data.table)
-library(geoflow)
-library(sf)
-library(pdftools)
-library(RgoogleMaps)
-library(rosm)
-library(prettymapr)
 ################### Create a geoflow data frame to store metadata #######################
 # session_directory <- "/media/juldebar/Deep_Mapping_4To/data_deep_mapping/2019/good/database/session_2019_06_23_kite_Le_Morne_One_Eye"
 # google_drive_path <- drive_get(id="1gUOhjNk0Ydv8PZXrRT2KQ1NE6iVy-unR")
@@ -104,9 +90,9 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
       } else if(grepl(pattern = "addle", x=session_id)){activity="Paddle"
       } else if(grepl(pattern = "scuba", x=session_id)){activity="Snorkelling"}
       
-      # keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,"_")
-      # keywords_spatial <- paste0("GENERAL: Mauritius_")
       keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,"_")
+      # keywords_spatial <- paste0("GENERAL: Mauritius_")
+      # keywords <- paste0("GENERAL: Mauritius, Seatizen, coral reef, underwater photos, deep learning, coral reef habitats, citizen sciences, ",activity,"_")
       pattern = "*.JPG"
       DCIM_directory <- "DCIM"
       #' @juldebar => check
@@ -134,10 +120,11 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
   #############################
   
   ################### Set static metadata elements #######################
-  title <- gsub("session 20","Session of the 20",gsub("_"," ",session_id))
+  title <- "title:"
   subject <- keywords
   description <- "abstract:"
-  creator <- "owner:emmanuel.blondel1@gmail.com_\npointOfContact:sylvain.bonhommeau@ifremer.fr_\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
+  # creator <- "owner:emmanuel.blondel1@gmail.com_\npointOfContact:sylvain.bonhommeau@ifremer.fr_\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
+  creator <- Sys.getenv("DCMI_Creator")
   type <- "dataset"
   language <- "eng"
   # simplified_spatial_extent <-"LINESTRING (43.60036 -23.64388, 43.59685 -23.64484, 43.59815 -23.64696, 43.59785 -23.64713, 43.59655 -23.64499, 43.59624 -23.64515, 43.59754 -23.64728, 43.59724 -23.64744, 43.59594 -23.64531, 43.59562 -23.64546, 43.59692 -23.64759, 43.59663 -23.64775, 43.59533 -23.64563, 43.59502 -23.64577, 43.59631 -23.6479, 43.596 -23.64807, 43.59471 -23.64593, 43.59441 -23.64608, 43.5957 -23.64822, 43.59539 -23.64838, 43.59411 -23.64627, 43.59378 -23.6464, 43.59508 -23.64853, 43.59479 -23.64869, 43.59349 -23.64657, 43.59317 -23.64671, 43.59447 -23.64885, 43.59416 -23.64901, 43.59288 -23.64689, 43.59255 -23.64703, 43.59385 -23.64915, 43.59355 -23.64932, 43.59226 -23.6472, 43.59194 -23.64734, 43.59324 -23.64947, 43.59294 -23.64963, 43.59164 -23.6475, 43.59134 -23.64765, 43.59263 -23.64979, 43.59232 -23.64995, 43.59103 -23.64782, 43.59071 -23.64797, 43.59201 -23.6501)"
@@ -163,9 +150,11 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
     code_country=substr(str_split(string = session_id,pattern = "_")[[1]][2], 1, 3)
     this_country <- df_countries %>% filter(df_countries$alpha.3==code_country)
     
+    title <- paste0(title, "Aerial drone survey, ",this_country$name, "collected the", temporal_extent)
     description <- paste0(description,
-                          "This dataset is made of ",Number_of_Pictures," pictures which have been collected in ",
-                          this_country$name, ". The length of the data acquisition was : ", round(abs(acquisition_time))," minutes.")
+                          "This dataset is made of ",Number_of_Pictures," pictures which have been collected by an areial drone survey in ",
+                          this_country$name, ". The length of the data acquisition was : ", round(abs(acquisition_time))," minutes. The file identfier for this flight is standardized by a naming convention : ", session_id)
+    keywords <- paste(keywords,this_country$name,sep=",")
     
 
     # https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv
@@ -215,55 +204,60 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
     xmax <- NULL
     ymin <- NULL
     ymax <- NULL
+    dataframe_gps_file <-NULL
     
     for (t in 1:number_row){
       
       gps_file <- paste(dataframe_gps_files$path[t],dataframe_gps_files$file_name[t],sep="/")
+      cat(paste0("\n", gps_file," GPS file ! "))
+      
       ####################
-      dataframe_gps_file <-NULL
-      dataframe_gps_file <- return_dataframe_gps_file(con_database, 
+      GPS_tracks_values <- return_dataframe_gps_file(con_database, 
                                                       wd=code_directory, 
                                                       gps_file=gps_file, 
                                                       type=file_type,
                                                       session_id=session_id,
                                                       load_in_database=FALSE
                                                       )
-      #       head(dataframe_gps_file)
-            xmin <- min(dataframe_gps_file$longitude)
-            xmax <- max(dataframe_gps_file$longitude)
-            ymin <- min(dataframe_gps_file$latitude)
-            ymax <- max(dataframe_gps_file$latitude)
-            spatial_extent <- paste("SRID=4326;POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
-            ####################
-
-            
-            
-      if(grepl(pattern = ".tcx",gps_file)){
-        spatial_extent <- tcx_to_wkt(gps_file, dTolerance = 0.00005)
-      } else if(grepl(pattern = ".gpx",gps_file)){
-        spatial_extent <- gpx_to_wkt(gps_file, dTolerance = 0.00005)
-      } else if(grepl(pattern = ".gpkg",gps_file)){
-          cat("\n GPKG file ! ")
-          spatial_data <- rgdal::readOGR(dsn = gps_file,stringsAsFactors = FALSE)
-          spatial_data <- st_as_sf(spatial_data)
-          spatial_extent <- spatial_data %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
+      dataframe_gps_file <- rbind(dataframe_gps_file,GPS_tracks_values)
+    }
+    # store all geometries in the same gpkg file
+    this_wd <- getwd()
+    setwd(paste(dataframe_gps_files$path[t]))
+    df_sf <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
+    st_write(df_sf,paste0 ("all_gps_files_",session_id,".gpkg"),delete_dsn = TRUE)
+    setwd(this_wd)
           
-        }else{
-          cat("\n no GPS file found !!")
-          
-          
-        }
-            # spatial_extent_geom <- sf::st_as_sfc(spatial_extent,wkt = "geom")
-            spatial_extent_geom <- sf::st_as_sfc(paste0("SRID=4326;",spatial_extent))
-            # spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
-            # spatial_extent_area <- sf::st_as_sfc(spatial_extent)
-            # spatial_extent_length <- sf::st_as_sfc(spatial_extent)
-            simplified_spatial_extent <- sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005)  %>% st_as_text()
-            bbox <- st_bbox(spatial_extent_geom)
-            # bbox <- st_bbox(sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005))
-            # bb_area <- st_area(spatial_extent_geom)
-            
+    cat("\n  Bounding Box WKT  \n ")
+    xmin <- min(dataframe_gps_file$longitude)
+    xmax <- max(dataframe_gps_file$longitude)
+    ymin <- min(dataframe_gps_file$latitude)
+    ymax <- max(dataframe_gps_file$latitude)
+    spatial_extent <- paste("SRID=4326;POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
+      ####################
       
+      # if(grepl(pattern = ".tcx",gps_file)){
+      #   cat("\n TCX file ! ")
+      #   spatial_extent <- tcx_to_wkt(gps_file, dTolerance = 0.00005)
+      # } else if(grepl(pattern = ".gpx",dataframe_gps_file)){
+      #   cat("\n GPX file ! ")
+      #   spatial_extent <- gpx_to_wkt(gps_file, dTolerance = 0.00005)
+      # } else if(grepl(pattern = ".gpkg",gps_file)){
+      #   cat("\n GPKG file ! ")
+      #   spatial_extent <- read_sf(dataframe_gps_file) %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
+      # }else{
+      #   cat("\n no GPS file found !!")
+      # }
+            
+     cat(paste0("\n  POLYLINE WKT ? \n  "))
+     spatial_extent <- df_sf %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
+     cat(paste0("\n  EWKT ? \n  "))
+     spatial_extent_geom <- sf::st_as_sfc(paste0("SRID=4326;",spatial_extent))
+     simplified_spatial_extent <- sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005)  %>% st_as_text()
+     bbox <- st_bbox(spatial_extent_geom)
+     # bb_area <- st_area(spatial_extent_geom)
+            
+      cat(paste0("\n LAT LON ? \n  "))
       # class(spatial_extent_geom)
       latitude <- as.data.frame(st_coordinates(spatial_extent_geom))$Y
       longitude <- as.data.frame(st_coordinates(spatial_extent_geom))$X
@@ -323,9 +317,7 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
         osm.points(longitude,latitude, col="yellow",pch=18, cex=0.5)
         dev.off()
         pdf_convert(pdf_spatial_extent, pages = NULL,format = "jpeg",dpi = 600,filenames=jpeg_spatial_extent)
-        
-        cat("\n Upload maps images on google drive \n")
-        
+        # cat("\n Upload maps images on google drive \n")
       }
       
       sql_query <- paste0('SELECT * FROM "',session_id,'"')
@@ -394,67 +386,9 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
       # 
       # data_column <-paste0("source:file:///tmp/dessin.pdf_\nsourceName:",session_id,"_\ntype:other_\nupload:true_")
       
-
-      
-      ######################## write a qgis project to visualize the shape file
-      # qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_csv.qgs"
-      # qgs_template <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_shapefile_new.qgs"
-      # write_qgis_project(session_id, qgs_template,shape_file,xmin,xmax,ymin,ymax)
-      # get_session_metadata <- function(con_database, session_id, session_directory, google_drive_path, metadata_sessions,type_images="gopro",google_drive_upload){
-        
-      
-      template_project="QGIS/template_project.qgs"
-      pattern_root_path="/media/julien/SSD2TO/Deep_Mapping/drone/Madagascar/clean/2023/20230430_MDG-Nosy-Ve_UAV-01/20230430_MDG-Nosy-Ve_UAV-01_2/METADATA/"
-      # pattern_root_path=gsub("//","/",paste0(session_directory,"/METADATA/"))
-      pattern_root_path=gsub("//","/",pattern_root_path)
-      pattern_session_id="20230430_MDG-Nosy-Ve_UAV-01_2"
-      this_session_id=session_id
-      pattern_relative_path= paste0(session_id,".gpkg")
-      xmin_pattern="43.58705305555560017"
-      ymin_pattern="-23.64932419444440015"
-      xmax_pattern="43.60034630555559687"
-      ymax_pattern="-23.64387211111110076"
-      
-      con <- file(paste0(code_directory,template_project),"r")
-      lines <- readLines(con)
-      close(con)
-      # new_lines <- gsub(pattern_root_path,"./",lines)
-      new_lines <- gsub(pattern_root_path,"",lines)
-      new_lines <- gsub(pattern_session_id,this_session_id,new_lines)
-      new_lines <- gsub(paste0(pattern_session_id,"_bf7f0265_413b_4f39_b0eb_360675cdfa89"),paste0(this_session_id,"_bf7f0265_413b_4f39_b0eb_360675cdfa89"),new_lines)
-      
-      gpkg_file <- sub("20230430_MDG-Nosy-Ve_UAV-01",substr(this_session_id, 1, (nchar(this_session_id)-2)),gsub(pattern_session_id,this_session_id,paste0(pattern_root_path,"metadata_",pattern_relative_path)))
-      if(file.exists(gpkg_file)){
-        # setwd(dirname(gpkg_file))
-        spatial_data <- rgdal::readOGR(dsn = gpkg_file,stringsAsFactors = FALSE)
-        spatial_data <- st_as_sf(spatial_data)
-        bbox <- st_bbox(spatial_data)
-      }else{
-        spatial_extent <- paste("SRID=4326;POLYGON((",xmin,ymin,",",xmin,ymax,",",xmax,ymax,",",xmax,ymin,",",xmin,ymin,"))",sep=" ")
-        spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
-        bbox <- st_bbox(spatial_extent_geom)
-      }
-
-      new_lines <- gsub(xmin_pattern,bbox$xmin,new_lines)
-      new_lines <- gsub(xmax_pattern,bbox$xmax,new_lines)
-      new_lines <- gsub(ymin_pattern,bbox$ymin,new_lines)
-      new_lines <- gsub(ymax_pattern,bbox$ymax,new_lines)
-      
-      new_lines <- gsub("this_xmin",as.character(bbox$xmin-buffer),new_lines)
-      new_lines <- gsub("this_xmax",as.character(bbox$xmax+buffer),new_lines)
-      new_lines <- gsub("this_ymin",as.character(bbox$ymin-buffer),new_lines)
-      new_lines <- gsub("this_ymax",as.character(bbox$ymax+buffer),new_lines)
-      
-      QGIS_project_filename <- paste0("../METADATA/",this_session_id,"_project.qgs")
-      
-      fileConn<-file(QGIS_project_filename)
-      writeLines(new_lines, fileConn)
-      close(fileConn)
-      
-      
       setwd(this_wd)
       
-    }
+
   }else{
     cat("No GPS file when looking for TCX or GPX or RTK or GPKG files")
     cat(paste0("\n Pas de dossier'GPS' dans ", this_directory,"\n"))
@@ -499,13 +433,124 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
                                          mime_type=pattern,
                                          load_metadata_in_database=FALSE,
                                          time_zone="Indian/Mauritius")
-    }else{
-      # read existing exif metadata from RDS file
-      df <- readRDS(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
     }
+
+  }
+  
+
+  
+  cat("\n Create and fill THUMBNAILS directory : \n")
+  this_file <- paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS")
+  if(file.exists(this_file)){
+    mydf <- readRDS(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
+    setwd(paste0(session_directory, "/METADATA"))
+    if(!dir.exists("thumbnails")){
+      dir.create("thumbnails")
+      setwd("./thumbnails")
+      thb_dir <- getwd()
+        
+      for(i in 1:length(mydf$PreviewImage)){
+        split_filename <- str_split(string = mydf$FileName[i],pattern = "\\.")
+        file_name <- paste0(split_filename[[1]][1],"_PreviewImage.",split_filename[[1]][2])
+        # enc_big <- gsub("base64:","",mydf$PreviewImage[i])
+        enc_big <- gsub("base64:","",mydf$ThumbnailImage[i])
+        # enc <- base64encode("images.jpg")
+        conn <- file("w.bin","wb")
+        writeBin(enc_big, conn)
+        close(conn)
+        
+        inconn <- file("w.bin","rb")
+        outconn <- file(file_name,"wb")
+        base64enc::base64decode(what=inconn, output=outconn)
+        close(inconn)
+        close(outconn)
+        # imager::resize(file_name, width = 200, height = 150)
+        # magick::image_scale(file_name, "200")
+        # webshot::resize(file_name, "200x")
+        
+      }
+      cat("\n Remove w.bin : \n")
+      file.remove("w.bin")
+      setwd(paste0(session_directory, "/METADATA"))
+    }else{
+      cat("\n thumbanails directory already exists ! : \n")
+      setwd("./thumbnails")
+      thb_dir <- getwd()      
+    }
+    
+    
+    # Rmarkdown render
+    # Rmd_file <- paste0(code_directory,"Rmd/table_of_images.Rmd")
+    Rmd_file <- paste0(code_directory,"Rmd/gt_table_of_images.Rmd")
+    Rmd_output_file <-  paste0(session_directory,"/A_Table_of_thumbnails_",session_id)
+    # rmarkdown::render(input = Rmd_file,  output_file = Rmd_output_file, output_format = c("html_document", "pdf_document"), params = c(thb_dir,description))
+    # rmarkdown::render(input = Rmd_file,  output_file = Rmd_output_file, output_format = c("html_document"), params = c(thb_dir,description))
+    # pandoc A_Table_of_thumbnails_20220828_MDG-Nosy-Komba_UAV-1_1.html -t latex -o test.pdf
+    # rmarkdown::pandoc_convert("A_Table_of_thumbnails_20220828_MDG-Nosy-Komba_UAV-1_1.html", to = "latex")
+    # rmarkdown::pandoc_convert("A_Table_of_thumbnails_20220828_MDG-Nosy-Komba_UAV-1_1.html", to = "pdf")
+    
+    
+    ######################## write a qgis project to visualize the shape file
+    # QGIS_template_project <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_shapefile_new.qgs"
+    # write_qgis_project(session_id, qgs_template,shape_file,xmin,xmax,ymin,ymax)
+    
+    gpkg_file <-paste0("metadata_exif_",session_id,".gpkg")
+    if(file.exists(gpkg_file)){
+      # setwd(dirname(gpkg_file))
+      cat(paste0("\n",gpkg_file,"  exists ! : \n"))
+      
+      QGIS_template_project="QGIS/template_project_new.qgs"
+      pattern_session_id="this_filename"
+      xmin_pattern="this_xmin"
+      ymin_pattern="this_ymin"
+      xmax_pattern="this_xmax"
+      ymax_pattern="this_ymax"
+      
+      con <- file(paste0(code_directory,QGIS_template_project),"r")
+      lines <- readLines(con)
+      close(con)
+      new_lines <- gsub(pattern_session_id,paste0("metadata_exif_",session_id),lines)
+      st_layers(gpkg_file)
+      
+      new_gpkg_file <- gsub("_old","",gpkg_file)
+      read_sf(gpkg_file) %>% st_write(new_gpkg_file,layer = "drone_images_metadata", delete_dsn = TRUE)
+      spdf <-read_sf(new_gpkg_file)
+      bbox <- st_bbox(spdf)
+      points <- st_combine(spdf)
+      convexhull <- st_convex_hull(points)
+      # plot(points)
+      # class(convexhull)
+      read_sf(gpkg_file) %>% st_write(new_gpkg_file,layer = "drone_images_metadata", delete_dsn = TRUE)
+      read_sf(new_gpkg_file,layer = "drone_images_metadata") %>% st_combine() %>% st_write(new_gpkg_file,layer = "drone_images_centroids", delete_dsn = FALSE)  
+      read_sf(new_gpkg_file,layer = "drone_images_centroids") %>% st_convex_hull() %>% st_write(new_gpkg_file,layer = "convexhull_drone_images", delete_dsn = FALSE)
+      
+
+    
+    
+    new_lines <- gsub(xmin_pattern,bbox$xmin,new_lines)
+    new_lines <- gsub(xmax_pattern,bbox$xmax,new_lines)
+    new_lines <- gsub(ymin_pattern,bbox$ymin,new_lines)
+    new_lines <- gsub(ymax_pattern,bbox$ymax,new_lines)
+    
+    # buffer <- 0.001
+    new_lines <- gsub("default_xmin",as.character(bbox$xmin-buffer),new_lines)
+    new_lines <- gsub("default_xmax",as.character(bbox$xmax+buffer),new_lines)
+    new_lines <- gsub("default_ymin",as.character(bbox$ymin-buffer),new_lines)
+    new_lines <- gsub("default_ymax",as.character(bbox$ymax+buffer),new_lines)
+    
+    QGIS_project_filename <- paste0("../METADATA/QGIS_project_",session_id,".qgs")
+    
+    fileConn<-file(QGIS_project_filename)
+    writeLines(new_lines, fileConn)
+    close(fileConn)
+    system(paste0("qgis --project ",  paste0(session_directory,"/METADATA/QGIS_project_",session_id,".qgs")," --snapshot a_raw_drone_data_map_preview.jpg --width 3200 --height 2400"))
+    
+    
+    
+    #write another gpkg without null values (underwater images ?)
     setwd(paste0(this_directory, "/GPS"))
-    nrow_spatial_df_before <- nrow(df)
-    spatial_df <- select(df, -c(ThumbnailImage,PreviewImage)) %>% filter(!is.na(GPSLatitude) & !is.null(GPSLatitude) & GPSLatitude!=0)
+    nrow_spatial_df_before <- nrow(mydf)
+    spatial_df <- select(mydf, -c(ThumbnailImage,PreviewImage)) %>% filter(!is.na(GPSLatitude) & !is.null(GPSLatitude) & GPSLatitude!=0)
     nrow_spatial_df_after <- nrow(spatial_df)
     removed_images <- nrow_spatial_df_before-nrow_spatial_df_after
     cat(paste0("\n",removed_images, " images have been removed !!!! Either NA or Null values for GPS data \n"))
@@ -513,51 +558,60 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
     plot_locations <- st_as_sf(spatial_df, coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
     st_write(plot_locations,paste0 (session_id,".gpkg"),delete_dsn = TRUE)
     
-    spatial_extent <- plot_locations %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
-    spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
-    simplified_spatial_extent <- sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005)  %>% st_as_text()
-    mean_altitude <- mean(spatial_df$GPSAltitude)
-    description <- paste0(description, ". The mean altidtude of this flight is : ", round(mean_altitude))
-    # write_gpx_from_rds("test")
-    # gps_file <- "No GPS file"
-    # spatial_extent <- "No GPS file"
+    if(nrow(plot_locations) > 0){
+      spatial_extent <- plot_locations %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
+      spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
+      simplified_spatial_extent <- sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005)  %>% st_as_text()
+      mean_altitude <- mean(spatial_df$GPSAltitude)
+      description <- paste0(description, ". The mean altidtude of this flight is : ", round(mean_altitude))
+    }
+    
+    }else{
+      cat(paste0("\n",gpkg_file,"  doesn not exist ! : \n"))
+    }
+    setwd("..")
   }
-###############################
+  
+  ############################################################
   ################### CREATE DATAFRAME #######################
   ############################################################
   cat("\n Create metadata dataframe : \n")
   
   newRow <-NULL
   newRow <-data.frame(Identifier=session_id,#Identifier=paste0("id:",session_id),
-                       Description=description,
-                       Title=title,
-                       Subject=subject,
-                       Creator=creator,
-                       Date=date,
-                       Type="dataset",
-                       SpatialCoverage=paste0("SRID=4326;",simplified_spatial_extent),
-                       TemporalCoverage=temporal_extent,
-                       Language=language,
-                       Relation=relation,
-                       Rights=rights,
-                       Source=source,
-                       Provenance=provenance,
-                       Format=format,
-                       Data=data_column,
-                       # path=this_directory,
-                       # GPS_timestamp=GPS_timestamp, # ??
-                       # Photo_GPS_timestamp=Photo_GPS_timestamp, # ??
-                       # geometry=spatial_extent_geom
-                       # geometry=st_as_binary(spatial_extent_geom)
-                       geometry=NA,
-                       Number_of_Pictures=Number_of_Pictures,
-                       Comment=NA,
-                       Nb_photos_located=NA
+                      Description=description,
+                      Title=title,
+                      Subject=subject,
+                      Creator=creator,
+                      Date=date,
+                      Type="dataset",
+                      SpatialCoverage=paste0("SRID=4326;",simplified_spatial_extent),
+                      TemporalCoverage=temporal_extent,
+                      Language=language,
+                      Relation=relation,
+                      Rights=rights,
+                      Source=source,
+                      Provenance=provenance,
+                      Format=format,
+                      Data=data_column,
+                      # path=this_directory,
+                      # GPS_timestamp=GPS_timestamp, # ??
+                      # Photo_GPS_timestamp=Photo_GPS_timestamp, # ??
+                      # geometry=spatial_extent_geom
+                      # geometry=st_as_binary(spatial_extent_geom)
+                      geometry=NA,
+                      Number_of_Pictures=Number_of_Pictures,
+                      Comment=NA,
+                      Nb_photos_located=NA
   )
   
   metadata_sessions <- rbind(metadata_sessions,newRow)
   # metadata_sessions <- metadata_sessions[,c(1,2,3,16,17,4,18,19,7,8,9,10,11,12,5,6,13,14,15)]
   # metadata_sessions <- metadata_sessions[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)]
+  
+  
+  
+  
   
   setwd(this_directory)
   return(metadata_sessions)
