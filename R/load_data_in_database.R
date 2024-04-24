@@ -1,11 +1,16 @@
 rm(list=ls())
 # install.packages("pacman")
-pacman::p_load(stringr,dotenv,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,pdftools,stringr,tidyr,rosm,gsheet,dplyr,sf,RgoogleMaps,prettymapr)
+############################################################
+################### Packages #######################
+############################################################
+#should be removed : rgdal
+pacman::p_load(imager,rmarkdown,dotenv,stringr,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, rgdal, data.table,trackeR,lubridate,pdftools,tidyr,rosm,gsheet,dplyr,sf,RgoogleMaps,prettymapr)
 
 # Options to activate or not the different steps of the workflow
-create_SQL_database=TRUE
+create_SQL_database=FALSE
+delete_before_insert_SQL=TRUE
 create_geoflow_metadata=TRUE
-upload_to_google_drive=TRUE
+upload_to_google_drive=FALSE
 load_metadata_in_database=TRUE
 load_data_in_database=TRUE
 load_tags_in_database=FALSE
@@ -35,21 +40,26 @@ if(upload_to_google_drive){
   # tags_file_google_drive_path <- drive_get(id="1eFJq003Z3JayIHtgupYfM01qV2IVT3VuBeYt6a0OKdM")
   all_categories <-as.data.frame(gsheet::gsheet2tbl(paste0("https://docs.google.com/spreadsheets/d/",Sys.getenv("ALL_CATEGORIES"),"/edit?usp=sharing")))
 }
-
-
 # all_tags_as_csv <- return_dataframe_tag_txt(images_directory,all_categories = all_categories)
 
 source(paste0(code_directory,"R/functions.R"))
 source(paste0(code_directory,"R/get_session_metadata.R"))
-# source(paste0(code_directory,"R/credentials_databases.R"))
-# source(paste0(codes_github_repository,"R/gpx_to_wkt.R"))
 # configuration_file <- paste0(code_directory,"geoflow/Deep_mapping_worflow.json")
 
 
+# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
 
+#warning: no slash at the end of the path
+#if multiple missions, list sub-repositories
+#if only one mission, indicate the specific sub-repository
+missions <-c()
+for(rep in 1:length(images_directories[[1]])){
+  cat(images_directories[[1]][rep])
+  missions <- c(missions, list.dirs(path = images_directories[[1]][rep], full.names = TRUE, recursive = FALSE))
+  cat(missions)
+}  
 
-#Disconnect database
-# dbDisconnect(con_Reef_database)
+#Connect database
 cat("Connect the database\n")
 con_Reef_database <- DBI::dbConnect(drv = RPostgres::Postgres(),dbname=Dbname, host=Host, user=User,password=Password)
 cat("Create or replace the database\n")
@@ -64,20 +74,6 @@ if(create_SQL_database==TRUE){
                   db_name=Dbname
   )
 }
-
-# set_time_zone <- dbGetQuery(con_Reef_database, "SET timezone = 'UTC+04:00'")
-
-#warning: no slash at the end of the path
-#if multiple missions, list sub-repositories
-#if only one mission, indicate the specific sub-repository
-missions <-c()
-for(rep in 1:length(images_directories[[1]])){
-  cat(images_directories[[1]][rep])
-  missions <- c(missions, list.dirs(path = images_directories[[1]][rep], full.names = TRUE, recursive = FALSE))
-}  
-# missions <- paste0(images_directory,"/","session_2019_10_12_kite_Le_Morne")
-
-
 #iterate on all missions to load the database with data (Dublin Core metadata, GPS data, exif metadata)
 c=0
 metadata_missions <- NULL
@@ -98,8 +94,19 @@ for(m in missions){
         session_id <- gsub(paste0(dirname(md),"/"),"",md)
         }else{
         session_id <- sub("/","",paste0(drone_session_id,"_",gsub(paste0(dirname(md),"/"),"",md)))
-      }
+        }
       
+      
+      if(delete_before_insert_SQL){
+        cat(paste0("Cleaning session database firts from DB for session :  ", md,"\n"))
+        delete_before_insert_db(con_database=con_Reef_database,
+                                code_directory=code_directory,
+                                session_id=session_id,
+                                all=FALSE)
+      }
+        
+      if(create_geoflow_metadata){
+        
       cat(paste0("Processing mission: ", md,"\n"))
       metadata_this_mission <- get_session_metadata(con_database=con_Reef_database,
                                                     session_id=session_id,
@@ -115,9 +122,9 @@ for(m in missions){
         dir.create(file.path(md, "METADATA"))
       }
       setwd("./METADATA")
-      file_name <- paste0(session_id,"_DCMI_metadata.csv")
+      file_name <- paste0("metadata_DCMI_",session_id,".csv")
       write.csv(metadata_this_mission,file = file_name,row.names = F)
-      
+      }
       if(upload_to_google_drive){
         cat(paste0("Upload metadata on google drive: ", m,"\n"))
         metadata_gsheet_id <- upload_file_on_drive_repository(google_drive_path=DCMI_metadata_google_drive_path,
@@ -166,6 +173,15 @@ for(m in missions){
     
     cat(paste0("Processing mission: ", m,"\n"))
     setwd(m)
+    
+    if(delete_before_insert_SQL){
+      cat(paste0("Cleaning session database first from DB for session :  ", m,"\n"))
+      delete_before_insert_db(con_database=con_Reef_database,
+                              code_directory=code_directory,
+                              session_id=session_id,
+                              all=FALSE)
+    }
+    
     if(create_geoflow_metadata){
       cat(paste0("Extracting dynamic metadata: ", m,"\n"))
       metadata_this_mission <- get_session_metadata(con_database=con_Reef_database,
@@ -179,6 +195,7 @@ for(m in missions){
       file_name <- paste0(session_id,"_DCMI_metadata.csv")
       write.csv(metadata_this_mission,file = file_name,row.names = F)
     }
+    
     # googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=file_name,media=file_name)
     if(upload_to_google_drive){
       cat(paste0("Upload metadata on google drive: ", m,"\n"))
@@ -233,17 +250,21 @@ for(m in missions){
     }
   }
 }
+
 #Disconnect database
 dbDisconnect(con_Reef_database)
 
 #write metadata table
 setwd(images_directory)
-metadata_file_name <-"metadata_all_sessions_drone.csv"
-write.csv(metadata_missions,file = metadata_file_name,row.names = F)
+metadata_file_name <-"metadata_all_sessions_drone"
+write.csv(metadata_missions,file = paste0(metadata_file_name,".csv"),row.names = F)
 # googledrive::drive_update(file=DCMI_metadata_google_drive_path,name=metadata_file_name,media=metadata_file_name)
 if(upload_to_google_drive){
-  metadata_all_sessions_gsheet_id <- upload_file_on_drive_repository(google_drive_path=google_drive_path,media=metadata_file_name,file_name=metadata_file_name,type="spreadsheet")
+  metadata_all_sessions_gsheet_id <- upload_file_on_drive_repository(google_drive_path=google_drive_path,media=paste0(metadata_file_name,".csv"),file_name=paste0(metadata_file_name,".csv"),type="spreadsheet")
 }
+setwd(code_directory)
+metadata_missions_sf <- st_as_sf(metadata_missions,wkt="SpatialCoverage")
+st_write(metadata_missions_sf,paste0(metadata_file_name,".gpkg"),layer = "drone_images_metadata", delete_dsn = TRUE)
 
 ratio
 cat(paste0("Ratio of geolocated images / Total number of images : ",ratio[1]/ratio[2]))

@@ -330,7 +330,7 @@ rename_exif_csv <- function(images_directory){
 ############################ create_database ###################################################
 #############################################################################################################
 
-create_database <- function(con_database, code_directory,db_name="Reef_database"){
+create_database <- function(con_database, code_directory,db_name){
   
   query_create_database <- paste(readLines(paste0(code_directory,"SQL/create_Reef_database.sql")), collapse=" ")
   query_create_database <- gsub("Reef_database",db_name,paste(readLines(paste0(code_directory,"SQL/create_Reef_database.sql")), collapse=" "))
@@ -378,6 +378,25 @@ create_database <- function(con_database, code_directory,db_name="Reef_database"
   tags_to_be_loaded <- labels %>% select(SubName,TagName, Link) %>% distinct() %>% rename(tag_code = TagName, tag_label = SubName, tag_definition=Link) %>% mutate(tag_id = row_number()) %>% relocate(tag_id,tag_code,tag_label,tag_definition)
   load_labels_in_database(con_database, code_directory, tags_to_be_loaded, create_table=FALSE)
   
+} 
+
+
+#############################################################################################################
+############################ delete_before_insert_db ###################################################
+#############################################################################################################
+
+delete_before_insert_db <- function(con_database, code_directory, session_id,all){
+  
+  query_delete_session_data <- paste(readLines(paste0(code_directory,"SQL/delete_session_data.sql")), collapse=" ")
+  query_delete_session_data <- gsub("ID_SESSION",session_id,paste(readLines(paste0(code_directory,"SQL/delete_session_data.sql")), collapse=" "))
+  queries <- str_split(query_delete_session_data,pattern = ";")
+  for(q in 1:lengths(queries)){
+    query <- queries[[1]][q]
+    update_db <- dbGetQuery(con_database,query)
+  }
+  if(all){
+    # select all id of session already instered and remove them one by one
+  }
 } 
 
 #############################################################################################################
@@ -472,7 +491,7 @@ update_annotations_in_database <- function(con_database, images_tags_and_labels)
     #     }
       
   }
-  fileConn<-file(paste0('query_annotation.SQL'))
+  fileConn<-file(paste0('query_annotation.sql'))
   writeLines(query_annotation, fileConn)
   close(fileConn)
   relevant_images <- dbGetQuery(con_database, query_annotation)
@@ -600,7 +619,7 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
   #   query <- gsub("41",abs(offset)-1,query)
   #   query <- gsub("42",abs(offset),query)
   # }
-  # fileConn<-file(paste0('view_',session_id,'.SQL'))
+  # fileConn<-file(paste0('view_',session_id,'.sql'))
   # writeLines(query, fileConn)
   # close(fileConn)
   # inferred_location <- dbGetQuery(con_database, query)
@@ -621,7 +640,7 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
       update_Table <- dbGetQuery(con_database,query)
     }
     
-    fileConn<-file(paste0('table_',session_id,'.SQL'))
+    fileConn<-file(paste0('table_',session_id,'.sql'))
     writeLines(create_table_from_view, fileConn)
     close(fileConn)
     ##########
@@ -653,7 +672,6 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
       cat(paste0("/n The offset for the view is : ",as.character(offset),"/n"))
      
       #' @juldebar check offset content before
-      offset <- offset[1]
       if(offset < 0){   
         cat(paste0("/n The offset for the view is : ",as.character(offset),"/n"))
         query <- gsub("- interval","+ interval",query)
@@ -664,7 +682,7 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
       query <- paste0(query," WITH DATA")
       dbGetQuery(con_database, query)
       
-          fileConn<-file(paste0('view_',session_id,'.SQL'))
+          fileConn<-file(paste0('view_',session_id,'.sql'))
           writeLines(query, fileConn)
           close(fileConn)
           
@@ -713,7 +731,7 @@ infer_photo_location_from_gps_tracks <- function(con_database, images_directory,
       dplyr::rename(GPSLatitude=decimalLatitude, GPSLongitude=decimalLongitude)  %>%
       st_as_sf(coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
     
-    st_write(newdf,sub(".csv",paste0("_",session_id,".gpkg"),filename),delete_dsn = TRUE)
+    st_write(newdf,sub(".csv",paste0("_exif_",session_id,".gpkg"),filename),delete_dsn = TRUE)
     write.csv(select(newdf, -c(ThumbnailImage)),filename,row.names = F)
     
   }
@@ -1593,7 +1611,7 @@ turn_list_of_files_into_csv_annotated<- function(con_database,wd_selected_candid
     }
   }
   
-  fileConn<-file(paste0('query_annotation.SQL'))
+  fileConn<-file(paste0('query_annotation.sql'))
   writeLines(query_annotation, fileConn)
   close(fileConn)
   relevant_images <- dbGetQuery(con_database, query_annotation)
