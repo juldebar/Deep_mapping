@@ -1,0 +1,156 @@
+---
+title: 'Raw data sample : drone images preview'
+subtitle: "Data overview"
+author:
+    name: Barde Julien 
+    email: julien.barde@ird.fr
+    affiliation: IRD
+    footnote: Corresponding Author
+address:
+    code: Ifremer, Sète
+    address: UMR MARBEC
+output:
+  html_document: default
+  css: doc.css
+toc: true
+toc_float: true
+date:  "`r Sys.Date()`" 
+---
+
+<!-- documentclass: report -->
+<!-- papersize: a3 -->
+
+<!-- <style type="text/css"> -->
+
+<!-- body{ -->
+<!--     margin: 0 !important; -->
+<!--     padding: 0 !important; -->
+<!--     padding-left: 30px; -->
+<!--     background:#F0F0F0; -->
+<!--     max-width:600%; -->
+<!--     width:100%;} -->
+
+<!-- h1.title { -->
+<!--   font-size: 80px; -->
+<!--   color: DarkBlue; -->
+<!--   background-color:#009ACD; -->
+<!--   width:300%; -->
+<!--   margin: 0 !important; -->
+<!--   padding: 0 !important; -->
+<!--   height:120px; -->
+<!--   margin-left:-100px; -->
+<!-- } -->
+
+<!-- h2 { /* Header 2 */ -->
+<!--     font-size: 22px; -->
+<!--   color: #0020C2; -->
+<!-- } -->
+
+<!-- </style> -->
+
+
+```{r  include=FALSE}
+library(dplyr)
+library(gt)
+library(gtExtras)
+library(gtsummary)
+library(webshot2)
+knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
+```
+
+```{r  echo=F , results='asis' }
+
+options(width = 3000)
+# https://bookdown.org/yihui/rmarkdown-cookbook/latex-variables.html
+
+# <!-- abstract: "`r eval(description)`" -->
+# <!-- journal: "Building and Environment" -->
+# <!-- date: "`r Sys.Date()`" -->
+# <!--   params: -->
+# <!--     thb_dir:'NULL' -->
+# <!--     description:'NULL' -->
+# <!--   html_document: default -->
+# <!-- geometry: "left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm" -->
+# <!-- header-includes: -->
+# <!-- - \usepackage{setspace} -->
+# <!-- - \doublespacing -->
+# <!-- - \usepackage{caption} # Insert the package used by gt -->
+
+## Create a table of images
+thb_dir <- "/media/julien/Backup_Total_12T/Backup_Deep_Mapping/test_zenodo_drone_UAV_flights/20220913_MYT-ngouja_UAV-02_3/METADATA/thumbnails"
+image_files <- list.files(thb_dir, "JPG", full.names = T)
+image_tab <- dplyr::tibble(Path = image_files, FileName =gsub("_PreviewImage.JPG",".JPG",gsub(paste0(thb_dir,"/"),"",image_files)))
+this_df <- image_tab
+nb_img=length(this_df$FileName)
+img_per_line=8
+nrows <-  round(nb_img/img_per_line)
+last_row = 0
+if((nb_img-(nrows*img_per_line))>0){
+  last_row = 1 
+}
+df_thb <-NULL
+# df_thb <- dplyr::tibble(matrix(NA, nrow = nrows + last_row, ncol = 2*img_per_line))
+df_thb <- data.frame(matrix(NA, nrow = nrows + last_row, ncol = 2*img_per_line))
+for(i in 1:img_per_line) {     
+  # new_col <- image_tab$FileName[seq(i,nb_img,img_per_line)]
+  new_col <- this_df$Path[seq(i,(nrows + last_row)*img_per_line,img_per_line)]
+  # cat(seq(i,nb_img+i,img_per_line))
+  # cat("\n")
+  # cat(new_col)
+  # cat("\n")
+  # cat(length(new_col))
+  # cat("\n")
+  # df_thb[, ncol(df_thb) + 1] <- new_col
+  df_thb[, (2*i-1)] <- new_col
+  df_thb[, (2*i)] <- gsub("_PreviewImage.JPG",".JPG",gsub(".*thumbnails/","",new_col)) 
+  # new <- rep(i, nrow(df_thb))                       # Create new column
+  # data[ , ncol(data) + 1] <- new                  # Append new column
+  colnames(df_thb)[(2*i-1)] <- paste0("path", i)  # Rename column name
+  colnames(df_thb)[(2*i)] <- paste0("label", i)  # Rename column name
+}
+# df_thb
+# colnames(df_thb)
+```
+
+In the metadata
+
+```{r pressure, echo=FALSE,  out.width='100%', results='asis' }
+# options(width = 3000)
+
+gt_df_thb <- NULL
+gt_df_thb <- df_thb |>  gt() 
+# https://forum.posit.co/t/how-to-assign-a-column-name-as-a-variable/91209
+for(i in 1:img_per_line) {   
+  col <- rlang::sym(colnames(df_thb)[(2*i-1)])
+  label_col <- rlang::sym(colnames(df_thb)[2*i])
+  # cat(col)
+  # cat("\n")
+  gt_df_thb <- gt_df_thb |> tab_style(style = cell_text(size = "large", align = "center", color = "black", weight = "bold"),locations = cells_body(columns = label_col)) |> 
+    gtExtras::gt_img_rows(columns= {{col}}, img_source = "local", height  = 150)  |>   gt_merge_stack(col1 = col, col2 = label_col)  |>
+  tab_style(style =  list(cell_fill(color = "lightcyan"), cell_text(size = "large", align = "center", color = "black", weight = "bolder", style = "italic",decorate = "underline")),locations = cells_body(columns = col) ) |>
+    tab_style(
+      style = cell_borders(
+        # sides = c("t", "l"),
+        color = "black",
+        weight = px(3)
+      ),
+      locations = cells_body()
+    ) 
+  # gt_df_thb <- gt_df_thb  |> gtExtras::gt_img_rows(columns= {{col}}, img_source = "local", height = 30) 
+}
+# cat(gt_df_thb)
+# print(gt_df_thb)
+gt_df_thb |> tab_options(column_labels.hidden = TRUE, table.width = pct(95), container.width =pct(100)) |> tab_header(title = md("Table of drone images thumbnails"), subtitle = md("From the first to the last picture")) 
+
+# filename="test.png"
+# gtsave(gt_df_thb, filename, path = "~")
+# gtsave(gt_df_thb, "test.tex", path = "~")
+# include_tex("~/test.tex")
+  # pandoc -f latex -t markdown demo.tex -o demo.md
+# pagedown::chrome_print("./Rmd/gt_table_of_images.Rmd", format = "pdf")
+
+```
+
+<!-- ```{latex} -->
+<!-- input("~/test.tex") -->
+<!-- ``` -->
