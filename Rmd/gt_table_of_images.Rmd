@@ -1,6 +1,6 @@
 ---
-title: 'Raw data sample : drone images preview'
-subtitle: "Data overview"
+title: 'Raw data sample : drone images preview for dataset "`r mydf$session_id[1]`"'
+subtitle: '[DOI](https://doi.org/10.1080/02786828708959166)'
 author:
     name: Barde Julien 
     email: julien.barde@ird.fr
@@ -10,16 +10,31 @@ address:
     code: Ifremer, Sète
     address: UMR MARBEC
 output:
+  params:
+    mydf:'NULL'
+    abstract:'NULL'
   html_document: default
   css: doc.css
-toc: true
-toc_float: true
-date:  "`r Sys.Date()`" 
+engine: knitr
+knitr:
+  opts_chunk: 
+    R.options:
+      width: 3000
 ---
 
-<!-- documentclass: report -->
-<!-- papersize: a3 -->
+<!-- date:  "`r Sys.Date()`"  -->
+<!-- subtitle: "Data overview" -->
 
+<!-- <div style="width: 3000px"> -->
+
+<!-- documentclass: report -->
+<!-- papersize: a3 
+classoption: landscape, a3paperoutput:
+  params:
+    mydf:'NULL'
+    description:'NULL'
+toc: true
+toc_float: true-->
 <!-- <style type="text/css"> -->
 
 <!-- body{ -->
@@ -60,15 +75,15 @@ knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
 
 ```{r  echo=F , results='asis' }
 
-options(width = 3000)
+# options(width = 3000)
 # https://bookdown.org/yihui/rmarkdown-cookbook/latex-variables.html
 
-# <!-- abstract: "`r eval(description)`" -->
+# <!-- abstract: "`r eval(abstract)`" -->
 # <!-- journal: "Building and Environment" -->
 # <!-- date: "`r Sys.Date()`" -->
 # <!--   params: -->
 # <!--     thb_dir:'NULL' -->
-# <!--     description:'NULL' -->
+# <!--     abstract:'NULL' -->
 # <!--   html_document: default -->
 # <!-- geometry: "left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm" -->
 # <!-- header-includes: -->
@@ -77,9 +92,15 @@ options(width = 3000)
 # <!-- - \usepackage{caption} # Insert the package used by gt -->
 
 ## Create a table of images
-thb_dir <- "/media/julien/Backup_Total_12T/Backup_Deep_Mapping/test_zenodo_drone_UAV_flights/20220913_MYT-ngouja_UAV-02_3/METADATA/thumbnails"
+session_id <- mydf$session_id[1]
+# thb_dir <- "/media/julien/Backup_Total_12T/Backup_Deep_Mapping/test_zenodo_drone_UAV_flights/20220913_MYT-ngouja_UAV-02_3/METADATA/thumbnails"
+thb_dir <- paste0(session_directory,"/METADATA/thumbnails")
 image_files <- list.files(thb_dir, "JPG", full.names = T)
-image_tab <- dplyr::tibble(Path = image_files, FileName =gsub("_PreviewImage.JPG",".JPG",gsub(paste0(thb_dir,"/"),"",image_files)))
+# image_tab <- dplyr::tibble(Path = image_files, FileName =gsub("_PreviewImage.JPG",".JPG",gsub(paste0(thb_dir,"/"),"",image_files)))
+image_tab <- dplyr::tibble(Path = image_files, FileName= gsub("_PreviewImage.JPG",".JPG",gsub(paste0(thb_dir,"/"),"",image_files)), url=paste0("../DCIM/",gsub(".*DCIM/","",mydf$relative_path)))
+# image_tab <- dplyr::tibble(Path = image_files, FileName= gt_hyperlink(text= gsub("_PreviewImage.JPG",".JPG",gsub(paste0(thb_dir,"/"),"",image_files)), url = "https://www.cars.com//"))
+
+
 this_df <- image_tab
 nb_img=length(this_df$FileName)
 img_per_line=8
@@ -90,7 +111,7 @@ if((nb_img-(nrows*img_per_line))>0){
 }
 df_thb <-NULL
 # df_thb <- dplyr::tibble(matrix(NA, nrow = nrows + last_row, ncol = 2*img_per_line))
-df_thb <- data.frame(matrix(NA, nrow = nrows + last_row, ncol = 2*img_per_line))
+df_thb <- data.frame(matrix(data=NA, nrow = nrows + last_row, ncol = 2*img_per_line))
 for(i in 1:img_per_line) {     
   # new_col <- image_tab$FileName[seq(i,nb_img,img_per_line)]
   new_col <- this_df$Path[seq(i,(nrows + last_row)*img_per_line,img_per_line)]
@@ -101,55 +122,91 @@ for(i in 1:img_per_line) {
   # cat(length(new_col))
   # cat("\n")
   # df_thb[, ncol(df_thb) + 1] <- new_col
-  df_thb[, (2*i-1)] <- new_col
-  df_thb[, (2*i)] <- gsub("_PreviewImage.JPG",".JPG",gsub(".*thumbnails/","",new_col)) 
+  df_thb[, (3*i-2)] <- new_col
+  df_thb[, (3*i)-1] <- gsub("_PreviewImage.JPG",".JPG",gsub(".*thumbnails/","",new_col)) 
+  df_thb[, (3*i)] <- this_df$url[seq(i,(nrows + last_row)*img_per_line,img_per_line)] 
   # new <- rep(i, nrow(df_thb))                       # Create new column
   # data[ , ncol(data) + 1] <- new                  # Append new column
-  colnames(df_thb)[(2*i-1)] <- paste0("path", i)  # Rename column name
-  colnames(df_thb)[(2*i)] <- paste0("label", i)  # Rename column name
+  colnames(df_thb)[(3*i-2)] <- paste0("path", i)  # Rename column name
+  colnames(df_thb)[(3*i-1)] <- paste0("label", i)  # Rename column name
+  colnames(df_thb)[(3*i)] <- paste0("url", i)  # Rename column name
 }
+
 # df_thb
 # colnames(df_thb)
 ```
 
-In the metadata
 
-```{r pressure, echo=FALSE,  out.width='100%', results='asis' }
-# options(width = 3000)
+```{r pressure, echo=FALSE, R.options = list(width = 3000), results='asis'}
+# options(width = 3000)',  out.width='300%'
 
 gt_df_thb <- NULL
-gt_df_thb <- df_thb |>  gt() 
+gt_df_thb <- df_thb |> gt() 
+# |> gt_hyperlink(text=FileName, url = "https://www.cars.com")
+
 # https://forum.posit.co/t/how-to-assign-a-column-name-as-a-variable/91209
 for(i in 1:img_per_line) {   
-  col <- rlang::sym(colnames(df_thb)[(2*i-1)])
-  label_col <- rlang::sym(colnames(df_thb)[2*i])
+  col <- rlang::sym(colnames(df_thb)[(3*i-2)])
+  label_col <- rlang::sym(colnames(df_thb)[3*i-1])
+  url <- rlang::sym(colnames(df_thb)[3*i])
   # cat(col)
   # cat("\n")
-  gt_df_thb <- gt_df_thb |> tab_style(style = cell_text(size = "large", align = "center", color = "black", weight = "bold"),locations = cells_body(columns = label_col)) |> 
-    gtExtras::gt_img_rows(columns= {{col}}, img_source = "local", height  = 150)  |>   gt_merge_stack(col1 = col, col2 = label_col)  |>
-  tab_style(style =  list(cell_fill(color = "lightcyan"), cell_text(size = "large", align = "center", color = "black", weight = "bolder", style = "italic",decorate = "underline")),locations = cells_body(columns = col) ) |>
+  gt_df_thb <- gt_df_thb |>
+  #   cols_add(url=paste0("../DCIM",label_col))  |> 
+    fmt_url(
+    columns = url,
+    label = "link",
+    show_underline = TRUE
+  ) |>
+     cols_merge(columns = c(url,label_col), pattern = "{2}") |>
+  # cols_merge(
+  #   columns = c(url,label_col),
+  #   pattern = "<a href='{1}'><b>{2}</b></a>"
+  # )  |>    
+  #   cols_label(
+  #   col = col,
+  #   label_col = "new_name"
+  # )  |>
+    # gtExtras::gt_img_rows(columns= {{col}}, img_source = "local", height  = 150)  |>   gt_merge_stack(col1 = col, col2 = label_col)  |>
+    gtExtras::gt_img_rows(columns= {{col}}, img_source = "local", height  = pct(100))  |>  
+    # gtExtras::gt_img_border(col, height = 10, width = 10, border_color = "black",  border_weight = 5) |>
+    # gt_merge_stack(col1 = col, col2 = label_col)  |>
+    tab_style(style =  list(cell_fill(color = "white"),
+                           cell_text(size = "large", align = "center", color = "black", weight = "bolder", style = "italic", decorate = "underline")),
+             locations = cells_body(columns = col) ) |>
     tab_style(
       style = cell_borders(
         # sides = c("t", "l"),
         color = "black",
-        weight = px(3)
-      ),
+        weight = px(4)
+        ),
       locations = cells_body()
-    ) 
-  # gt_df_thb <- gt_df_thb  |> gtExtras::gt_img_rows(columns= {{col}}, img_source = "local", height = 30) 
+    )  
+  
+    gt_df_thb <- gt_df_thb |> 
+      # cols_merge(columns = c(url,label_col), pattern = "<a href='{1}'><b>{2}</b></a>") |>
+      gt_merge_stack(col1 = col, col2 = url) 
+
+  
 }
 # cat(gt_df_thb)
-# print(gt_df_thb)
-gt_df_thb |> tab_options(column_labels.hidden = TRUE, table.width = pct(95), container.width =pct(100)) |> tab_header(title = md("Table of drone images thumbnails"), subtitle = md("From the first to the last picture")) 
+# print(gt_df_thb),  container.width = 3000, container.height = 4000,container.width = pct(300), container.height = pct(300)
+ gt_df_thb |> tab_options(column_labels.hidden = FALSE,
+                         table.width = pct(95),
+                         container.width = pct(100),
+                         # ihtml.active=TRUE,
+                         container.height = pct(500)
+                         ) |> tab_header(title = md("Table of drone images thumbnails"), subtitle = md("From the first to the last picture")) 
 
 # filename="test.png"
 # gtsave(gt_df_thb, filename, path = "~")
 # gtsave(gt_df_thb, "test.tex", path = "~")
-# include_tex("~/test.tex")
+# include_tex("~/test.tex")l
   # pandoc -f latex -t markdown demo.tex -o demo.md
 # pagedown::chrome_print("./Rmd/gt_table_of_images.Rmd", format = "pdf")
 
 ```
+</div>
 
 <!-- ```{latex} -->
 <!-- input("~/test.tex") -->

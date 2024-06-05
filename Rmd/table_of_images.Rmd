@@ -1,0 +1,60 @@
+---
+title: 'Raw data sample : images preview'
+output:
+  params:
+    mydf:'NULL'
+    description:'NULL'
+  html_document:
+      pandoc_args: [
+      "+RTS", "-K2048m",
+      "-RTS"
+      ]
+  html_notebook: default
+date: "2024-04-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+<!-- # ```{r dev='svg'} [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10085143.svg)](https://doi.org/10.5281/zenodo.10085143) -->
+<!-- # ``` -->
+
+
+
+```{r  echo=F ,results='asis' }
+  nb_img=length(mydf$FileName)
+  img_per_line=5
+  
+
+  
+  cat(paste0(gsub("abstract:","",description),"/n. The table below is meant to enable a quick overview of images characteritics without having to dowload the whole DOI archive."))
+
+
+  cat('<h1>TABLE: table of thumbnails</h1>')
+  cat('<table  height="10%" width="100%">')
+    for(i in seq(1,nb_img,img_per_line)){
+      if(i>(img_per_line*round(nb_img/img_per_line))){
+        cat('<tr align="center">')
+        for(j in i:nb_img){
+          cat(paste0(
+            '<td height="100%" width="20%"><img src="data:image/png;base64,',gsub('base64:','',mydf$ThumbnailImage[j]),'" width="96%" height="72%" /><br/><a href="',paste0('../../',mydf$relative_path[j]),'"><b>',mydf$FileName[j],'</b></a></td>')
+              )
+          }
+        cat('</tr>')
+        }else{
+              cat(
+              paste0('<tr align="center">
+              <td height="100%" width="20%"><img src="data:image/png;base64,',gsub('base64:','',mydf$ThumbnailImage[i]),'" width="96%" height="72%" /><br/><a href="',paste0('../../',mydf$relative_path[i]),'"><b>',mydf$FileName[i],'</b></a></td>
+              <td height="100%" width="20%"><img src="data:image/png;base64,',gsub('base64:','',mydf$ThumbnailImage[i+1]),'" width="96%" height="72%" /><br/><a href="',paste0('../../',mydf$relative_path[i+1]),'"><b>',mydf$FileName[i+1],'</b></a></td>
+              <td height="100%" width="20%"><img src="data:image/png;base64,',gsub('base64:','',mydf$ThumbnailImage[i+2]),'" width="96%" height="72%" /><br/><a href="',paste0('../../',mydf$relative_path[i+2]),'"><b>',mydf$FileName[i+2],'</b></a></td>
+              <td height="100%" width="20%"><img src="data:image/png;base64,',gsub('base64:','',mydf$ThumbnailImage[i+3]),'" width="96%" height="72%" /><br/><a href="',paste0('../../',mydf$relative_path[i+3]),'"><b>',mydf$FileName[i+3],'</b></a></td>
+              <td height="100%" width="20%"><img src="data:image/png;base64,',gsub('base64:','',mydf$ThumbnailImage[i+4]),'" width="96%" height="72%" /><br/><a href="',paste0('../../',mydf$relative_path[i+4]),'"><b>',mydf$FileName[i+4],'</b></a></td>
+              </tr>')
+              )
+      }
+      }
+  cat('</table>')
+```
+
