@@ -1,7 +1,7 @@
 #############################################################################################################
 ############################ LOAD PACKAGES ###################################################
 ########################################################################################################
-pacman::p_load(remotes,rosm,pdftools,googledrive,exifr,DBI, RPostgreSQL, rgdal, data.table,dplyr,trackeR,lubridate,stringr,tidyr,gsheet,dplyr,sf)
+pacman::p_load(remotes,rosm,pdftools,googledrive,exifr,DBI, RPostgreSQL, data.table,dplyr,trackeR,lubridate,stringr,tidyr,gsheet,dplyr,sf)
 # library(maps)
 # library(reshape)  
 # library(geosphere)
@@ -525,8 +525,8 @@ load_DCMI_metadata_in_database <- function(con_database, code_directory, DCMI_me
     DCMI_metadata$Number_of_Pictures <- NA
     DBI::dbWriteTable(con_database,"metadata", DCMI_metadata, row.names=FALSE, append=TRUE)
     }
-  
-  existing_rows <- dbGetQuery(con_database, paste0('UPDATE metadata SET geometry = ST_GeomFromText("SpatialCoverage",4326);'))
+  # cat(paste0('UPDATE metadata SET geometry = ST_GeomFromText("SpatialCoverage",4326);'))
+  existing_rows <- dbGetQuery(con_database, paste0('UPDATE metadata SET geometry = ST_GeomFromText("SpatialCoverage",4326) WHERE "Identifier"=\'', DCMI_metadata$Identifier,'\';'))
   
   
 }
@@ -1013,8 +1013,8 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
   track_points <- NULL
   track_points=switch(type,
          "RTK" = read.csv(gps_file,stringsAsFactors = FALSE),
-         "GPX" = rgdal::readOGR(dsn = gps_file, layer="track_points",stringsAsFactors = FALSE),
-         "GPKG" = rgdal::readOGR(dsn = gps_file),
+         "GPX" = sf::st_read(dsn = gps_file, layer="track_points",stringsAsFactors = FALSE),
+         "GPKG" = sf::st_read(dsn = gps_file),
          "TCX" = readTCX(file=gps_file, timezone = "UTC")
   )
   head(track_points)
@@ -1038,8 +1038,9 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
   }
   track_points$session_id <- session_id
   head(track_points)
-  if(type=="GPX"){track_points$time <- as.POSIXct(track_points@data$time, tz="UTC")}
-  if(type=="GPKG"){track_points$time <- as.POSIXct(track_points@data$DateTimeOriginal, tz="UTC")}
+  if(type=="GPX"){track_points$time <- as.POSIXct(track_points$time, tz="UTC")}
+  # if(type=="GPKG"){track_points$time <- as.POSIXct(track_points$DateTimeOriginal, tz="UTC")}
+  # if(type=="GPKG"){track_points$time <- as.POSIXct(track_points$time, tz="UTC")}
   class(track_points$time)
   attr(track_points$time,"tzone")
   track_points$the_geom <- NA
@@ -1057,8 +1058,8 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
     # write.csv(GPS_tracks_values, paste0(gsub(pattern = ".rtk",""_rtk.csv",gps_file)"),row.names = F)
     
   } else if(type=="GPX"){
-    sapply(track_points@data,class)
-    GPS_tracks_values <- dplyr::select(track_points@data,ogc_fid,session_id,time,ele,track_fid,the_geom) %>% mutate(latitude = track_points@coords[,2]) %>% mutate(longitude = track_points@coords[,1])
+    sapply(track_points,class)
+    GPS_tracks_values <- dplyr::select(track_points,ogc_fid,session_id,time,ele,track_fid,the_geom) %>% mutate(latitude = st_coordinates(track_points)[,2]) %>% mutate(longitude = st_coordinates(track_points)[,1])
     GPS_tracks_values= dplyr::rename(GPS_tracks_values, ogc_fid=ogc_fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=ele, heart_rate=track_fid, the_geom=the_geom)
     GPS_tracks_values <- GPS_tracks_values[,c(1,2,3,7,8,4,5,6)]
     write.csv(GPS_tracks_values, gsub(".gpx","_gpx.csv",gps_file),row.names = F)
@@ -1070,10 +1071,17 @@ return_dataframe_gps_file <- function(con_database, wd, gps_file, type="TCX",ses
     # GPS_tracks_values = dplyr::rename(GPS_tracks_values, ogc_fid=ogc_fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=altitude, heart_rate=heart_rate,the_geom=the_geom)
     write.csv(GPS_tracks_values, gsub(".tcx","_tcx.csv",gps_file),row.names = F)
   } else if (type=="GPKG"){
-    GPS_tracks_values <- dplyr::select(track_points@data,ogc_fid,session_id,time,GPSAltitude, XResolution,the_geom) %>% mutate(latitude = track_points@coords[,2]) %>% mutate(longitude = track_points@coords[,1])
-    GPS_tracks_values= dplyr::rename(GPS_tracks_values, ogc_fid=ogc_fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=GPSAltitude, heart_rate= XResolution, the_geom=the_geom)
-    GPS_tracks_values <- GPS_tracks_values[,c(1,2,3,7,8,4,5,6)]
-    write.csv(GPS_tracks_values, gsub(".gpkg","_gpx.csv",gps_file),row.names = F) 
+    GPS_tracks_values <- track_points %>% mutate(latitude = st_coordinates(track_points)[,2], longitude = st_coordinates(track_points)[,1]) %>% 
+      dplyr::select(ogc_fid,session_id, CreateDate, latitude,longitude,GPSAltitude, XResolution,geom) %>% rename(time = CreateDate, altitude=GPSAltitude, heart_rate= XResolution,the_geom=geom)
+    GPS_tracks_values$CreateDate
+    # GPS_tracks_values <- dplyr::select(track_points,ogc_fid,session_id,time,GPSAltitude, XResolution,the_geom) %>% mutate(latitude = st_coordinates(track_points)[,2]) %>% mutate(longitude = st_coordinates(track_points)[,1])
+    # GPS_tracks_values= dplyr::rename(GPS_tracks_values, ogc_fid=ogc_fid, session_id=session_id, time=time, latitude=latitude,longitude=longitude, altitude=GPSAltitude, heart_rate= XResolution, the_geom=the_geom)
+    # GPS_tracks_values <- GPS_tracks_values[,c(1,2,3,4,5,6,7,8)]
+    # cat(GPS_tracks_values$time)
+    # cat(as.POSIXct(GPS_tracks_values$time, "%Y:%m:%d %H:%M:%OS"))
+    GPS_tracks_values$time <-   sub(":","-",sub(":","-",GPS_tracks_values$time))
+    
+    write.csv(GPS_tracks_values, gsub(".gpkg","_gpkg.csv",gps_file),row.names = F) 
   }
   
   
@@ -1702,13 +1710,12 @@ publish_annotated_photos_in_gsheet<- function(con_database, google_drive_path){
 
 
 
-require(rgdal)
 require(sf)
 require(trackeR)
 
 # gpx to wkt
 gpx_to_wkt <- function(gps_file, dTolerance = 0.00005){
-  spatial_data <- rgdal::readOGR(dsn = gps_file, layer="tracks",stringsAsFactors = FALSE)
+  spatial_data <- sf::st_read(dsn = gps_file, layer="tracks",stringsAsFactors = FALSE)
   class(spatial_data)
   spatial_data <- st_read(gps_file,layer = "tracks")
   session_track <- st_as_text(spatial_data$geometry)

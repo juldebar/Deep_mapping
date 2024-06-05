@@ -3,16 +3,15 @@ rm(list=ls())
 ############################################################
 ################### Packages #######################
 ############################################################
-#should be removed : rgdal
-pacman::p_load(imager,rmarkdown,dotenv,stringr,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, rgdal, data.table,trackeR,lubridate,pdftools,tidyr,rosm,gsheet,dplyr,sf,RgoogleMaps,prettymapr)
-
+# pacman::p_load(imager,rmarkdown,dotenv,stringr,remotes,geoflow,googledrive,geonapi,geosapi, exifr, DBI, RPostgres,RPostgreSQL, data.table,trackeR,lubridate,pdftools,tidyr,rosm,gsheet,dplyr,sf,RgoogleMaps,prettymapr)
+# renv::activate()
 # Options to activate or not the different steps of the workflow
 create_SQL_database=FALSE
-delete_before_insert_SQL=TRUE
+delete_before_insert_SQL=FALSE
 create_geoflow_metadata=TRUE
 upload_to_google_drive=FALSE
-load_metadata_in_database=TRUE
-load_data_in_database=TRUE
+load_metadata_in_database=FALSE
+load_data_in_database=FALSE
 load_tags_in_database=FALSE
 
 code_directory <-"~/Bureau/CODE/Deep_mapping/"
@@ -20,7 +19,7 @@ setwd(code_directory)
 dotenv::load_dot_env(".env2")
 
 # images_directories=str_split(string = Sys.getenv("IMAGES_DIRECTORIES"),pattern = ",")
-images_directories=str_split(string = Sys.getenv("IMAGES_DIRECTORY"),pattern = ",")
+images_directories=stringr::str_split(string = Sys.getenv("IMAGES_DIRECTORY"),pattern = ",")
 codes_github_repository=Sys.getenv("GITHUB_REPOSITORY")
 #database connection parameters
 Host=Sys.getenv("DB_REEF_LOCALHOST")

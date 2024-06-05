@@ -122,6 +122,7 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
   ################### Set static metadata elements #######################
   title <- "title:"
   subject <- keywords
+  subject <- Sys.getenv("DCMI_Subject")
   description <- "abstract:"
   # creator <- "owner:emmanuel.blondel1@gmail.com_\npointOfContact:sylvain.bonhommeau@ifremer.fr_\npointOfContact:julien.barde@ird.fr,wilfried.heintz@inra.fr"
   creator <- Sys.getenv("DCMI_Creator")
@@ -129,7 +130,7 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
   language <- "eng"
   # simplified_spatial_extent <-"LINESTRING (43.60036 -23.64388, 43.59685 -23.64484, 43.59815 -23.64696, 43.59785 -23.64713, 43.59655 -23.64499, 43.59624 -23.64515, 43.59754 -23.64728, 43.59724 -23.64744, 43.59594 -23.64531, 43.59562 -23.64546, 43.59692 -23.64759, 43.59663 -23.64775, 43.59533 -23.64563, 43.59502 -23.64577, 43.59631 -23.6479, 43.596 -23.64807, 43.59471 -23.64593, 43.59441 -23.64608, 43.5957 -23.64822, 43.59539 -23.64838, 43.59411 -23.64627, 43.59378 -23.6464, 43.59508 -23.64853, 43.59479 -23.64869, 43.59349 -23.64657, 43.59317 -23.64671, 43.59447 -23.64885, 43.59416 -23.64901, 43.59288 -23.64689, 43.59255 -23.64703, 43.59385 -23.64915, 43.59355 -23.64932, 43.59226 -23.6472, 43.59194 -23.64734, 43.59324 -23.64947, 43.59294 -23.64963, 43.59164 -23.6475, 43.59134 -23.64765, 43.59263 -23.64979, 43.59232 -23.64995, 43.59103 -23.64782, 43.59071 -23.64797, 43.59201 -23.6501)"
   simplified_spatial_extent <-"NULL"
-  provenance <-"statement:This is some data quality statement providing information on the provenance"
+  provenance <-"statement:These images have been collected by a DJI MAVIC 2 Pro aerail drone"
   source <-"camera_"
   format <-gsub("*. ","",pattern)
   relation <- "Seatizen Web site@http://blabla_"
@@ -150,13 +151,6 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
     code_country=substr(str_split(string = session_id,pattern = "_")[[1]][2], 1, 3)
     this_country <- df_countries %>% filter(df_countries$alpha.3==code_country)
     
-    title <- paste0(title, "Aerial drone survey, ",this_country$name, "collected the", temporal_extent)
-    description <- paste0(description,
-                          "This dataset is made of ",Number_of_Pictures," pictures which have been collected by an areial drone survey in ",
-                          this_country$name, ". The length of the data acquisition was : ", round(abs(acquisition_time))," minutes. The file identfier for this flight is standardized by a naming convention : ", session_id)
-    keywords <- paste(keywords,this_country$name,sep=",")
-    
-
     # https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv
     ############################################################
     ################### TEMPORAL COVERAGE ######################
@@ -177,7 +171,21 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
       Number_of_Pictures <- "No Photos"
       temporal_extent <- "No Photos"
       cat(Number_of_Pictures)
-  }
+    }
+  
+  title <- paste0(title, "Aerial drone survey, ",this_country$name, " collected the ", date)
+  abstract <- paste0(description,
+                        "This dataset is made of ",Number_of_Pictures," pictures which have been collected by an aerial drone survey in ",
+                        this_country$name, ". The length of the data acquisition was ", round(abs(acquisition_time))," minutes. The file identfier for this flight is standardized by a naming convention : \"", session_id,"\".")
+  # abstract <- paste0(abstract,
+                     "Jeu de données composé d’images de drone DJI Mavic 2 Pro UAV acquises sur le site de Nosy Ve, Madagascar à la date suivante : 20230430. <br />Les vols ont été réalisés en partenariat avec l'IH.SM dans le but de créer des modèles numériques d'élévations pour cartographier l'écosystème marin. <br /> <br /><b>Le dépôt est composé des éléments suivants:</b> <br /> - 00_: Planche d'aperçu des images <br /> - DCIM.zip: Images brutes issues du drone <br /> - GPS.zip: Geopackage contenant l’emprise du survol ainsi que la géolocalisation des images accompagnées de leurs miniatures dans la table d’attribut en base64 <br /> - METADATA.zip: Métadonnées au format ISO19115, Rapports avec miniatures des images de drone (dossier tb) et statistiques de vols. <br /> <br /><b>Arborescence d'origine:</b> <br />│ └─ 20230430_MDG-nosyve_UAV-02_3 <br />│-------- └─ DCIM <br />│-------- └─ GPS <br />│-------- └─ METADATA <br />│---------------- └─ tb <br /> <br /><b>Informations de survol:</b> <br />- Camera model and parameters: <br /> Make: Hasselblad <br /> Model: L1D-20c <br /> Width: 5472 <br /> Height: 3648 <br /> Focal: 28 <br /> WhiteBalance: Manual <br /> ExposureMode: Auto Exposure <br /> ColoSpace: sRGB <br /> EV: -0.7 <br /> MeteringMode: CenterWeightedAverage <br /> Camera Pitch: -85.00 <br /> <br />- Survey informations: <br /> No Images: 187 <br /> Median height: 175 meters <br /> Survey area: 54.52 hectares <br /> Survey from: 2023:04:30 13:21:54 to: 2023:04:30 13:39:27 <br /> <br />Les dépôts suivants comprennent les données traitées avec OpenDroneMap"
+  # )
+  purpose <- "purpose:These images have been collected to map the coastal areas by using Open Drone Map software for photogrammetic process"
+  info <- "info:This study received funding from the European Regional Development Fund (ERDF) within the programme Interreg V 2014-2020 through the project G2OI"
+  edition <- "RAW DATA"
+  description <- paste(abstract,purpose,info,sep="_\n")
+  keywords <- paste(keywords,this_country$name,sep=",")
+  
   ############################################################
   ################### SPATIAL COVERAGE #######################
   ############################################################
@@ -196,6 +204,7 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
     dataframe_gps_files <- return_dataframe_gps_files(this_directory,type=file_type)
   }
   number_row <- nrow(dataframe_gps_files)
+  this_wd <- getwd()
   
   if(number_row>0 && !is.null(number_row) ){
     cat("\n Build a spatial data frame \n")
@@ -212,9 +221,9 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
       cat(paste0("\n", gps_file," GPS file ! "))
       
       ####################
-      GPS_tracks_values <- return_dataframe_gps_file(con_database, 
-                                                      wd=code_directory, 
-                                                      gps_file=gps_file, 
+      GPS_tracks_values <- return_dataframe_gps_file(con_database,
+                                                      wd=code_directory,
+                                                      gps_file=gps_file,
                                                       type=file_type,
                                                       session_id=session_id,
                                                       load_in_database=FALSE
@@ -222,9 +231,9 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
       dataframe_gps_file <- rbind(dataframe_gps_file,GPS_tracks_values)
     }
     # store all geometries in the same gpkg file
-    this_wd <- getwd()
     setwd(paste(dataframe_gps_files$path[t]))
     df_sf <- st_as_sf(dataframe_gps_file, coords = c("longitude", "latitude"),crs = 4326)
+    setwd(paste0(this_directory,"/METADATA"))
     st_write(df_sf,paste0 ("all_gps_files_",session_id,".gpkg"),delete_dsn = TRUE)
     setwd(this_wd)
           
@@ -360,23 +369,27 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
       relation <-paste0(relation,"_\nhttp:map(pdf)@",pdf_uri)
       # data <-paste0("uploadType:dbview_\n:",pdf_uri)
 
+      # data_column <-paste0(
+      #   'access:googledrive_\n',
+      #   'source:',sql_query_filename,'_\n',
+      #   'sourceType:dbquery_\n',
+      #   'uploadSource:',session_id,'_\n',
+      #   'uploadType:dbquery_\n',
+      #   'sql:SELECT * FROM "',session_id,'"_\n',
+      #   'featureType:reef_dbquery_\n',
+      #   'upload:true_\n',
+      #   'store:Reef_database_\n',
+      #   'layername:',session_id,'_\n',
+      #   'geometry:the_geom,Point_\n',
+      #   'style:point_\n',
+      #   'attribute:decimalLatitude[decimalLatitude],decimalLongitude[decimalLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make]_\n',
+      #   'variable:LightValue[LightValue]'
+      #   )
+      list_files <- list.files(paste0(md,"/ZENODO"))
       data_column <-paste0(
-        'access:googledrive_\n',
-        'source:',sql_query_filename,'_\n',
-        'sourceType:dbquery_\n',
-        'uploadSource:',session_id,'_\n',
-        'uploadType:dbquery_\n',
-        'sql:SELECT * FROM "',session_id,'"_\n',
-        'featureType:reef_dbquery_\n',
-        'upload:true_\n',
-        'store:Reef_database_\n',
-        'layername:',session_id,'_\n',
-        'geometry:the_geom,Point_\n',
-        'style:point_\n',
-        'attribute:decimalLatitude[decimalLatitude],decimalLongitude[decimalLongitude],datasetID[datasetID],ImageSize[ImageSize],Model[Model],Make[Make]_\n',
-        'variable:LightValue[LightValue]'
-        )
-  
+        'source:',paste(paste0(md,"/ZENODO/",list_files), collapse = ","),'_\n',
+        'sourceType:other'
+      )
       
       
       # data_column <-paste0('source:Postgis_\nsourceType:dbquery_\nuploadType:dbquery_\nsql:SELECT * FROM "',session_id,
@@ -391,14 +404,17 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
 
   }else{
     cat("No GPS file when looking for TCX or GPX or RTK or GPKG files")
-    cat(paste0("\n Pas de dossier'GPS' dans ", this_directory,"\n"))
-    cat("Create GPS directory")
+
     if(!dir.exists(file.path(this_directory, "GPS"))){
+      cat(paste0("\n Pas de dossier'GPS' dans ", this_directory,"\n"))
+      cat("Create GPS directory")
       dir.create(file.path(this_directory, "GPS"))
     }
     
     # Check if RDS exist first ??
     if(!file.exists(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))){
+      cat(paste0("\n Pas de RDS \n"))
+      cat("Extract exif metadata")
       df <- extract_exif_metadata_in_csv(session_id,
                                          this_directory,
                                          template_df=read.csv(paste0(code_directory,"CSV/All_Exif_metadata_template.csv"),
@@ -433,8 +449,22 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
                                          mime_type=pattern,
                                          load_metadata_in_database=FALSE,
                                          time_zone="Indian/Mauritius")
-    }
+      
 
+      
+    }else{
+      cat(paste0("\n Read existing RDS \n"))
+      df <- readRDS(paste0(session_directory,"/METADATA/exif/All_Exif_metadata_",session_id,".RDS"))
+    }
+    gpkg_file <-paste0("metadata_exif_",session_id,".gpkg")
+    spatial_df <- select(df, -c(ThumbnailImage,PreviewImage)) %>% filter(!is.na(GPSLatitude) & !is.null(GPSLatitude) & GPSLatitude!=0)
+    plot_locations <- st_as_sf(spatial_df, coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
+    st_write(plot_locations,gpkg_file,delete_dsn = TRUE)
+    
+    spatial_extent <- plot_locations %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
+    spatial_extent_geom <- sf::st_as_sfc(spatial_extent)
+    simplified_spatial_extent <- sf::st_as_sfc(spatial_extent) %>% st_simplify(dTolerance = 0.00005)  %>% st_as_text()
+    
   }
   
 
@@ -473,31 +503,49 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
       file.remove("w.bin")
       setwd(paste0(session_directory, "/METADATA"))
     }else{
-      cat("\n thumbanails directory already exists ! : \n")
+      cat("\n thumbnails directory already exists ! : \n")
       setwd("./thumbnails")
       thb_dir <- getwd()      
     }
     
     
     # Rmarkdown render
-    # Rmd_file <- paste0(code_directory,"Rmd/table_of_images.Rmd")
-    Rmd_file <- paste0(code_directory,"Rmd/gt_table_of_images.Rmd")
+    Rmd_file <- paste0(code_directory,"Rmd/table_of_images.Rmd")
+    # Rmd_file <- paste0(code_directory,"Rmd/gt_table_of_images.Rmd")
     Rmd_output_file <-  paste0(session_directory,"/A_Table_of_thumbnails_",session_id)
     # rmarkdown::render(input = Rmd_file,  output_file = Rmd_output_file, output_format = c("html_document", "pdf_document"), params = c(thb_dir,description))
-    # rmarkdown::render(input = Rmd_file,  output_file = Rmd_output_file, output_format = c("html_document"), params = c(thb_dir,description))
+    # abstract=sub("abstract:","",abstract)
+    rmarkdown::render(input = Rmd_file,  output_file = Rmd_output_file, output_format = c("html_document"), params = c(mydf,abstract))
+    # https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-printToPDF
+      pagedown::chrome_print(paste0(Rmd_output_file,".html"),
+    # pagedown::chrome_print(Rmd_file,
+                           options = list(
+                             # landscape = FALSE, 
+                             # displayHeaderFooter = FALSE, 
+                             # marginTop = 1,
+                             # marginBottom = 1,
+                             # landscape=TRUE,
+                             # paperWidth=30,
+                             # paperHeight=17,
+                             marginLeft = 0.4,
+                             marginRight = 0.4
+                             )
+                           )
     # pandoc A_Table_of_thumbnails_20220828_MDG-Nosy-Komba_UAV-1_1.html -t latex -o test.pdf
     # rmarkdown::pandoc_convert("A_Table_of_thumbnails_20220828_MDG-Nosy-Komba_UAV-1_1.html", to = "latex")
     # rmarkdown::pandoc_convert("A_Table_of_thumbnails_20220828_MDG-Nosy-Komba_UAV-1_1.html", to = "pdf")
-    
     
     ######################## write a qgis project to visualize the shape file
     # QGIS_template_project <- "/home/julien/Bureau/CODES/Deep_mapping/template/qgis_project_shapefile_new.qgs"
     # write_qgis_project(session_id, qgs_template,shape_file,xmin,xmax,ymin,ymax)
     
+    setwd(paste0(session_directory, "/METADATA"))
     gpkg_file <-paste0("metadata_exif_",session_id,".gpkg")
+    cat(paste0("\n here in ",getwd(),"  \n"))
+    
     if(file.exists(gpkg_file)){
       # setwd(dirname(gpkg_file))
-      cat(paste0("\n",gpkg_file,"  exists ! : \n"))
+      cat(paste0("\n",gpkg_file,"  exists ! Writing QGIS project : \n"))
       
       QGIS_template_project="QGIS/template_project_new.qgs"
       pattern_session_id="this_filename"
@@ -549,14 +597,16 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
     
     #write another gpkg without null values (underwater images ?)
     setwd(paste0(this_directory, "/GPS"))
+    
     nrow_spatial_df_before <- nrow(mydf)
     spatial_df <- select(mydf, -c(ThumbnailImage,PreviewImage)) %>% filter(!is.na(GPSLatitude) & !is.null(GPSLatitude) & GPSLatitude!=0)
+    spatial_df <- read_sf(gpkg_file)
     nrow_spatial_df_after <- nrow(spatial_df)
     removed_images <- nrow_spatial_df_before-nrow_spatial_df_after
     cat(paste0("\n",removed_images, " images have been removed !!!! Either NA or Null values for GPS data \n"))
     
     plot_locations <- st_as_sf(spatial_df, coords = c("GPSLongitude", "GPSLatitude"),crs = 4326)
-    st_write(plot_locations,paste0 (session_id,".gpkg"),delete_dsn = TRUE)
+    st_write(plot_locations,paste0(session_id,".gpkg"),delete_dsn = TRUE)
     
     if(nrow(plot_locations) > 0){
       spatial_extent <- plot_locations %>% st_coordinates() %>% st_linestring()  %>% st_as_text()
@@ -567,7 +617,7 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
     }
     
     }else{
-      cat(paste0("\n",gpkg_file,"  doesn not exist ! : \n"))
+      cat(paste0("\n",gpkg_file,"  doesn not exist ! NO QGIS project created !! : \n"))
     }
     setwd("..")
   }
@@ -576,6 +626,7 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
   ################### CREATE DATAFRAME #######################
   ############################################################
   cat("\n Create metadata dataframe : \n")
+  cat(paste0("\n",simplified_spatial_extent,"  simplified_spatial_extent ! : \n"))
   
   newRow <-NULL
   newRow <-data.frame(Identifier=session_id,#Identifier=paste0("id:",session_id),
@@ -585,6 +636,7 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
                       Creator=creator,
                       Date=date,
                       Type="dataset",
+                      # SpatialCoverage=simplified_spatial_extent,
                       SpatialCoverage=paste0("SRID=4326;",simplified_spatial_extent),
                       TemporalCoverage=temporal_extent,
                       Language=language,
@@ -608,9 +660,7 @@ get_session_metadata <- function(con_database, session_id, session_directory, go
   metadata_sessions <- rbind(metadata_sessions,newRow)
   # metadata_sessions <- metadata_sessions[,c(1,2,3,16,17,4,18,19,7,8,9,10,11,12,5,6,13,14,15)]
   # metadata_sessions <- metadata_sessions[,c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)]
-  
-  
-  
+  cat(paste0("\n",paste0("SRID=4326;",simplified_spatial_extent),"  SpatialCoverage ! : \n"))
   
   
   setwd(this_directory)
