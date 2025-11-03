@@ -1,0 +1,24 @@
+#/bin/bash
+#PBS -q omp
+#PBS -l select=1:ncpus=16:mem=10g
+#PBS -l walltime=4:00:00
+#PBS -N workflow_session
+#PBS -S /bin/bash
+
+
+signal_handler() {
+	pkill --parent "${$}"
+}
+trap signal_handler EXIT
+
+cd /home1/datahome/villien/notebook/julien/workflow_metadata
+
+. /appli/anaconda/latest/etc/profile.d/conda.sh
+conda activate /home1/datawork/villien/conda-env/villien_env
+
+module load exiftool/exiftool-12.41
+
+python3 main.py
+conda deactivate
+
+qstat -f $PBS_JOBID
